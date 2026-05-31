@@ -31,7 +31,9 @@ import {
   Ticket,
   Map,
   BadgeAlert,
-  ArrowRight
+  ArrowRight,
+  Sun,
+  Moon
 } from "lucide-react";
 import {
   OnboardingAnswers,
@@ -120,6 +122,27 @@ export default function App() {
   const [isOfflineMapDownloaded, setIsOfflineMapDownloaded] = useState(true);
   const [isFlightsExpanded, setIsFlightsExpanded] = useState(false);
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(true);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    try {
+      return localStorage.getItem("theme") === "dark";
+    } catch (_) {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      if (isDarkMode) {
+        document.documentElement.classList.add("dark");
+        document.body.classList.add("dark");
+        localStorage.setItem("theme", "dark");
+      } else {
+        document.documentElement.classList.remove("dark");
+        document.body.classList.remove("dark");
+        localStorage.setItem("theme", "light");
+      }
+    } catch (_) {}
+  }, [isDarkMode]);
   const [activeMapLayers, setActiveMapLayers] = useState({
     safety: true,
     nightlife: true,
@@ -548,12 +571,16 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-screen w-full overflow-hidden fluid-bg-textured text-slate-800 font-sans">
+    <div className={`flex h-screen w-full overflow-hidden text-slate-800 font-sans transition-all duration-300 ${
+      isDarkMode ? "dark-fluid-bg-textured text-slate-100 bg-[#06040c]" : "fluid-bg-textured text-slate-800 bg-[#f1f8f6]"
+    }`}>
       
       {/* ========================================================
           LEFT NAVIGATION RAIL (COZY WANDERLUST STYLE, 80px width)
           ======================================================== */}
-      <nav id="nav_rail" className="w-20 border-r border-slate-200/85 flex flex-col items-center py-6 space-y-10 bg-slate-50 shrink-0 shadow-xs">
+      <nav id="nav_rail" className={`w-20 border-r flex flex-col items-center py-6 space-y-10 shrink-0 shadow-xs transition-all duration-300 ${
+        isDarkMode ? "bg-[#0a0715] border-purple-950/40 text-slate-200" : "bg-slate-50 border-slate-200/85 text-slate-800"
+      }`}>
         <div 
           className="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center border-2 border-purple-200 cursor-pointer hover:bg-purple-200 hover:scale-105 transition-all shadow-md group relative" 
           onClick={() => {
@@ -584,20 +611,24 @@ export default function App() {
                 key={item.id}
                 id={`tab_${item.id}`}
                 onClick={() => setActiveTab(item.id as any)}
-                className={`flex flex-col items-center py-2 relative transition-all group cursor-pointer ${
-                  active ? "text-purple-900 scale-103" : "text-slate-500 hover:text-purple-800"
+                className={`flex flex-col items-center py-2 relative transition-all duration-150 group cursor-pointer ${
+                  active 
+                    ? (isDarkMode ? "text-purple-300 scale-103" : "text-purple-900 scale-103") 
+                    : (isDarkMode ? "text-slate-400 hover:text-purple-100" : "text-slate-500 hover:text-purple-800")
                 }`}
               >
                 {/* Active marker purple bar */}
                 {active && (
                   <motion.div
                     layoutId="active_tab_bar"
-                    className="absolute left-0 top-1 bottom-1 w-1 rounded-r-md bg-purple-700"
+                    className={`absolute left-0 top-1 bottom-1 w-1 rounded-r-md ${isDarkMode ? "bg-purple-400" : "bg-purple-700"}`}
                   />
                 )}
-                <Icon className={`w-5 h-5 mb-1 shrink-0 ${active ? "stroke-[2.5px] text-purple-950" : "stroke-[1.8px]"}`} />
+                <Icon className={`w-5 h-5 mb-1 shrink-0 ${active ? "stroke-[2.5px]" : "stroke-[1.8px]"}`} />
                 <span className={`text-[10px] tracking-[0.11em] uppercase text-center transition-all ${
-                  active ? "font-black text-purple-950 scale-100" : "font-extrabold text-slate-500 scale-95 group-hover:text-purple-900"
+                  active 
+                    ? (isDarkMode ? "font-black text-purple-300 scale-100" : "font-black text-purple-950 scale-100") 
+                    : (isDarkMode ? "font-extrabold text-slate-400 scale-95 group-hover:text-purple-200" : "font-extrabold text-slate-500 scale-95 group-hover:text-purple-900")
                 }`}>
                   {item.label}
                 </span>
@@ -612,14 +643,18 @@ export default function App() {
           className="flex flex-col items-center cursor-pointer group hover:scale-105 transition-all relative"
           title="Inspect G. Voyager Profile"
         >
-          <div className="w-11 h-11 rounded-full border-2 border-purple-300 overflow-hidden bg-slate-150 shadow-md group-hover:border-purple-600 transition-colors">
+          <div className={`w-11 h-11 rounded-full border-2 overflow-hidden shadow-md transition-colors ${
+            isDarkMode ? "border-purple-500 group-hover:border-purple-400" : "border-purple-300 group-hover:border-purple-600"
+          } bg-slate-150`}>
             <img
               src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150"
               alt="Avatar"
               className="w-full h-full object-cover"
             />
           </div>
-          <span className="text-[8px] font-mono text-purple-900 font-extrabold opacity-75 mt-1.5 uppercase tracking-wide group-hover:text-purple-800 leading-none">
+          <span className={`text-[8px] font-mono font-extrabold opacity-75 mt-1.5 uppercase tracking-wide leading-none transition-colors ${
+            isDarkMode ? "text-purple-300 group-hover:text-purple-200" : "text-purple-900 group-hover:text-purple-800"
+          }`}>
             MEMBER
           </span>
         </div>
@@ -631,24 +666,36 @@ export default function App() {
       <div className="flex-1 flex flex-col overflow-hidden bg-transparent">
         
         {/* TOP COMPACT BRAND HEADER (80px height) */}
-        <header id="app_header" className="h-20 px-6 lg:px-10 flex items-center justify-between border-b border-rose-100/30 bg-[#e3ebf2]/95 border-[#cbd5e1] backdrop-blur-md shadow-xs">
+        <header id="app_header" className={`h-20 px-6 lg:px-10 flex items-center justify-between border-b transition-all duration-300 ${
+          isDarkMode 
+            ? "border-rose-100/10 bg-[#0c0916]/95 border-purple-950/45 backdrop-blur-md shadow-xs text-purple-100" 
+            : "border-rose-100/30 bg-[#e3ebf2]/95 border-[#cbd5e1] backdrop-blur-md shadow-xs text-purple-950"
+        }`}>
           <div className="flex items-baseline space-x-3.5">
             <div className="relative group flex items-baseline select-none">
               <motion.h1
                 id="hello_judy_title"
                 whileHover={{ scale: 1.02 }}
                 transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                className="text-2xl md:text-3xl font-normal text-purple-950 font-serif tracking-normal cursor-pointer flex items-baseline"
+                className={`text-2xl md:text-3xl font-normal font-serif tracking-normal cursor-pointer flex items-baseline transition-colors duration-200 ${
+                  isDarkMode ? "text-purple-100" : "text-purple-950"
+                }`}
               >
                 Hello{" "}
-                <span className="cursive text-purple-700 text-3xl font-medium tracking-normal ml-1.5 transition-colors group-hover:text-purple-600">
+                <span className={`cursive text-3xl font-medium tracking-normal ml-1.5 transition-colors duration-200 ${
+                  isDarkMode ? "text-pink-400 group-hover:text-pink-300" : "text-purple-700 group-hover:text-purple-600"
+                }`}>
                   Judy
                 </span>
               </motion.h1>
 
               {/* Personalized welcome message tooltip/badge that transitions smoothly on hover */}
               <div className="absolute top-full left-0 mt-2.5 opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-hover:scale-100 transition-all duration-300 ease-out origin-top-left z-50">
-                <div className="bg-white/95 backdrop-blur-md border border-purple-200 shadow-xl rounded-2xl p-4 w-72 text-left relative overflow-hidden">
+                <div className={`backdrop-blur-md border shadow-xl rounded-2xl p-4 w-72 text-left relative overflow-hidden transition-all duration-300 ${
+                  isDarkMode 
+                    ? "bg-[#110d21]/95 border-purple-900/40 text-slate-200" 
+                    : "bg-white/95 border-purple-200 text-slate-800"
+                }`}>
                   <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 via-pink-400 to-indigo-500"></div>
                   <div className="flex items-center gap-3 mt-1">
                     <div className="w-10 h-10 rounded-full border border-purple-200 overflow-hidden shrink-0 bg-slate-50">
@@ -660,20 +707,24 @@ export default function App() {
                       />
                     </div>
                     <div>
-                      <h4 className="text-xs font-bold text-slate-800 leading-none">Robert G. Voyager</h4>
-                      <p className="text-[9px] text-slate-400 mt-1 font-mono">robs46859@gmail.com</p>
+                      <h4 className={`text-xs font-bold leading-none ${isDarkMode ? "text-purple-200" : "text-slate-800"}`}>Robert G. Voyager</h4>
+                      <p className={`text-[9px] mt-1 font-mono ${isDarkMode ? "text-purple-400" : "text-slate-400"}`}>robs46859@gmail.com</p>
                     </div>
                   </div>
-                  <div className="mt-3 pt-2.5 border-t border-slate-100 space-y-1.5 text-xs text-slate-600 leading-normal">
-                    <p className="font-medium text-purple-950 font-sans">
+                  <div className={`mt-3 pt-2.5 border-t space-y-1.5 text-xs leading-normal ${isDarkMode ? "border-purple-950/40 text-slate-300" : "border-slate-100 text-slate-600"}`}>
+                    <p className={`font-medium font-sans ${isDarkMode ? "text-purple-300" : "text-purple-950"}`}>
                       ✨ Welcoming you back, Robert!
                     </p>
                     {onboardingAnswers ? (
-                      <p className="text-[10px] bg-purple-50 text-purple-700/90 px-2 py-1.5 rounded-xl font-medium">
-                        Your escapade to <span className="font-extrabold text-purple-900 uppercase">{onboardingAnswers.destination}</span> is set under a <span className="font-extrabold text-purple-900 uppercase">{onboardingAnswers.vibe}</span> vibe.
+                      <p className={`text-[10px] px-2 py-1.5 rounded-xl font-medium ${
+                        isDarkMode ? "bg-purple-950/60 text-purple-300" : "bg-purple-50 text-purple-700/90"
+                      }`}>
+                        Your escapade to <span className={`font-extrabold uppercase ${isDarkMode ? "text-pink-300" : "text-purple-900"}`}>{onboardingAnswers.destination}</span> is set under a <span className={`font-extrabold uppercase ${isDarkMode ? "text-pink-300" : "text-purple-900"}`}>{onboardingAnswers.vibe}</span> vibe.
                       </p>
                     ) : (
-                      <p className="text-[10px] bg-slate-50 text-slate-500 px-2 py-1.5 rounded-xl">
+                      <p className={`text-[10px] px-2 py-1.5 rounded-xl ${
+                        isDarkMode ? "bg-purple-950/20 text-purple-400" : "bg-slate-50 text-slate-500"
+                      }`}>
                         Ready to design your safe and colorful destination escape? Use the curator below to start!
                       </p>
                     )}
@@ -685,24 +736,36 @@ export default function App() {
                 </div>
               </div>
             </div>
-            <span className="hidden md:inline-block text-[10px] text-purple-800 tracking-[0.1em] font-bold uppercase pl-3 border-l border-slate-200">
+            <span className={`hidden md:inline-block text-[10px] tracking-[0.1em] font-bold uppercase pl-3 border-l ${
+              isDarkMode ? "border-purple-950 text-purple-400" : "border-slate-200 text-purple-800"
+            }`}>
               Your Cozy Travel Companion
             </span>
           </div>
 
           <div className="flex items-center space-x-6">
-            <div className="hidden lg:flex items-center space-x-2 bg-purple-100/70 border border-purple-200/55 px-4 py-2 rounded-full">
+            <div className={`hidden lg:flex items-center space-x-2 px-4 py-2 rounded-full border transition-all ${
+              isDarkMode 
+                ? "bg-purple-950/40 border-purple-900/30 text-purple-200" 
+                : "bg-purple-100/70 border border-purple-200/55 text-purple-950"
+            }`}>
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span className="text-[10px] font-extrabold text-purple-950 tracking-wider uppercase pl-1">
+              <span className="text-[10px] font-extrabold tracking-wider uppercase pl-1">
                 Warm & Safe Environment
               </span>
             </div>
 
             {/* Weather Widget & Safe Status Indicator */}
-            <div className="flex items-center gap-2.5 text-xs text-slate-800 tracking-wide font-medium">
+            <div className={`flex items-center gap-2.5 text-xs tracking-wide font-medium transition-colors duration-200 ${
+              isDarkMode ? "text-slate-200" : "text-slate-800"
+            }`}>
               <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" title="Systems active & safe"></span>
-              <div className="flex items-center gap-2 bg-slate-100 border border-slate-200/80 px-3.5 py-1.5 rounded-2xl text-[10px] font-mono font-bold text-slate-700 shadow-2xs hover:bg-slate-200/80 hover:border-slate-350 active:scale-95 transition-all duration-150 cursor-pointer">
-                <span className="font-extrabold text-purple-800 uppercase">
+              <div className={`flex items-center gap-2 border px-3.5 py-1.5 rounded-2xl text-[10px] font-mono font-bold shadow-2xs transition-all duration-150 cursor-pointer active:scale-95 ${
+                isDarkMode 
+                  ? "bg-purple-950/45 border-purple-900/40 text-purple-200 hover:bg-purple-900/45" 
+                  : "bg-slate-100 border border-slate-200/80 text-slate-700 hover:bg-slate-200"
+              }`}>
+                <span className={`font-extrabold uppercase ${isDarkMode ? "text-pink-400" : "text-purple-800"}`}>
                   {onboardingAnswers?.destination 
                     ? (onboardingAnswers.destination.length > 9 
                         ? onboardingAnswers.destination.substring(0, 9).toUpperCase() + ".." 
@@ -721,10 +784,27 @@ export default function App() {
                 </span>
               </div>
 
+              {/* Theme Toggle Switcher */}
+              <button
+                onClick={() => setIsDarkMode(!isDarkMode)}
+                className={`flex items-center justify-center p-2 rounded-full border transition-all duration-150 cursor-pointer shadow-3xs active:scale-95 shrink-0 ${
+                  isDarkMode 
+                    ? "bg-amber-950/35 hover:bg-amber-900/40 border-amber-900/50 text-amber-300"
+                    : "bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-700"
+                }`}
+                title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+              >
+                {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              </button>
+
               {/* Collapsible Utility Sidebar Toggle */}
               <button
                 onClick={() => setIsRightPanelOpen(!isRightPanelOpen)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-100 hover:bg-purple-200/80 border border-purple-200 rounded-2xl text-[10px] font-mono font-bold tracking-wider uppercase text-purple-950 transition-all cursor-pointer shadow-3xs active:scale-95 shrink-0"
+                className={`flex items-center gap-1.5 px-3 py-1.5 border rounded-2xl text-[10px] font-mono font-bold tracking-wider uppercase transition-all cursor-pointer shadow-3xs active:scale-95 shrink-0 ${
+                  isDarkMode 
+                    ? "bg-purple-950/90 hover:bg-purple-900/90 border-purple-900 text-purple-200" 
+                    : "bg-purple-100 hover:bg-purple-200/80 border border-purple-200 text-purple-950"
+                }`}
                 title={isRightPanelOpen ? "Collapse Assistant Panel" : "Expand Assistant Panel"}
               >
                 <span>{isRightPanelOpen ? "📖 Hide Info" : "📖 Show Info"}</span>

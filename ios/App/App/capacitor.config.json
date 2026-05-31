@@ -1,0 +1,10 @@
+{
+	"appId": "com.hellojudy.app",
+	"appName": "Judy",
+	"webDir": "dist",
+	"bundledWebRuntime": false,
+	"server": {
+		"androidScheme": "https"
+	},
+	"packageClassList": []
+}
