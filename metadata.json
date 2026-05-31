@@ -1,0 +1,10 @@
+{
+  "name": "Hello Judy",
+  "description": "A warm, friendly gay travel companion featuring curated itineraries, cozy local recommendations, safety tips, private guide chats, and a marketplace for unforgettable custom travel designs.",
+  "requestFramePermissions": [
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
