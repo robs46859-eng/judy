@@ -10,8 +10,8 @@ interface UserProfileModalProps {
 
 export default function UserProfileModal({ isOpen, onClose, userEmail }: UserProfileModalProps) {
   const [safetyTier, setSafetyTier] = useState<"standard" | "enhanced" | "guardian">("enhanced");
-  const [emergencyPhone, setEmergencyPhone] = useState("+1 (555) 438-9943");
-  const [travelVibe, setTravelVibe] = useState("Curious & Cozy Wanderer");
+  const [emergencyPhone, setEmergencyPhone] = useState("");
+  const [travelVibe, setTravelVibe] = useState("");
   
   if (!isOpen) return null;
 
@@ -36,14 +36,14 @@ export default function UserProfileModal({ isOpen, onClose, userEmail }: UserPro
           <div className="flex items-center gap-4.5">
             <div className="w-16 h-16 rounded-full border-2 border-purple-200 overflow-hidden shrink-0 bg-white">
               <img
-                src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150"
+                src=""
                 alt="Profile Avatar"
                 className="w-full h-full object-cover"
               />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-xl font-bold font-serif leading-none">Robert G. Voyager</h3>
+                <h3 className="text-xl font-bold font-serif leading-none">Judy's Member</h3>
                 <span className="text-[8px] bg-purple-550/60 border border-purple-300 text-purple-100 font-mono font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">
                   Judy Founder Elite
                 </span>
@@ -66,15 +66,15 @@ export default function UserProfileModal({ isOpen, onClose, userEmail }: UserPro
             </h4>
             <div className="grid grid-cols-3 gap-3">
               <div className="bg-slate-50 border border-slate-200/80 p-3.5 rounded-2xl text-center shadow-3xs">
-                <span className="text-2xl font-black text-purple-950 font-mono block">6</span>
+                <span className="text-2xl font-black text-purple-950 font-mono block">0</span>
                 <span className="text-[8px] text-slate-400 uppercase font-bold tracking-wider">Safe Areas Visited</span>
               </div>
               <div className="bg-slate-50 border border-slate-200/80 p-3.5 rounded-2xl text-center shadow-3xs">
-                <span className="text-2xl font-black text-purple-750 font-mono block">100%</span>
+                <span className="text-2xl font-black text-purple-750 font-mono block">—</span>
                 <span className="text-[8px] text-slate-400 uppercase font-bold tracking-wider">Safety Rating</span>
               </div>
               <div className="bg-slate-50 border border-slate-200/80 p-3.5 rounded-2xl text-center shadow-3xs">
-                <span className="text-2xl font-black text-emerald-600 font-mono block">$1,480</span>
+                <span className="text-2xl font-black text-emerald-600 font-mono block">$0</span>
                 <span className="text-[8px] text-slate-400 uppercase font-bold tracking-wider">Allocated Travel Pot</span>
               </div>
             </div>
@@ -144,7 +144,7 @@ export default function UserProfileModal({ isOpen, onClose, userEmail }: UserPro
             <div className="text-xs">
               <span className="font-bold text-emerald-950 block">Your Profile is Secured</span>
               <p className="text-slate-500 leading-relaxed font-light mt-0.5 text-[11px]">
-                Robert, your personal data and emergency safe corridor pins are secured locally using high-grade end-to-end encryption hashes. No tracking telemetry is permanently stored.
+                Your personal data and emergency safe corridor pins are secured locally using high-grade end-to-end encryption hashes. No tracking telemetry is permanently stored.
               </p>
             </div>
           </div>

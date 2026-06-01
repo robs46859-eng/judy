@@ -14,13 +14,13 @@ interface OnboardingProps {
 
 export default function Onboarding({ onComplete }: OnboardingProps) {
   const [step, setStep] = useState(1);
-  const [destination, setDestination] = useState("Barcelona, Spain");
-  const [travelDates, setTravelDates] = useState("2026-07-15 to 2026-07-22");
+  const [destination, setDestination] = useState("");
+  const [travelDates, setTravelDates] = useState("");
   const [vibe, setVibe] = useState<OnboardingAnswers["vibe"]>("culture");
   const [travelStyle, setTravelStyle] = useState<OnboardingAnswers["travelStyle"]>("boutique");
-  const [interests, setInterests] = useState<string[]>(["Historic Milestones", "Beaches", "Queer Art Tours"]);
+  const [interests, setInterests] = useState<string[]>([]);
 
-  const mockDestinations = [
+  const popularDestinations = [
     { name: "Barcelona, Spain", country: "Spain", rating: "Gaixample Hub" },
     { name: "Puerto Vallarta, Mexico", country: "Mexico", rating: "PV Zona Romántica" },
     { name: "Berlin, Germany", country: "Germany", rating: "Schöneberg Quarter" },
@@ -109,7 +109,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-6">
-                {mockDestinations.map((dest) => (
+                {popularDestinations.map((dest) => (
                   <button
                     key={dest.name}
                     onClick={() => {

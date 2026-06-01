@@ -40,312 +40,28 @@ function getGeminiClient(): GoogleGenAI | null {
 }
 
 // Global In-Memory Stateful Collections (acts as durable per-session database)
-let flightsData = [
-  {
-    id: "f1",
-    flightNumber: "PV-101",
-    airline: "Pride Airways",
-    origin: "San Francisco (SFO)",
-    destination: "Barcelona (BCN)",
-    scheduledTime: "14:30",
-    status: "On Time",
-    gate: "B24",
-    terminal: "Intl T2",
-    lastUpdated: new Date().toLocaleTimeString(),
-  },
-  {
-    id: "f2",
-    flightNumber: "PV-255",
-    airline: "Rainbow Lines",
-    origin: "New York (JFK)",
-    destination: "Puerto Vallarta (PVR)",
-    scheduledTime: "16:45",
-    status: "Boarding",
-    gate: "C12",
-    terminal: "Terminal 4",
-    lastUpdated: new Date().toLocaleTimeString(),
-  },
-  {
-    id: "f3",
-    flightNumber: "PV-711",
-    airline: "EuroPride Express",
-    origin: "London Heathrow (LHR)",
-    destination: "Berlin (BER)",
-    scheduledTime: "19:15",
-    status: "Delayed",
-    gate: "A05",
-    terminal: "Terminal 5",
-    lastUpdated: new Date().toLocaleTimeString(),
-  },
-  {
-    id: "f4",
-    flightNumber: "PV-880",
-    airline: "Southern Cross Pride",
-    origin: "Sydney (SYD)",
-    destination: "Bangkok (BKK)",
-    scheduledTime: "08:10",
-    status: "Scheduled",
-    gate: "18",
-    terminal: "T1",
-    lastUpdated: new Date().toLocaleTimeString(),
-  },
-];
+let flightsData: any[] = [];
 
-let safetyZones = [
-  {
-    id: "z1",
-    title: "Gaixample Queer Culture Hub",
-    address: "Carrer de Balmes, Barcelona",
-    coords: { x: 42, y: 38 },
-    category: "Bar/Nightclub" as const,
-    safetyScore: 9.6,
-    crowdLevel: "Vibrant" as const,
-    verificationCount: 142,
-    tags: ["LGBTQ+ Owned", "Fully Accessible", "Well-lit", "English Spoken"],
-    reviews: [
-      {
-        id: "r1",
-        user: "Marcus V.",
-        avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=100",
-        text: "Outstanding ambiance! Felt 100% comfortable holding hands. Active security guard at the door and superb, inclusive staff.",
-        date: "2026-05-28",
-        isVerified: true,
-        rating: 5,
-      },
-      {
-        id: "r2",
-        user: "Julian K.",
-        avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=100",
-        text: "A pillar of Barcelona nightlife. Always highly respectful and super friendly crowd.",
-        date: "2026-05-30",
-        isVerified: true,
-        rating: 5,
-      },
-    ],
-  },
-  {
-    id: "z2",
-    title: "Castro District Safety Corridor",
-    address: "Castro St & 18th St, San Francisco",
-    coords: { x: 25, y: 55 },
-    category: "General Area" as const,
-    safetyScore: 9.8,
-    crowdLevel: "Vibrant" as const,
-    verificationCount: 310,
-    tags: ["Safety Patrol", "Gay Landmark", "Intense Lighting", "De-escalation trained"],
-    reviews: [
-      {
-        id: "r3",
-        user: "Tyler S.",
-        avatar: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&q=80&w=100",
-        text: "The community patrol on weekends is incredibly nice. Absolute safe haven with lovely local shops and historical monuments.",
-        date: "2026-05-15",
-        isVerified: true,
-        rating: 5,
-      },
-    ],
-  },
-  {
-    id: "z3",
-    title: "Schöneberg Cultural Quarter",
-    address: "Nollendorfplatz, Berlin",
-    coords: { x: 65, y: 48 },
-    category: "Cultural Center" as const,
-    safetyScore: 9.2,
-    crowdLevel: "Moderate" as const,
-    verificationCount: 88,
-    tags: ["Historical", "Community-Led", "All-Genders Welcomed", "Easy Transit"],
-    reviews: [
-      {
-        id: "r4",
-        user: "Lukas P.",
-        avatar: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=100",
-        text: "Very comfortable area day or night. Plenty of friendly spots and rich history of Berlin queer empowerment.",
-        date: "2026-05-20",
-        isVerified: true,
-        rating: 5,
-      },
-    ],
-  },
-];
+let safetyZones: any[] = [];
 
-let localGuides = [
-  {
-    id: "g1",
-    name: "Alejandro S.",
-    location: "Barcelona, Spain",
-    languages: ["Spanish", "English", "Catalan"],
-    bio: "Passionate about Barcelona's modern architecture, local queer history, and finding hidden local tapas spots in Gaixample! Let's build your perfect stay.",
-    avatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=150",
-    rating: 4.9,
-    experienceCount: 78,
-    interests: ["Architecture", "Gourmet Tapas", "Nightlife VIP Keyholder", "Queer Art Tours"],
-    online: true,
-  },
-  {
-    id: "g2",
-    name: "Christian M.",
-    location: "Berlin, Germany",
-    languages: ["German", "English", "French"],
-    bio: "Curator of avant-garde electronic music spots and Schöneberg street histories. I help you avoid the long queues and discover authentic Berlin culture safely.",
-    avatar: "https://images.unsplash.com/photo-1531427186611-ecfd6d936c79?auto=format&fit=crop&q=80&w=150",
-    rating: 4.8,
-    experienceCount: 124,
-    interests: ["Electronic Music", "Street Art", "LGBTIQ+ History Museums", "Culinary Cafes"],
-    online: true,
-  },
-  {
-    id: "g3",
-    name: "Hiroki T.",
-    location: "Tokyo, Japan",
-    languages: ["Japanese", "English"],
-    bio: "Guide to Shinjuku Ni-chome's unique local bars, traditional food tours, and aesthetic Tokyo temples. Your local bestie and translator for an incredible authentic stay.",
-    avatar: "https://images.unsplash.com/photo-1542343633-ce7827e7648e?auto=format&fit=crop&q=80&w=150",
-    rating: 5.0,
-    experienceCount: 52,
-    interests: ["Traditional Arts", "Nightlife Crawls", "Hidden Diners", "Photography"],
-    online: false,
-  },
-];
+let localGuides: any[] = [];
 
-let chatMessages = [
-  {
-    id: "m1",
-    senderId: "g1",
-    receiverId: "user",
-    text: "Hola! Welcome to Judy's Guides. I would love to guide you through Gaixample or book an exclusive wine tasting experience for you! Let me know if you have any questions.",
-    timestamp: "2026-05-31T10:00:00.000Z",
-  },
-  {
-    id: "m2",
-    senderId: "user",
-    text: "Hi Alejandro! That sounds amazing. Is Gaixample safe around midnight for single travelers?",
-    timestamp: "2026-05-31T10:15:00.000Z",
-    receiverId: "g1",
-  },
-  {
-    id: "m3",
-    senderId: "g1",
-    receiverId: "user",
-    text: "Si, absolutely! Gaixample is exceptionally active and highly safe. I have highlighted several spots in the Safety Map for reassurance. I can also escort you if you book our VIP Nightlife pass!",
-    timestamp: "2026-05-31T10:17:00.000Z",
-  },
-];
+let chatMessages: any[] = [];
 
-let memberPosts = [
-  {
-    id: "p1",
-    author: {
-      name: "Ethan Wright",
-      avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=100",
-      location: "Fell in love with Sitges",
-      verified: true,
-    },
-    imageUrl: "https://images.unsplash.com/photo-1517713982677-4c6638865c67?auto=format&fit=crop&q=80&w=600",
-    caption: "Sunsets in Sitges are otherwordly! Recommending the beachfront cafes. Highlighted Sitges Beach safety zones with verification! 🏳️‍🌈🌴 #sitges #gaytravel",
-    likesCount: 58,
-    commentsCount: 12,
-    hasLiked: false,
-    locationsRecommended: ["Sitges Beachfront", "L'Art i el Cafe"],
-    date: "May 29, 2026",
-  },
-  {
-    id: "p2",
-    author: {
-      name: "Oliver Smith",
-      avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=100",
-      location: "Celebrating in Mykonos",
-      verified: true,
-    },
-    imageUrl: "https://images.unsplash.com/photo-1533105079780-92b9be482077?auto=format&fit=crop&q=80&w=600",
-    caption: "The Aegean sea paired with dynamic local culture. Connected with a superb local guide through the private secure chat who arranged an awesome private boat tour!",
-    likesCount: 94,
-    commentsCount: 24,
-    hasLiked: true,
-    locationsRecommended: ["Jackie O' Beach", "Mykonos Windmills"],
-    date: "May 30, 2026",
-  },
-];
+let memberPosts: any[] = [];
 
-let itemsDatabase = [
-  {
-    id: "exp1",
-    title: "Gaixample VIP Nightlife Crawl",
-    price: 85,
-    category: "tours" as const,
-    description: "Inclusive curated entry to the top queer clubs of Barcelona, skip-the-line benefits, and a private local coordinator for exceptional safety.",
-    imageUrl: "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&q=80&w=400",
-    details: "Includes 3 signature Cocktails, fast track entrance, and bilingual host support throughout Balmes street hubs.",
-  },
-  {
-    id: "exp2",
-    title: "Montserrat Sacred Sunset Hike & Wine Tasting",
-    price: 120,
-    category: "tours" as const,
-    description: "An elegant, scenic day trip with verified guides tailored to queer travelers to bond, enjoy stunning sights, and taste premium catalan wine.",
-    imageUrl: "https://images.unsplash.com/photo-1543349689-9a4d426bee8e?auto=format&fit=crop&q=80&w=400",
-    details: "Transportation included, tailored for dynamic storytelling, organic local tapas, and lovely scenic photoshoots.",
-  },
-  {
-    id: "tix1",
-    title: "Circuit Festival Barcelona Main Party Admission Ticket",
-    price: 65,
-    category: "tickets" as const,
-    description: "Official secure entry ticket to the world's grandest international LGBTIQ+ Summer Festival. Multi-sensory visuals, international DJs, and extreme community safety.",
-    imageUrl: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&q=80&w=400",
-  },
-  {
-    id: "pc1",
-    title: "Premium Judy's Personalized Digital Postcard",
-    price: 5.95,
-    category: "postcards" as const,
-    description: "Turn your uploaded trip photos into customized travel postcards. We apply high-art filters, beautiful layout, and send high-resolution print files or dynamic animated links.",
-    imageUrl: "https://images.unsplash.com/photo-1452421820064-e70a9a868b43?auto=format&fit=crop&q=80&w=400",
-  },
-  {
-    id: "souv1",
-    title: "Judy's starter souvenier box",
-    price: 24.99,
-    category: "souvenirs" as const,
-    description: "Engraved custom with your favorite uploaded travel photograph. Robust, vacuum sealed, and highly elegant, packed with welcoming local goodies.",
-    imageUrl: "https://images.unsplash.com/photo-1602143407151-7111542de6e8?auto=format&fit=crop&q=80&w=400",
-  },
-];
+let itemsDatabase: any[] = [];
 
-let userBookings: any[] = [
-  {
-    id: "b_init",
-    itemTitle: "Judy's starter souvenier box",
-    totalPrice: 15.0,
-    bookingDate: "2026-05-30",
-    status: "Confirmed",
-  },
-];
+let userBookings: any[] = [];
 
-let userBucketList = [
-  { id: "bl1", title: "Participate in Barcelona Pride Parade", destination: "Barcelona", completed: true },
-  { id: "bl2", title: "Watch the Sunset from Mykonos Mills", destination: "Mykonos", completed: false },
-  { id: "bl3", title: "Meet a professional guide in Berlin", destination: "Berlin", completed: false },
-];
+let userBucketList: any[] = [];
+let photoAlbumExports: any[] = [];
+let photoAlbumOrders: any[] = [];
 
 // --- API ENDPOINTS ---
 
 // Real-time flights endpoint
 app.get("/api/flights", (req, res) => {
-  // Randomly simulate real-time updates to status or gates occasionally to show real-time nature
-  flightsData = flightsData.map((f) => {
-    if (Math.random() > 0.7) {
-      const statuses = ["On Time", "Boarding", "Delayed", "Departed"] as const;
-      const gates = ["B24", "C12", "A05", "18", "D10", "E02"];
-      return {
-        ...f,
-        status: statuses[Math.floor(Math.random() * statuses.length)],
-        gate: gates[Math.floor(Math.random() * gates.length)],
-        lastUpdated: new Date().toLocaleTimeString(),
-      };
-    }
-    return f;
-  });
   res.json(flightsData);
 });
 
@@ -523,9 +239,9 @@ app.post("/api/safety-map", (req, res) => {
     reviews: [
       {
         id: `r_new_${Date.now()}`,
-        user: "Verified Voyager",
-        avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=100",
-        text: testReview || "Superb spot. Highly recommended for queer travelers. Respectful neighborhood.",
+        user: "Community Member",
+        avatar: "",
+        text: testReview || "Community-verified safe spot.",
         date: new Date().toISOString().split("T")[0],
         isVerified: true,
         rating: 5,
@@ -555,8 +271,8 @@ app.post("/api/safety-map/:id/review", (req, res) => {
   if (zone && text) {
     const newRev = {
       id: `r_user_${Date.now()}`,
-      user: user || "Robert G.",
-      avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=100",
+      user: user || "Anonymous",
+      avatar: "",
       text,
       date: new Date().toISOString().split("T")[0],
       isVerified: true,
@@ -595,19 +311,6 @@ app.post("/api/chats", (req, res) => {
 
   chatMessages.push(newMsg);
 
-  // Simulate instant interactive guide reply automatically after 1.5 seconds!
-  setTimeout(() => {
-    const guide = localGuides.find((g) => g.id === receiverId);
-    const guideReply = {
-      id: `m_rep_${Date.now()}`,
-      senderId: receiverId,
-      receiverId: "user",
-      text: `Hi voyager! That's brilliant. I love your query "${text}". As your private guide in ${guide ? guide.location : "Europe"}, I advise booking our Curated Experience or VIP Tour packaged item for custom accessories and real-time coordination! Excellent decision!`,
-      timestamp: new Date().toISOString(),
-    };
-    chatMessages.push(guideReply);
-  }, 1500);
-
   res.json(newMsg);
 });
 
@@ -625,8 +328,8 @@ app.post("/api/social-feed", (req, res) => {
   const newPost = {
     id: `p${Date.now()}`,
     author: {
-      name: authorName || "Robert G.",
-      avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=100",
+      name: authorName || "Anonymous",
+      avatar: "",
       location: "Verified Member Route",
       verified: true,
     },
@@ -748,6 +451,133 @@ app.delete("/api/bucket-list/:id", (req, res) => {
     return res.json({ success: true });
   }
   res.status(404).json({ error: "Item not found" });
+});
+
+// Contact form intake — persists messages for the team to review
+let contactMessages: any[] = [];
+
+app.post("/api/contact", (req, res) => {
+  const { name, email, topic, message } = req.body;
+  if (!name || !email || !message) {
+    return res.status(400).json({ error: "Name, email, and message are required" });
+  }
+
+  const entry = {
+    id: `cm_${Date.now()}`,
+    name,
+    email,
+    topic: topic || "General",
+    message,
+    receivedAt: new Date().toISOString(),
+  };
+  contactMessages.unshift(entry);
+  console.log(`[contact] New message from ${name} <${email}> — ${topic}`);
+  res.json({ success: true, id: entry.id });
+});
+
+app.get("/api/contact", (req, res) => {
+  res.json(contactMessages);
+});
+
+app.post("/api/photo-albums/digital", (req, res) => {
+  const { title, subtitle, creatorName, themeName, photos } = req.body;
+  if (!title || !Array.isArray(photos) || photos.length === 0) {
+    return res.status(400).json({ error: "Album title and at least one uploaded photo are required" });
+  }
+
+  const entry = {
+    id: `album_${Date.now()}`,
+    title,
+    subtitle: subtitle || "",
+    creatorName: creatorName || "",
+    themeName: themeName || "Custom",
+    photos,
+    createdAt: new Date().toISOString(),
+  };
+
+  photoAlbumExports.unshift(entry);
+  res.json({
+    success: true,
+    id: entry.id,
+    downloadUrl: `/api/photo-albums/${entry.id}/export.html`,
+    message: "Digital album compiled.",
+  });
+});
+
+app.get("/api/photo-albums/:id/export.html", (req, res) => {
+  const album = photoAlbumExports.find((entry) => entry.id === req.params.id);
+  if (!album) {
+    return res.status(404).send("Album not found");
+  }
+
+  const escapeHtml = (value: string) =>
+    String(value || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+
+  const pages = album.photos.map((photo: any, index: number) => `
+    <section class="page">
+      <p class="kicker">Page ${index + 1}${photo.location ? ` · ${escapeHtml(photo.location)}` : ""}</p>
+      <img src="${photo.url}" alt="${escapeHtml(photo.title || `Album photo ${index + 1}`)}" />
+      <h2>${escapeHtml(photo.title || `Photo ${index + 1}`)}</h2>
+      <p>${escapeHtml(photo.caption || "")}</p>
+    </section>
+  `).join("");
+
+  res.type("html").send(`<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>${escapeHtml(album.title)}</title>
+    <style>
+      body { margin: 0; font-family: Georgia, serif; color: #241231; background: #faf7f2; }
+      .cover, .page { min-height: 100vh; box-sizing: border-box; padding: 8vh 9vw; break-after: page; }
+      .cover { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+      h1 { font-size: clamp(42px, 8vw, 96px); margin: 0; }
+      h2 { font-size: 32px; margin: 28px 0 8px; }
+      .kicker { text-transform: uppercase; letter-spacing: .18em; font: 700 11px system-ui, sans-serif; color: #6d28d9; }
+      img { width: 100%; max-height: 68vh; object-fit: contain; border: 1px solid #dfd7ca; background: #fff; }
+      p { font-size: 18px; line-height: 1.55; }
+      @media print { .cover, .page { min-height: 100vh; } }
+    </style>
+  </head>
+  <body>
+    <section class="cover">
+      <p class="kicker">${escapeHtml(album.themeName)} Album</p>
+      <h1>${escapeHtml(album.title)}</h1>
+      <p>${escapeHtml(album.subtitle)}</p>
+      <p class="kicker">${album.creatorName ? `Curated by ${escapeHtml(album.creatorName)}` : ""}</p>
+    </section>
+    ${pages}
+  </body>
+</html>`);
+});
+
+app.post("/api/photo-albums/physical-orders", (req, res) => {
+  const { title, recipient, address, photos } = req.body;
+  if (!title || !recipient || !address || !Array.isArray(photos) || photos.length === 0) {
+    return res.status(400).json({ error: "Album title, recipient, address, and at least one uploaded photo are required" });
+  }
+
+  const order = {
+    id: `album_order_${Date.now()}`,
+    title,
+    recipient,
+    address,
+    photoCount: photos.length,
+    totalPrice: 34.95,
+    status: "Print Queue Received",
+    submittedAt: new Date().toISOString(),
+  };
+
+  photoAlbumOrders.unshift(order);
+  res.json({ success: true, order });
+});
+
+app.get("/api/photo-albums/physical-orders", (req, res) => {
+  res.json(photoAlbumOrders);
 });
 
 

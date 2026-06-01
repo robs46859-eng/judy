@@ -74,14 +74,14 @@ export default function App() {
   const [bucketList, setBucketList] = useState<BucketListItem[]>([]);
 
   // Selection states
-  const [selectedGuideId, setSelectedGuideId] = useState<string>("g1");
+  const [selectedGuideId, setSelectedGuideId] = useState<string>("");
   const [chatInputText, setChatInputText] = useState("");
   const [onboardingAnswers, setOnboardingAnswers] = useState<OnboardingAnswers | null>(null);
   const [activeItinerary, setActiveItinerary] = useState<DestinationItinerary | null>(null);
   const [isItineraryLoading, setIsItineraryLoading] = useState(false);
 
   // Translation states
-  const [translateText, setTranslateText] = useState("Where is the nearest welcoming gay neighborhood or cafe?");
+  const [translateText, setTranslateText] = useState("");
   const [targetLang, setTargetLang] = useState("Spanish");
   const [translatedResult, setTranslatedResult] = useState("");
   const [isTranslating, setIsTranslating] = useState(false);
@@ -98,8 +98,8 @@ export default function App() {
 
   // New Member Social recommendation state
   const [newPostCaption, setNewPostCaption] = useState("");
-  const [newPostImgPreset, setNewPostImgPreset] = useState("https://images.unsplash.com/photo-1510414842594-a61c69b5ae57?auto=format&fit=crop&q=80&w=600");
-  const [newPostLocations, setNewPostLocations] = useState("Sitges Beach Club");
+  const [newPostImgPreset, setNewPostImgPreset] = useState("");
+  const [newPostLocations, setNewPostLocations] = useState("");
   const [showAddPost, setShowAddPost] = useState(false);
 
   // Marketplace states (photo upload & customizable accessory checkout)
@@ -107,10 +107,10 @@ export default function App() {
   const [customMerchText, setCustomMerchText] = useState("");
   const [selectedShopItem, setSelectedShopItem] = useState<Experience | null>(null);
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
-  const [checkoutCardNumber, setCheckoutCardNumber] = useState("4111 2222 3333 4444");
-  const [checkoutCardHolder, setCheckoutCardHolder] = useState("Robert G. Voyager");
-  const [checkoutExpiry, setCheckoutExpiry] = useState("12/28");
-  const [checkoutCVV, setCheckoutCVV] = useState("448");
+  const [checkoutCardNumber, setCheckoutCardNumber] = useState("");
+  const [checkoutCardHolder, setCheckoutCardHolder] = useState("");
+  const [checkoutExpiry, setCheckoutExpiry] = useState("");
+  const [checkoutCVV, setCheckoutCVV] = useState("");
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [bookingSuccessMsg, setBookingSuccessMsg] = useState("");
 
@@ -119,7 +119,7 @@ export default function App() {
   const [newBucketDest, setNewBucketDest] = useState("");
 
   // Offline map state simulate switcher
-  const [isOfflineMapDownloaded, setIsOfflineMapDownloaded] = useState(true);
+  const [isOfflineMapDownloaded, setIsOfflineMapDownloaded] = useState(false);
   const [isFlightsExpanded, setIsFlightsExpanded] = useState(false);
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(true);
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -375,7 +375,7 @@ export default function App() {
           address: newSpotAddress,
           category: newSpotCategory,
           tags: tagsArray,
-          testReview: "First community verification review left with an high rating of safety."
+          testReview: ""
         }),
       });
 
@@ -422,7 +422,7 @@ export default function App() {
         body: JSON.stringify({
           text: newReviewText,
           rating: newReviewRating,
-          user: "Verified Member Robert G.",
+          user: "Member",
         }),
       });
       const updatedZone = await resp.json();
@@ -439,7 +439,7 @@ export default function App() {
   // Social feed submission handler
   const handleAddSocialPost = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newPostCaption.trim()) return;
+    if (!newPostCaption.trim() || !newPostImgPreset) return;
 
     try {
       const resp = await fetch("/api/social-feed", {
@@ -449,7 +449,7 @@ export default function App() {
           caption: newPostCaption,
           imageUrl: newPostImgPreset,
           locationsRecommended: [newPostLocations],
-          authorName: "Robert G. Voyager"
+          authorName: ""
         }),
       });
       const newPost = await resp.json();
@@ -471,9 +471,24 @@ export default function App() {
     }
   };
 
-  // Simulated photo upload helper for accessories engraving/postcard layout
-  const handleAccessoryPhotoPreset = (url: string) => {
-    setAccessoryPhotoFile(url);
+  const readImageFile = (file: File, onLoad: (dataUrl: string) => void) => {
+    const reader = new FileReader();
+    reader.onload = () => onLoad(String(reader.result));
+    reader.readAsDataURL(file);
+  };
+
+  const handleSocialImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    readImageFile(file, setNewPostImgPreset);
+    e.target.value = "";
+  };
+
+  const handleAccessoryPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    readImageFile(file, setAccessoryPhotoFile);
+    e.target.value = "";
   };
 
   // Marketplace Booking Gateway Checkout Flow
@@ -514,16 +529,12 @@ export default function App() {
   };
 
   const handleContextualQuickbook = (title: string, price: number) => {
-    const matchedItem = marketplaceItems.find((item) => item.title === title) || {
-      id: "exp1",
-      title,
-      price,
-      category: "tours" as const,
-      description: "Exclusive curated experience recommended instantly near your itinerary locations.",
-      imageUrl: "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&q=80&w=400"
-    };
-
-    triggerShopCheckout(matchedItem);
+    const matchedItem = marketplaceItems.find((item) => item.title === title || item.price === price);
+    if (matchedItem) {
+      triggerShopCheckout(matchedItem);
+      return;
+    }
+    setActiveTab("shop");
   };
 
   // Bucket list triggers
@@ -647,7 +658,7 @@ export default function App() {
             isDarkMode ? "border-purple-500 group-hover:border-purple-400" : "border-purple-300 group-hover:border-purple-600"
           } bg-slate-150`}>
             <img
-              src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150"
+              src=""
               alt="Avatar"
               className="w-full h-full object-cover"
             />
@@ -700,20 +711,20 @@ export default function App() {
                   <div className="flex items-center gap-3 mt-1">
                     <div className="w-10 h-10 rounded-full border border-purple-200 overflow-hidden shrink-0 bg-slate-50">
                       <img
-                        src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=100"
-                        alt="Robert's Avatar"
+                        src=""
+                        alt="User Avatar"
                         className="w-full h-full object-cover"
                         referrerPolicy="no-referrer"
                       />
                     </div>
                     <div>
-                      <h4 className={`text-xs font-bold leading-none ${isDarkMode ? "text-purple-200" : "text-slate-800"}`}>Robert G. Voyager</h4>
-                      <p className={`text-[9px] mt-1 font-mono ${isDarkMode ? "text-purple-400" : "text-slate-400"}`}>robs46859@gmail.com</p>
+                      <h4 className={`text-xs font-bold leading-none ${isDarkMode ? "text-purple-200" : "text-slate-800"}`}>Judy's Member</h4>
+                      <p className={`text-[9px] mt-1 font-mono ${isDarkMode ? "text-purple-400" : "text-slate-400"}`}>Set up your profile</p>
                     </div>
                   </div>
                   <div className={`mt-3 pt-2.5 border-t space-y-1.5 text-xs leading-normal ${isDarkMode ? "border-purple-950/40 text-slate-300" : "border-slate-100 text-slate-600"}`}>
                     <p className={`font-medium font-sans ${isDarkMode ? "text-purple-300" : "text-purple-950"}`}>
-                      ✨ Welcoming you back, Robert!
+                      ✨ Welcome to Judy's Guides!
                     </p>
                     {onboardingAnswers ? (
                       <p className={`text-[10px] px-2 py-1.5 rounded-xl font-medium ${
@@ -730,7 +741,6 @@ export default function App() {
                     )}
                   </div>
                   <div className="mt-2.5 flex items-center justify-between text-[8px] font-mono text-purple-600 font-extrabold uppercase tracking-wide">
-                    <span>👑 elite founder</span>
                     <span>📍 GPS secure verified</span>
                   </div>
                 </div>
@@ -770,17 +780,13 @@ export default function App() {
                     ? (onboardingAnswers.destination.length > 9 
                         ? onboardingAnswers.destination.substring(0, 9).toUpperCase() + ".." 
                         : onboardingAnswers.destination.toUpperCase()) 
-                    : "BARCELONA"} LIVE
+                    : "—"} LIVE
                 </span>
                 <span className="text-slate-300">|</span>
                 <span>
-                  {onboardingAnswers?.destination?.toLowerCase().includes("berlin") 
-                    ? "☁️ 16°C COOL" 
-                    : onboardingAnswers?.destination?.toLowerCase().includes("mykonos") 
-                    ? "☀️ 25°C SUNNY" 
-                    : onboardingAnswers?.destination?.toLowerCase().includes("bangkok") 
-                    ? "☀️ 32°C TROPICAL" 
-                    : "☀️ 22°C BALMY"}
+                  {onboardingAnswers?.destination
+                    ? "☀️ Checking..."
+                    : "—"}
                 </span>
               </div>
 
@@ -901,7 +907,7 @@ export default function App() {
                           </span>
                         </div>
                         <div className="text-[10px] font-mono text-slate-500 uppercase">
-                          SFO · BCN · BER
+                          {safetyZones.length > 0 ? `${safetyZones.length} zones` : "No zones yet"}
                         </div>
                       </div>
 
@@ -1261,7 +1267,14 @@ export default function App() {
                             </div>
 
                             <button
-                              onClick={() => triggerShopCheckout(marketplaceItems[1])}
+                              onClick={() => {
+                                const matchedGuideExperience = marketplaceItems.find((item) => item.category === "tours");
+                                if (matchedGuideExperience) {
+                                  triggerShopCheckout(matchedGuideExperience);
+                                } else {
+                                  setActiveTab("shop");
+                                }
+                              }}
                               className="bg-purple-700 hover:bg-purple-800 text-white px-3.5 py-1.5 rounded-full text-[10px] tracking-widest font-bold uppercase shrink-0 cursor-pointer"
                             >
                               Book Curated Experience
@@ -1418,38 +1431,24 @@ export default function App() {
                               </div>
                             </div>
 
-                            {/* Presets representing file selection upload */}
+                            {/* Real browser file upload for journey imagery */}
                             <div className="space-y-2.5">
                               <label className="text-[10px] uppercase text-slate-500 font-bold block">
-                                Select Journey Imagery
+                                Upload Journey Imagery
                               </label>
-                          <div className="grid grid-cols-3 md:grid-cols-5 gap-2">
-                            {[
-                              { id: "sitges", label: "Sitges Beachfront", url: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&q=80&w=600" },
-                              { id: "mykon", label: "Mykonos Aegean", url: "https://images.unsplash.com/photo-1533105079780-92b9be482077?auto=format&fit=crop&q=80&w=600" },
-                              { id: "berlin", label: "Berlin Schöneberg", url: "https://images.unsplash.com/photo-1546726747-cd916d0c122f?auto=format&fit=crop&q=80&w=600" },
-                              { id: "castro", label: "Castro District SF", url: "https://images.unsplash.com/photo-1517713982677-4c6638865c67?auto=format&fit=crop&q=80&w=600" },
-                              { id: "tokyo", label: "Tokyo Silom Pulse", url: "https://images.unsplash.com/photo-1542051841857-5f90071e7989?auto=format&fit=crop&q=80&w=600" },
-                            ].map((preset) => {
-                              const active = newPostImgPreset === preset.url;
-                              return (
-                                <button
-                                  key={preset.id}
-                                  type="button"
-                                  onClick={() => setNewPostImgPreset(preset.url)}
-                                  className={`p-1 border rounded-lg transition-all text-center relative overflow-hidden h-14 cursor-pointer ${
-                                    active ? "border-purple-600" : "border-slate-200"
-                                  }`}
-                                >
-                                  <img src={preset.url} className="absolute inset-0 object-cover w-full h-full opacity-60 hover:opacity-100" />
-                                  <span className="absolute bottom-1 left-1 bg-black/60 text-[8px] px-1 text-white truncate w-[90%]">
-                                    {preset.label}
-                                  </span>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
+                              <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+                                <label className="px-4 py-2 bg-white border border-purple-200 hover:border-purple-500 text-purple-800 rounded-xl text-xs font-bold uppercase tracking-widest cursor-pointer flex items-center gap-2">
+                                  <Upload className="w-4 h-4" />
+                                  Choose Photo
+                                  <input type="file" accept="image/*" onChange={handleSocialImageUpload} className="hidden" />
+                                </label>
+                                {newPostImgPreset && (
+                                  <div className="w-24 h-16 rounded-xl border border-slate-200 overflow-hidden bg-white">
+                                    <img src={newPostImgPreset} alt="Selected journey upload" className="w-full h-full object-cover" />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
 
                         <button
                           type="submit"
@@ -1527,7 +1526,7 @@ export default function App() {
                   </div>
                   </>
                   ) : (
-                    <PhotoAlbumEditor destination={activeItinerary?.destination || "Barcelona"} />
+                    <PhotoAlbumEditor />
                   )}
                 </motion.div>
               )}
@@ -1605,34 +1604,20 @@ export default function App() {
                               </span>
                               
                               <p className="text-[10px] text-slate-500 leading-relaxed">
-                                Click below to mock upload a custom travel photograph to print:
+                                Upload a custom travel photograph to print on the selected item.
                               </p>
 
-                              <div className="flex gap-2">
-                                {[
-                                  { id: "img1", name: "Sitges", url: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&q=80&w=300" },
-                                  { id: "img2", name: "Mykonos", url: "https://images.unsplash.com/photo-1533105079780-92b9be482077?auto=format&fit=crop&q=80&w=300" },
-                                  { id: "img3", name: "Old SF", url: "https://images.unsplash.com/photo-1517713982677-4c6638865c67?auto=format&fit=crop&q=80&w=300" },
-                                ].map((ph) => {
-                                  const select = ph.url === accessoryPhotoFile;
-                                  return (
-                                    <button
-                                      key={ph.id}
-                                      type="button"
-                                      onClick={() => handleAccessoryPhotoPreset(ph.url)}
-                                      className={`text-[9px] px-2 py-1 rounded border transition-all cursor-pointer ${
-                                        select ? "bg-purple-700 border-white text-white font-bold" : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
-                                      }`}
-                                    >
-                                      {ph.name}
-                                    </button>
-                                  );
-                                })}
-                              </div>
+                              <label className="inline-flex items-center gap-2 text-[9px] px-3 py-1.5 rounded-xl border border-purple-200 bg-white text-purple-800 hover:border-purple-500 transition-all cursor-pointer font-bold uppercase tracking-widest">
+                                <Upload className="w-3.5 h-3.5" />
+                                Choose Photo
+                                <input type="file" accept="image/*" onChange={handleAccessoryPhotoUpload} className="hidden" />
+                              </label>
 
                               {accessoryPhotoFile && (
                                 <div className="flex items-center gap-2 pt-1">
-                                  <Camera className="w-3.5 h-3.5 text-emerald-600" />
+                                  <div className="w-10 h-8 rounded overflow-hidden border border-emerald-200 bg-white">
+                                    <img src={accessoryPhotoFile} alt="Uploaded accessory artwork" className="w-full h-full object-cover" />
+                                  </div>
                                   <span className="text-[10px] text-emerald-700 font-bold font-mono">Photo Attachment Linked</span>
                                 </div>
                               )}
@@ -1914,7 +1899,9 @@ export default function App() {
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-600 leading-normal font-light">
-                  No active crowd-warnings for Barcelona Old Town tonight. Patrol shifts are currently active to ensure fully stress-free experiences.
+                  {onboardingAnswers?.destination
+                    ? `No active crowd-warnings for ${onboardingAnswers.destination} tonight. Patrol shifts are currently active.`
+                    : "Select a destination to receive community safety patrol updates."}
                 </p>
               </div>
 
@@ -2061,7 +2048,7 @@ export default function App() {
         <UserProfileModal 
           isOpen={isUserProfileOpen} 
           onClose={() => setIsUserProfileOpen(false)} 
-          userEmail="robs46859@gmail.com" 
+          userEmail="" 
         />
       )}
 

@@ -57,39 +57,8 @@ const getRecommendationSpots = (destinationName: string): RecommendationSpot[] =
   ];
 };
 
-// Helper map for first-person Streetview images depending on activity category and location
-const getStreetviewImage = (category: string, activityName: string, destination: string) => {
-  const normDest = destination.toLowerCase();
-  const normAct = activityName.toLowerCase();
-  
-  if (normAct.includes("beach") || normAct.includes("sea") || normAct.includes("water") || normAct.includes("costa")) {
-    return "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&q=80&w=650"; // Sea shore
-  }
-  if (category === "nightlife" || normAct.includes("club") || normAct.includes("bar") || normAct.includes("dance")) {
-    return "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&q=80&w=650"; // Club/Bar lounge
-  }
-  if (category === "restaurant" || normAct.includes("tapas") || normAct.includes("dining") || normAct.includes("food") || normAct.includes("wine")) {
-    return "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&q=80&w=650"; // Culinary table view
-  }
-  
-  // Destination-specific street snapshots
-  if (normDest.includes("barcelona")) {
-    return "https://images.unsplash.com/photo-1583779457094-0cfcf3600871?auto=format&fit=crop&q=80&w=650"; // Barcelona architectural street
-  }
-  if (normDest.includes("mykonos")) {
-    return "https://images.unsplash.com/photo-1533105079780-92b9be482077?auto=format&fit=crop&q=80&w=650"; // Mykonos clean alleyways
-  }
-  if (normDest.includes("berlin")) {
-    return "https://images.unsplash.com/photo-1599946347371-68eb71b16afc?auto=format&fit=crop&q=80&w=650"; // Berlin Brandenburg Gate
-  }
-  if (normDest.includes("bangkok")) {
-    return "https://images.unsplash.com/photo-1508009603885-50cf7c579365?auto=format&fit=crop&q=80&w=650"; // Bangkok Silom
-  }
-  if (normDest.includes("vallarta")) {
-    return "https://images.unsplash.com/photo-1512813583145-baaa340ef29f?auto=format&fit=crop&q=80&w=650"; // PV Romantica
-  }
-  
-  return "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&q=80&w=650"; // Standard travel roadway
+const getStreetviewImage = (_category: string, _activityName: string, _destination: string) => {
+  return "";
 };
 
 // Simulated AI additional intelligence helper
@@ -138,12 +107,12 @@ export default function ItineraryViewer({ itinerary, isLoading, onRegenerate, on
   const [clickedLayerSpot, setClickedLayerSpot] = useState<RecommendationSpot | null>(null);
 
   // Budget states
-  const [budgetLimit, setBudgetLimit] = useState<number>(1800);
-  const [stayCost, setStayCost] = useState<number>(655);
-  const [foodCost, setFoodCost] = useState<number>(240);
-  const [drinkCost, setDrinkCost] = useState<number>(115);
-  const [transitCost, setTransitCost] = useState<number>(85);
-  const [activitiesCost, setActivitiesCost] = useState<number>(180);
+  const [budgetLimit, setBudgetLimit] = useState<number>(0);
+  const [stayCost, setStayCost] = useState<number>(0);
+  const [foodCost, setFoodCost] = useState<number>(0);
+  const [drinkCost, setDrinkCost] = useState<number>(0);
+  const [transitCost, setTransitCost] = useState<number>(0);
+  const [activitiesCost, setActivitiesCost] = useState<number>(0);
 
   if (isLoading) {
     return (
@@ -705,20 +674,33 @@ export default function ItineraryViewer({ itinerary, isLoading, onRegenerate, on
                   <div className="relative aspect-video rounded-2xl border border-slate-350 overflow-hidden bg-slate-900 min-h-[240px] shadow-inner group">
                     {/* Simulated Streetview graphic image with transforms */}
                     <div className="absolute inset-0 w-full h-full overflow-hidden">
-                      <img
-                        src={getStreetviewImage(
+                      {(() => {
+                        const streetviewImage = getStreetviewImage(
                           dayItems[activeItemIndex]?.category,
                           dayItems[activeItemIndex]?.activity,
                           itinerary.destination
-                        )}
-                        alt="Simulated Streetview Viewpoint"
-                        className="w-full h-full object-cover origin-center animate-none"
-                        style={{
-                          transform: `scale(${streetviewZoom}) translateX(${streetviewYaw * -0.5}px)`,
-                          filter: "brightness(0.9) contrast(1.02)",
-                          transition: "transform 0.25s ease-out"
-                        }}
-                      />
+                        );
+                        return streetviewImage ? (
+                          <img
+                            src={streetviewImage}
+                            alt="Street-level visual reference"
+                            className="w-full h-full object-cover origin-center animate-none"
+                            style={{
+                              transform: `scale(${streetviewZoom}) translateX(${streetviewYaw * -0.5}px)`,
+                              filter: "brightness(0.9) contrast(1.02)",
+                              transition: "transform 0.25s ease-out"
+                            }}
+                          />
+                        ) : (
+                          <div
+                            className="w-full h-full bg-[radial-gradient(circle_at_25%_25%,rgba(168,85,247,0.32),transparent_34%),linear-gradient(135deg,#111827,#312e81_48%,#064e3b)]"
+                            style={{
+                              transform: `scale(${streetviewZoom}) translateX(${streetviewYaw * -0.5}px)`,
+                              transition: "transform 0.25s ease-out"
+                            }}
+                          />
+                        );
+                      })()}
                     </div>
 
                     {/* Camera Overlay Viewfinder markings */}
@@ -975,12 +957,12 @@ export default function ItineraryViewer({ itinerary, isLoading, onRegenerate, on
                         <div className="bg-slate-50/50 p-2.5 rounded-xl border border-slate-150 text-center">
                           <span className="text-[8px] font-mono text-slate-400 block uppercase leading-none mb-1">Average Stop Score</span>
                           <span className="text-[12px] font-bold text-emerald-850 flex items-center justify-center gap-0.5">
-                            ★ 4.9 <span className="text-[8px] font-mono text-slate-400 font-light">/ 5.0</span>
+                            ★ {itinerary.days.length > 0 ? (itinerary.days.reduce((sum, d) => sum + d.gayFriendlyRating, 0) / itinerary.days.length).toFixed(1) : "—"} <span className="text-[8px] font-mono text-slate-400 font-light">/ 5.0</span>
                           </span>
                         </div>
                         <div className="bg-slate-50/50 p-2.5 rounded-xl border border-slate-150 text-center">
                           <span className="text-[8px] font-mono text-slate-400 block uppercase leading-none mb-1">Host Safety Grade</span>
-                          <span className="text-[12px] font-bold text-purple-950">A+ Certified</span>
+                          <span className="text-[12px] font-bold text-purple-950">{itinerary.days.length > 0 ? "Verified" : "—"}</span>
                         </div>
                       </div>
                     </div>

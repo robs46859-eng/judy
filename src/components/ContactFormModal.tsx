@@ -82,26 +82,43 @@ interface ContactFormModalProps {
 }
 
 export default function ContactFormModal({ isOpen, onClose }: ContactFormModalProps) {
-  const [name, setName] = useState("Robert G. Voyager");
-  const [email, setEmail] = useState("robs46859@gmail.com");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [topic, setTopic] = useState("Consult Curators");
   const [message, setMessage] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMsg("");
     setIsSending(true);
-    setTimeout(() => {
-      setIsSending(false);
+    try {
+      const resp = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, topic, message }),
+      });
+      if (!resp.ok) {
+        const body = await resp.json().catch(() => ({}));
+        throw new Error(body.error || `Request failed (${resp.status})`);
+      }
       setSuccess(true);
       setTimeout(() => {
         setSuccess(false);
+        setName("");
+        setEmail("");
+        setMessage("");
         onClose();
       }, 2500);
-    }, 1200);
+    } catch (err: any) {
+      setErrorMsg(err?.message || "Could not send. Please try again.");
+    } finally {
+      setIsSending(false);
+    }
   };
 
   return (
@@ -189,10 +206,17 @@ export default function ContactFormModal({ isOpen, onClose }: ContactFormModalPr
             />
           </div>
 
+          {errorMsg && (
+            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-[11px] font-bold text-center uppercase tracking-widest flex items-center justify-center gap-1.5 leading-none">
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+              <span>{errorMsg}</span>
+            </div>
+          )}
+
           {success ? (
             <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-[11px] font-bold text-center uppercase tracking-widest animate-pulse flex items-center justify-center gap-1.5 leading-none">
               <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>DISPATCH REPLICATED SECURELY! THANK YOU.</span>
+              <span>MESSAGE SENT. THANK YOU.</span>
             </div>
           ) : (
             <button
