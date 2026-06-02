@@ -509,6 +509,37 @@ app.post("/api/photo-albums/physical-orders", (req, res) => {
 app.get("/api/photo-albums/physical-orders", (req, res) => {
   res.json(photoAlbumOrders);
 });
+app.get("/api/recommendations", async (req, res) => {
+  const destination = String(req.query.destination || "").trim();
+  if (!destination) return res.status(400).json({ error: "Missing destination" });
+  const ai = getGeminiClient();
+  if (!ai) return res.json({ spots: [] });
+  try {
+    const prompt = `You are a queer travel expert. Return a JSON array of exactly 4 real, currently operating queer-friendly spots in "${destination}": 2 food spots (restaurants/caf\xE9s) and 2 drink spots (bars/cocktail lounges). Each object must have these exact fields:
+- id: short unique string
+- name: real place name (no generic placeholders)
+- category: "food" or "drinks"
+- x: integer 10\u201390 (map position)
+- y: integer 10\u201390 (map position, different for each)
+- desc: one sentence about why it is welcoming to LGBTQ+ travelers
+- neighborhood: real neighborhood name in that city
+- safetyVibe: short inclusive phrase (e.g. "Safe Haven", "Rainbow Certified")
+- rating: 4 or 5
+
+Return only the raw JSON array, no markdown, no explanation.`;
+    const response = await ai.models.generateContent({
+      model: "gemini-2.0-flash",
+      contents: prompt
+    });
+    const text = response.text ?? "";
+    const match = text.match(/\[[\s\S]*\]/);
+    if (!match) return res.json({ spots: [] });
+    const spots = JSON.parse(match[0]);
+    res.json({ spots });
+  } catch {
+    res.json({ spots: [] });
+  }
+});
 if (process.env.NODE_ENV !== "production") {
   (async () => {
     const vite = await (0, import_vite.createServer)({

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DestinationItinerary, ItineraryItem } from "../types";
 import { 
   Calendar, Clock, MapPin, DollarSign, Star, Share2, RefreshCw, Twitter, 
@@ -24,14 +24,6 @@ interface RecommendationSpot {
   rating: number;
 }
 
-const getRecommendationSpots = (destinationName: string): RecommendationSpot[] => {
-  return [
-    { id: "gen_f1", name: `${destinationName} Welcoming Tapas Corner`, category: "food", x: 33, y: 22, desc: "A charming local dining spot curated by regional queer associations.", neighborhood: "Downtown Hub", safetyVibe: "Highly Inclusive", rating: 5 },
-    { id: "gen_f2", name: `${destinationName} Organic Garden Table`, category: "food", x: 67, y: 75, desc: "Fresh locally-sourced culinary items with cozy, helpful staff.", neighborhood: "Green District", safetyVibe: "Welcoming Community", rating: 5 },
-    { id: "gen_d1", name: `${destinationName} Rainbow Lounge Bar`, category: "drinks", x: 28, y: 55, desc: "Safe, glowing local hub serving customized mocktails, lavender sodas, and local wines.", neighborhood: "Bohemian Alley", safetyVibe: "Secured Sanctuary", rating: 5 },
-    { id: "gen_d2", name: `${destinationName} Cozy Botanical Café`, category: "drinks", x: 75, y: 50, desc: "Comfortable terrace past ancient lanes, excellent espresso and botanical infusions.", neighborhood: "Old Town Squares", safetyVibe: "Cosy & Intellectual", rating: 5 }
-  ];
-};
 
 const getStreetviewImage = (_category: string, _activityName: string, _destination: string) => {
   return "";
@@ -76,12 +68,21 @@ export default function ItineraryViewer({ itinerary, isLoading, onRegenerate, on
   
   // Interactive Map and Streetview simulation states
   const [rightPanelTab, setRightPanelTab] = useState<'map' | 'streetview' | 'intel' | 'budget'>('map');
-  const [streetviewYaw, setStreetviewYaw] = useState<number>(0); // pan left/right offset in degrees
-  const [streetviewZoom, setStreetviewZoom] = useState<number>(1.15); // camera zoom multiplier
+  const [streetviewYaw, setStreetviewYaw] = useState<number>(0);
+  const [streetviewZoom, setStreetviewZoom] = useState<number>(1.15);
 
-  // Custom states for interactive map layers and budget calculators
   const [mapLayer, setMapLayer] = useState<'all' | 'food' | 'drinks'>('all');
   const [clickedLayerSpot, setClickedLayerSpot] = useState<RecommendationSpot | null>(null);
+  const [recommendationSpots, setRecommendationSpots] = useState<RecommendationSpot[]>([]);
+
+  useEffect(() => {
+    if (!itinerary?.destination) return;
+    setRecommendationSpots([]);
+    fetch(`/api/recommendations?destination=${encodeURIComponent(itinerary.destination)}`)
+      .then(r => r.json())
+      .then(data => setRecommendationSpots(data.spots || []))
+      .catch(() => setRecommendationSpots([]));
+  }, [itinerary?.destination]);
 
   // Budget states
   const [budgetLimit, setBudgetLimit] = useState<number>(0);
@@ -161,13 +162,12 @@ export default function ItineraryViewer({ itinerary, isLoading, onRegenerate, on
   };
 
   const getTransitTip = (idx: number) => {
-    const tips = [
-      "🚶 Stroll down beautiful scenic neighborhoods (Avenue Rambla)",
-      "🚕 Quick 8-minute cab/metro transition through local lanes",
-      "🚶 6 min pleasant stroll past ancient gothic squares",
-      "🚌 Local scenic bus connection with accessible routes"
-    ];
-    return tips[idx % tips.length];
+    const current = dayItems[idx];
+    const next = dayItems[idx + 1];
+    if (!current || !next) return "";
+    const from = current.location.split(",")[0].trim();
+    const to = next.location.split(",")[0].trim();
+    return `Head from ${from} to ${to}`;
   };
 
   // Generate coordinate array path format
@@ -464,8 +464,7 @@ export default function ItineraryViewer({ itinerary, isLoading, onRegenerate, on
             <AnimatePresence mode="wait">
               {/* TAB 1: INTERACTIVE SVG MAP CODE */}
               {rightPanelTab === 'map' && (() => {
-                const spots = getRecommendationSpots(itinerary.destination);
-                const filteredSpots = spots.filter(s => mapLayer === 'all' || s.category === mapLayer);
+                const filteredSpots = recommendationSpots.filter(s => mapLayer === 'all' || s.category === mapLayer);
                 
                 return (
                   <motion.div
@@ -898,7 +897,7 @@ export default function ItineraryViewer({ itinerary, isLoading, onRegenerate, on
                       <div className="p-3 bg-white/95 rounded-xl text-[10.5px] text-slate-705 leading-normal border border-slate-200/50 shadow-3xs">
                         {overBudget ? (
                           <p>
-                            <strong>Judy's Budget Tip:</strong> Oh robert! Your custom choices exceed your boundary goal by <strong className="text-rose-700 font-extrabold">${difference}</strong>. Consider lowering Lodging or using public transport cards!
+                            <strong>Judy's Budget Tip:</strong> Your custom choices exceed your boundary goal by <strong className="text-rose-700 font-extrabold">${difference}</strong>. Consider lowering Lodging or using public transport cards!
                           </p>
                         ) : (
                           <p>

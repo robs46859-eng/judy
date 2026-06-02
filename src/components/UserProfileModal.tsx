@@ -48,7 +48,7 @@ export default function UserProfileModal({ isOpen, onClose, userEmail }: UserPro
                   Judy Founder Elite
                 </span>
               </div>
-              <p className="text-xs text-purple-250/90 mt-1 font-mono">{userEmail || "explorer@judyguides.com"}</p>
+              <p className="text-xs text-purple-250/90 mt-1 font-mono">{userEmail || "—"}</p>
               <p className="text-[10px] text-emerald-300 flex items-center gap-1 mt-1 font-bold">
                 <Circle className="w-2 h-2 fill-emerald-400 text-emerald-400 animate-pulse" />
                 GPS LINKED SECURE CORRIDOR ACCREDITED
