@@ -1,112 +1,103 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
+var __create = Object.create;
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __getProtoOf = Object.getPrototypeOf;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+  // If the importer is in node compatibility mode or this is not an ESM
+  // file that has been converted to a CommonJS file using a Babel-
+  // compatible transform (i.e. "__esModule" has not been set), then set
+  // "default" to the CommonJS "module.exports" for node compatibility.
+  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+  mod
+));
 
-import express from "express";
-import path from "path";
-import { createServer as createViteServer } from "vite";
-import { GoogleGenAI, Type } from "@google/genai";
-import dotenv from "dotenv";
-
-dotenv.config();
-
-const app = express();
-const PORT = parseInt(process.env.PORT || "3000", 10);
-
-// Body parser
-app.use(express.json({ limit: "15mb" }));
-app.use(express.urlencoded({ extended: true, limit: "15mb" }));
-
-// Lazy initializer for Gemini
-let aiClient: GoogleGenAI | null = null;
-function getGeminiClient(): GoogleGenAI | null {
+// server.ts
+var import_express = __toESM(require("express"), 1);
+var import_path = __toESM(require("path"), 1);
+var import_vite = require("vite");
+var import_genai = require("@google/genai");
+var import_dotenv = __toESM(require("dotenv"), 1);
+import_dotenv.default.config();
+var app = (0, import_express.default)();
+var PORT = parseInt(process.env.PORT || "3000", 10);
+app.use(import_express.default.json({ limit: "15mb" }));
+app.use(import_express.default.urlencoded({ extended: true, limit: "15mb" }));
+var aiClient = null;
+function getGeminiClient() {
   const key = process.env.GEMINI_API_KEY;
   if (!key || key === "dummy_key") {
-    // If key doesn't exist, we fall back gracefully instead of crashing
     return null;
   }
   if (!aiClient) {
-    aiClient = new GoogleGenAI({
+    aiClient = new import_genai.GoogleGenAI({
       apiKey: key,
       httpOptions: {
         headers: {
-          "User-Agent": "aistudio-build",
-        },
-      },
+          "User-Agent": "aistudio-build"
+        }
+      }
     });
   }
   return aiClient;
 }
-
-// Global In-Memory Stateful Collections (acts as durable per-session database)
-let flightsData: any[] = [];
-
-let safetyZones: any[] = [];
-
-let localGuides: any[] = [];
-
-let chatMessages: any[] = [];
-
-let memberPosts: any[] = [];
-
-let itemsDatabase: any[] = [];
-
-let userBookings: any[] = [];
-
-let userBucketList: any[] = [];
-let photoAlbumExports: any[] = [];
-let photoAlbumOrders: any[] = [];
-
-// --- API ENDPOINTS ---
-
-// Real-time flights endpoint
+var flightsData = [];
+var safetyZones = [];
+var localGuides = [];
+var chatMessages = [];
+var memberPosts = [];
+var itemsDatabase = [];
+var userBookings = [];
+var userBucketList = [];
+var photoAlbumExports = [];
+var photoAlbumOrders = [];
 app.get("/api/flights", (req, res) => {
   res.json(flightsData);
 });
-
-// Translation Endpoint powered by Gemini
 app.post("/api/gemini/translate", async (req, res) => {
   const { text, targetLanguage } = req.body;
   if (!text || !targetLanguage) {
     return res.status(400).json({ error: "Missing text or targetLanguage" });
   }
-
   const ai = getGeminiClient();
   if (!ai) {
-    // Graceful fallback for translation if key is missing
     return res.json({
-      translatedText: `[Fallback Translation to ${targetLanguage}] "${text}" (Add your real Gemini API Key in Settings > Secrets to enable instant translation)`,
+      translatedText: `[Fallback Translation to ${targetLanguage}] "${text}" (Add your real Gemini API Key in Settings > Secrets to enable instant translation)`
     });
   }
-
   try {
-    const prompt = `Translate the following travel text exactly into target language '${targetLanguage}'. Provide only the translated text, preserving the tone. Ensure any gay-friendly subtext is translated beautifully and respectfully.\n\nText: "${text}"`;
+    const prompt = `Translate the following travel text exactly into target language '${targetLanguage}'. Provide only the translated text, preserving the tone. Ensure any gay-friendly subtext is translated beautifully and respectfully.
+
+Text: "${text}"`;
     const response = await ai.models.generateContent({
       model: "gemini-2.0-flash",
       contents: prompt,
       config: {
-        systemInstruction: "You are an expert bilingual hotel, hospitality, and pride travel translator fluent in translating gay travel guidebooks, safety materials, and menus.",
-      },
+        systemInstruction: "You are an expert bilingual hotel, hospitality, and pride travel translator fluent in translating gay travel guidebooks, safety materials, and menus."
+      }
     });
-
     res.json({ translatedText: response.text?.trim() });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Gemini Translation Error:", error);
     res.status(500).json({ error: error.message });
   }
 });
-
-// Itinerary Recommendation Generator powered by Gemini
 app.post("/api/gemini/suggest-itinerary", async (req, res) => {
   const { destination, vibe, travelStyle, interests } = req.body;
   if (!destination) {
     return res.status(400).json({ error: "Destination is required" });
   }
-
   const ai = getGeminiClient();
   if (!ai) {
-    // Excellent offline fallback structured exactly according to types
     return res.json({
       id: "it_fallback",
       destination,
@@ -122,7 +113,7 @@ app.post("/api/gemini/suggest-itinerary", async (req, res) => {
           location: `${destination} Central Plaza`,
           costEstimate: "Free",
           gayFriendlyRating: 5,
-          category: "sightseeing",
+          category: "sightseeing"
         },
         {
           id: "it_fb_2",
@@ -133,7 +124,7 @@ app.post("/api/gemini/suggest-itinerary", async (req, res) => {
           location: "Balmes Street art district",
           costEstimate: "$15 - $25",
           gayFriendlyRating: 5,
-          category: "restaurant",
+          category: "restaurant"
         },
         {
           id: "it_fb_3",
@@ -144,7 +135,7 @@ app.post("/api/gemini/suggest-itinerary", async (req, res) => {
           location: "Sunset Harbor Overlook",
           costEstimate: "$30",
           gayFriendlyRating: 4,
-          category: "experience",
+          category: "experience"
         },
         {
           id: "it_fb_4",
@@ -155,12 +146,11 @@ app.post("/api/gemini/suggest-itinerary", async (req, res) => {
           location: "The Neon Oasis Club",
           costEstimate: "$20",
           gayFriendlyRating: 5,
-          category: "nightlife",
-        },
-      ],
+          category: "nightlife"
+        }
+      ]
     });
   }
-
   try {
     const prompt = `Create an incredible, safe, and highly personalized travel itinerary for gay men visiting "${destination}". Take into account:
 - Vibe: "${vibe}" (focus heavily on this)
@@ -169,7 +159,6 @@ app.post("/api/gemini/suggest-itinerary", async (req, res) => {
 
 Make sure it contains highly specific places, gay-friendly hotspots, safe neighborhoods, and is structured for 2 days with 3 actions per day.
 Return exclusively a VALID JSON object adhering strictly to the structured response schema. No commentary outside the JSON.`;
-
     const response = await ai.models.generateContent({
       model: "gemini-2.0-flash",
       contents: prompt,
@@ -177,63 +166,60 @@ Return exclusively a VALID JSON object adhering strictly to the structured respo
         systemInstruction: "You are Judy's elite AI Travel Butler. You customize gorgeous travel itineraries for gay/queer men, detailing rich, real locations, rating gay-friendliness from 1 to 5, listing cost estimates, and giving comprehensive descriptions for reassurance and extreme safety.",
         responseMimeType: "application/json",
         responseSchema: {
-          type: Type.OBJECT,
+          type: import_genai.Type.OBJECT,
           required: ["id", "destination", "tagline", "summary", "days"],
           properties: {
-            id: { type: Type.STRING },
-            destination: { type: Type.STRING },
-            tagline: { type: Type.STRING },
-            summary: { type: Type.STRING },
+            id: { type: import_genai.Type.STRING },
+            destination: { type: import_genai.Type.STRING },
+            tagline: { type: import_genai.Type.STRING },
+            summary: { type: import_genai.Type.STRING },
             days: {
-              type: Type.ARRAY,
+              type: import_genai.Type.ARRAY,
               items: {
-                type: Type.OBJECT,
+                type: import_genai.Type.OBJECT,
                 required: ["id", "day", "timeOfDay", "activity", "description", "location", "costEstimate", "gayFriendlyRating", "category"],
                 properties: {
-                  id: { type: Type.STRING },
-                  day: { type: Type.INTEGER },
-                  timeOfDay: { type: Type.STRING }, // 'Morning' | 'Afternoon' | 'Evening' | 'Night'
-                  activity: { type: Type.STRING },
-                  description: { type: Type.STRING },
-                  location: { type: Type.STRING },
-                  costEstimate: { type: Type.STRING },
-                  gayFriendlyRating: { type: Type.INTEGER },
-                  category: { type: Type.STRING }, // 'restaurant' | 'nightlife' | 'sightseeing' | 'experience' | 'relaxation'
-                },
-              },
-            },
-          },
-        },
-      },
+                  id: { type: import_genai.Type.STRING },
+                  day: { type: import_genai.Type.INTEGER },
+                  timeOfDay: { type: import_genai.Type.STRING },
+                  // 'Morning' | 'Afternoon' | 'Evening' | 'Night'
+                  activity: { type: import_genai.Type.STRING },
+                  description: { type: import_genai.Type.STRING },
+                  location: { type: import_genai.Type.STRING },
+                  costEstimate: { type: import_genai.Type.STRING },
+                  gayFriendlyRating: { type: import_genai.Type.INTEGER },
+                  category: { type: import_genai.Type.STRING }
+                  // 'restaurant' | 'nightlife' | 'sightseeing' | 'experience' | 'relaxation'
+                }
+              }
+            }
+          }
+        }
+      }
     });
-
     const parsed = JSON.parse(response.text?.trim() || "{}");
     res.json(parsed);
-  } catch (error: any) {
+  } catch (error) {
     console.error("Gemini Itinerary Error:", error);
     res.status(500).json({ error: error.message });
   }
 });
-
-// Safety map zones endpoint
 app.get("/api/safety-map", (req, res) => {
   res.json(safetyZones);
 });
-
 app.post("/api/safety-map", (req, res) => {
   const { title, address, category, coords, tags, testReview } = req.body;
   if (!title || !address || !category) {
     return res.status(400).json({ error: "Missing parameters" });
   }
-
   const newZone = {
     id: `z${Date.now()}`,
     title,
     address,
     coords: coords || { x: Math.floor(Math.random() * 80) + 10, y: Math.floor(Math.random() * 80) + 10 },
     category,
-    safetyScore: 9.0,
-    crowdLevel: "Moderate" as const,
+    safetyScore: 9,
+    crowdLevel: "Moderate",
     verificationCount: 1,
     tags: tags || ["Verified Safe", "Community Recommended"],
     reviews: [
@@ -242,18 +228,15 @@ app.post("/api/safety-map", (req, res) => {
         user: "Community Member",
         avatar: "",
         text: testReview || "Community-verified safe spot.",
-        date: new Date().toISOString().split("T")[0],
+        date: (/* @__PURE__ */ new Date()).toISOString().split("T")[0],
         isVerified: true,
-        rating: 5,
-      },
-    ],
+        rating: 5
+      }
+    ]
   };
-
   safetyZones.unshift(newZone);
   res.json(newZone);
 });
-
-// Verify a spot / upvote safety
 app.post("/api/safety-map/:id/verify", (req, res) => {
   const zone = safetyZones.find((z) => z.id === req.params.id);
   if (zone) {
@@ -263,8 +246,6 @@ app.post("/api/safety-map/:id/verify", (req, res) => {
   }
   res.status(404).json({ error: "Zone not found" });
 });
-
-// Submit a review to safety zone
 app.post("/api/safety-map/:id/review", (req, res) => {
   const { user, text, rating } = req.body;
   const zone = safetyZones.find((z) => z.id === req.params.id);
@@ -274,64 +255,52 @@ app.post("/api/safety-map/:id/review", (req, res) => {
       user: user || "Anonymous",
       avatar: "",
       text,
-      date: new Date().toISOString().split("T")[0],
+      date: (/* @__PURE__ */ new Date()).toISOString().split("T")[0],
       isVerified: true,
-      rating: rating || 5,
+      rating: rating || 5
     };
     zone.reviews.push(newRev);
-    // Recalculate average score slightly
     zone.safetyScore = parseFloat(((zone.safetyScore * 4 + rating) / 5).toFixed(1));
     return res.json(zone);
   }
   res.status(404).json({ error: "Zone not found or missing text" });
 });
-
-// Guides & private chats
 app.get("/api/guides", (req, res) => {
   res.json(localGuides);
 });
-
 app.get("/api/chats", (req, res) => {
   res.json(chatMessages);
 });
-
 app.post("/api/chats", (req, res) => {
   const { text, receiverId } = req.body;
   if (!text || !receiverId) {
     return res.status(400).json({ error: "Missing text or receiverId" });
   }
-
   const newMsg = {
     id: `m${Date.now()}`,
     senderId: "user",
     receiverId,
     text,
-    timestamp: new Date().toISOString(),
+    timestamp: (/* @__PURE__ */ new Date()).toISOString()
   };
-
   chatMessages.push(newMsg);
-
   res.json(newMsg);
 });
-
-// Social feed endpoint
 app.get("/api/social-feed", (req, res) => {
   res.json(memberPosts);
 });
-
 app.post("/api/social-feed", (req, res) => {
   const { caption, imageUrl, locationsRecommended, authorName } = req.body;
   if (!caption || !imageUrl) {
     return res.status(400).json({ error: "Caption and dynamic image required" });
   }
-
   const newPost = {
     id: `p${Date.now()}`,
     author: {
       name: authorName || "Anonymous",
       avatar: "",
       location: "Verified Member Route",
-      verified: true,
+      verified: true
     },
     imageUrl,
     caption,
@@ -339,14 +308,11 @@ app.post("/api/social-feed", (req, res) => {
     commentsCount: 0,
     hasLiked: true,
     locationsRecommended: locationsRecommended || [],
-    date: "Today",
+    date: "Today"
   };
-
   memberPosts.unshift(newPost);
   res.json(newPost);
 });
-
-// Like a post
 app.post("/api/social-feed/:id/like", (req, res) => {
   const post = memberPosts.find((p) => p.id === req.params.id);
   if (post) {
@@ -361,44 +327,37 @@ app.post("/api/social-feed/:id/like", (req, res) => {
   }
   res.status(404).json({ error: "Post not found" });
 });
-
-// Experiences, Ticketing, merchandise and customized souvenirs catalog
 app.get("/api/marketplace/items", (req, res) => {
   res.json(itemsDatabase);
 });
-
 app.get("/api/marketplace/bookings", (req, res) => {
   res.json(userBookings);
 });
-
-// Book / checkout experienced item with photo upload support
 app.post("/api/marketplace/bookings", (req, res) => {
-  const { 
-    itemId, 
-    photoUploaded, 
-    isPhysicalPostcard, 
-    postalRecipient, 
-    postalStreet, 
-    postalCityZip, 
-    postalCountry, 
-    postalMessage 
+  const {
+    itemId,
+    photoUploaded,
+    isPhysicalPostcard,
+    postalRecipient,
+    postalStreet,
+    postalCityZip,
+    postalCountry,
+    postalMessage
   } = req.body;
-  
   const item = itemsDatabase.find((dbItem) => dbItem.id === itemId);
   if (!item) {
     return res.status(404).json({ error: "Item not found" });
   }
-
-  const finalPrice = isPhysicalPostcard ? (item.price + 4.99) : item.price;
+  const finalPrice = isPhysicalPostcard ? item.price + 4.99 : item.price;
   const dispatchSuffix = isPhysicalPostcard ? ` (Physical Postcard to ${postalRecipient || "Recipient"})` : "";
-
   const newBooking = {
     id: `book_${Date.now()}`,
     itemTitle: `${item.title}${dispatchSuffix}`,
     totalPrice: finalPrice,
-    bookingDate: new Date().toISOString().split("T")[0],
-    status: "Confirmed" as const,
-    photoUploaded: photoUploaded || undefined, // customizable souvenirs
+    bookingDate: (/* @__PURE__ */ new Date()).toISOString().split("T")[0],
+    status: "Confirmed",
+    photoUploaded: photoUploaded || void 0,
+    // customizable souvenirs
     isPhysical: isPhysicalPostcard || false,
     addressDetails: isPhysicalPostcard ? {
       recipient: postalRecipient,
@@ -406,35 +365,28 @@ app.post("/api/marketplace/bookings", (req, res) => {
       cityZip: postalCityZip,
       country: postalCountry,
       message: postalMessage
-    } : undefined
+    } : void 0
   };
-
   userBookings.unshift(newBooking);
   res.json(newBooking);
 });
-
-// Custom travel bucket list endpoints
 app.get("/api/bucket-list", (req, res) => {
   res.json(userBucketList);
 });
-
 app.post("/api/bucket-list", (req, res) => {
   const { title, destination } = req.body;
   if (!title) {
     return res.status(400).json({ error: "Missing bucket list title" });
   }
-
   const newItem = {
     id: `bl${Date.now()}`,
     title,
     destination: destination || "Global",
-    completed: false,
+    completed: false
   };
-
   userBucketList.unshift(newItem);
   res.json(newItem);
 });
-
 app.post("/api/bucket-list/:id/toggle", (req, res) => {
   const item = userBucketList.find((bl) => bl.id === req.params.id);
   if (item) {
@@ -443,7 +395,6 @@ app.post("/api/bucket-list/:id/toggle", (req, res) => {
   }
   res.status(404).json({ error: "Item not found" });
 });
-
 app.delete("/api/bucket-list/:id", (req, res) => {
   const index = userBucketList.findIndex((bl) => bl.id === req.params.id);
   if (index !== -1) {
@@ -452,39 +403,32 @@ app.delete("/api/bucket-list/:id", (req, res) => {
   }
   res.status(404).json({ error: "Item not found" });
 });
-
-// Contact form intake — persists messages for the team to review
-let contactMessages: any[] = [];
-
+var contactMessages = [];
 app.post("/api/contact", (req, res) => {
   const { name, email, topic, message } = req.body;
   if (!name || !email || !message) {
     return res.status(400).json({ error: "Name, email, and message are required" });
   }
-
   const entry = {
     id: `cm_${Date.now()}`,
     name,
     email,
     topic: topic || "General",
     message,
-    receivedAt: new Date().toISOString(),
+    receivedAt: (/* @__PURE__ */ new Date()).toISOString()
   };
   contactMessages.unshift(entry);
-  console.log(`[contact] New message from ${name} <${email}> — ${topic}`);
+  console.log(`[contact] New message from ${name} <${email}> \u2014 ${topic}`);
   res.json({ success: true, id: entry.id });
 });
-
 app.get("/api/contact", (req, res) => {
   res.json(contactMessages);
 });
-
 app.post("/api/photo-albums/digital", (req, res) => {
   const { title, subtitle, creatorName, themeName, photos } = req.body;
   if (!title || !Array.isArray(photos) || photos.length === 0) {
     return res.status(400).json({ error: "Album title and at least one uploaded photo are required" });
   }
-
   const entry = {
     id: `album_${Date.now()}`,
     title,
@@ -492,40 +436,30 @@ app.post("/api/photo-albums/digital", (req, res) => {
     creatorName: creatorName || "",
     themeName: themeName || "Custom",
     photos,
-    createdAt: new Date().toISOString(),
+    createdAt: (/* @__PURE__ */ new Date()).toISOString()
   };
-
   photoAlbumExports.unshift(entry);
   res.json({
     success: true,
     id: entry.id,
     downloadUrl: `/api/photo-albums/${entry.id}/export.html`,
-    message: "Digital album compiled.",
+    message: "Digital album compiled."
   });
 });
-
 app.get("/api/photo-albums/:id/export.html", (req, res) => {
   const album = photoAlbumExports.find((entry) => entry.id === req.params.id);
   if (!album) {
     return res.status(404).send("Album not found");
   }
-
-  const escapeHtml = (value: string) =>
-    String(value || "")
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
-
-  const pages = album.photos.map((photo: any, index: number) => `
+  const escapeHtml = (value) => String(value || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const pages = album.photos.map((photo, index) => `
     <section class="page">
-      <p class="kicker">Page ${index + 1}${photo.location ? ` · ${escapeHtml(photo.location)}` : ""}</p>
+      <p class="kicker">Page ${index + 1}${photo.location ? ` \xB7 ${escapeHtml(photo.location)}` : ""}</p>
       <img src="${photo.url}" alt="${escapeHtml(photo.title || `Album photo ${index + 1}`)}" />
       <h2>${escapeHtml(photo.title || `Photo ${index + 1}`)}</h2>
       <p>${escapeHtml(photo.caption || "")}</p>
     </section>
   `).join("");
-
   res.type("html").send(`<!doctype html>
 <html>
   <head>
@@ -554,13 +488,11 @@ app.get("/api/photo-albums/:id/export.html", (req, res) => {
   </body>
 </html>`);
 });
-
 app.post("/api/photo-albums/physical-orders", (req, res) => {
   const { title, recipient, address, photos } = req.body;
   if (!title || !recipient || !address || !Array.isArray(photos) || photos.length === 0) {
     return res.status(400).json({ error: "Album title, recipient, address, and at least one uploaded photo are required" });
   }
-
   const order = {
     id: `album_order_${Date.now()}`,
     title,
@@ -569,35 +501,34 @@ app.post("/api/photo-albums/physical-orders", (req, res) => {
     photoCount: photos.length,
     totalPrice: 34.95,
     status: "Print Queue Received",
-    submittedAt: new Date().toISOString(),
+    submittedAt: (/* @__PURE__ */ new Date()).toISOString()
   };
-
   photoAlbumOrders.unshift(order);
   res.json({ success: true, order });
 });
-
 app.get("/api/photo-albums/physical-orders", (req, res) => {
   res.json(photoAlbumOrders);
 });
-
-
-// Serve static/SPA resources
 if (process.env.NODE_ENV !== "production") {
   (async () => {
-    const vite = await createViteServer({
+    const vite = await (0, import_vite.createServer)({
       server: { middlewareMode: true },
-      appType: "spa",
+      appType: "spa"
     });
     app.use(vite.middlewares);
   })();
 } else {
-  const distPath = path.join(process.cwd(), "dist");
-  app.use(express.static(distPath));
+  const distPath = import_path.default.join(process.cwd(), "dist");
+  app.use(import_express.default.static(distPath));
   app.get("*", (req, res) => {
-    res.sendFile(path.join(distPath, "index.html"));
+    res.sendFile(import_path.default.join(distPath, "index.html"));
   });
 }
-
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Judy's Express Server running on http://0.0.0.0:${PORT}`);
 });
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+//# sourceMappingURL=server.cjs.map
