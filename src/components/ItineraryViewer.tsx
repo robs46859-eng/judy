@@ -25,30 +25,6 @@ interface RecommendationSpot {
 }
 
 const getRecommendationSpots = (destinationName: string): RecommendationSpot[] => {
-  const norm = destinationName.toLowerCase();
-  if (norm.includes("barcelona")) {
-    return [
-      { id: "bcl_f1", name: "Sintonía Secret Garden", category: "food", x: 35, y: 15, desc: "Secluded interior courtyard serving pristine Catalan croquetas.", neighborhood: "Eixample", safetyVibe: "Very Safe & Vetted", rating: 5 },
-      { id: "bcl_f2", name: "Bar Cañete Tapas", category: "food", x: 62, y: 72, desc: "Vibrant local counter seating for fresh shell clams & local cold sangría.", neighborhood: "El Raval", safetyVibe: "Intellectual & Friendly", rating: 4 },
-      { id: "bcl_d1", name: "La Federica Cocktail Lounge", category: "drinks", x: 25, y: 48, desc: "Velvet styled vintage lounge with unique gin botanicals and queer art displays.", neighborhood: "Poble Sec", safetyVibe: "Sensory Haven Elite", rating: 5 },
-      { id: "bcl_d2", name: "Candy Darling Soda Salon", category: "drinks", x: 74, y: 42, desc: "Pop-art craft soda tavern, superb dynamic mocktails, and visual performances.", neighborhood: "Gaixample", safetyVibe: "LGBTIQ+ Sanctuary", rating: 5 }
-    ];
-  }
-  if (norm.includes("mykonos")) {
-    return [
-      { id: "myk_f1", name: "Jackie O' Beachfront Grill", category: "food", x: 22, y: 45, desc: "Waterfront organic seafood, premium dining vibes under warm ambient music.", neighborhood: "Super Paradise", safetyVibe: "Elite Inclusion", rating: 5 },
-      { id: "myk_d1", name: "Kastro Cozy Sunset Cocktails", category: "drinks", x: 68, y: 18, desc: "Watch waves splash immediately underneath over warm local herbal extractions.", neighborhood: "Little Venice", safetyVibe: "Romantic & Vetted", rating: 5 },
-      { id: "myk_d2", name: "Babylon Beach Lounge", category: "drinks", x: 82, y: 56, desc: "Ambient lounge decks, friendly hosts, zero attitude safety policy.", neighborhood: "Old Port", safetyVibe: "Sensory Paradise", rating: 5 }
-    ];
-  }
-  if (norm.includes("berlin")) {
-    return [
-      { id: "ber_f1", name: "Café Berio Brunch & Pastry", category: "food", x: 26, y: 38, desc: "Historic coffee garden with custom regional cakes and outstanding safety marks.", neighborhood: "Schöneberg", safetyVibe: "Historic Safe Haven", rating: 5 },
-      { id: "ber_d1", name: "Möbel Olfe Craft Taps", category: "drinks", x: 68, y: 22, desc: "Alternate friendly lounge decorated with vintage furniture. Craft mocktails.", neighborhood: "Kreuzberg", safetyVibe: "Warm Queer Community", rating: 4 },
-      { id: "ber_d2", name: "Heile Welt Cozy Living Room", category: "drinks", x: 84, y: 64, desc: "Candlelit snug parlor past ancient library rows. Unique lavender cordials.", neighborhood: "Schöneberg", safetyVibe: "Elite Safe Corridor", rating: 5 }
-    ];
-  }
-  // Default fallback spots for any custom destination
   return [
     { id: "gen_f1", name: `${destinationName} Welcoming Tapas Corner`, category: "food", x: 33, y: 22, desc: "A charming local dining spot curated by regional queer associations.", neighborhood: "Downtown Hub", safetyVibe: "Highly Inclusive", rating: 5 },
     { id: "gen_f2", name: `${destinationName} Organic Garden Table`, category: "food", x: 67, y: 75, desc: "Fresh locally-sourced culinary items with cozy, helpful staff.", neighborhood: "Green District", safetyVibe: "Welcoming Community", rating: 5 },
@@ -61,27 +37,28 @@ const getStreetviewImage = (_category: string, _activityName: string, _destinati
   return "";
 };
 
-// Simulated AI additional intelligence helper
-const getAiIntel = (item: ItineraryItem, destination: string) => {
-  const codeSeed = (item.activity?.length || 0) + (item.location?.length || 0);
-  const isBuzzer = codeSeed % 2 === 0;
-  
+const getAiIntel = (item: ItineraryItem, _destination: string) => {
+  const peakHoursByTimeOfDay: Record<string, string> = {
+    Morning: "08:00 AM - 11:00 AM",
+    Afternoon: "12:00 PM - 03:00 PM",
+    Evening: "06:00 PM - 09:00 PM",
+    Night: "10:00 PM - 01:00 AM",
+  };
+  const crowdVibeByCategory: Record<string, string> = {
+    nightlife: "Vibrant & Celebratory",
+    restaurant: "Warm & Social",
+    sightseeing: "Relaxed & Open",
+    experience: "Engaged & Curious",
+    relaxation: "Calm & Restorative",
+  };
   return {
     verifiedBy: "Judy's Curators",
-    doorPasscode: isBuzzer ? "Discrete golden buzzer (ring twice)" : "Direct entry (mention friendly host 'Judy')",
-    safetyTidbits: codeSeed % 3 === 0 
-      ? "Fully vetted safety staff. Quiet side room available for sensory retreats."
-      : codeSeed % 3 === 1 
-      ? "Historic LGBTIQ+ landmark since 1994. Accessible gender-neutral restrooms on the first floor."
-      : "Crowd is exceptionally warm and welcoming; zero attitude policy. Safety wardens stationed outside.",
-    nearbyTip: codeSeed % 2 === 0 
-      ? "Grab a cozy signature mocktail and get the best view from the upper patio booth."
-      : "Ask the counter host for the offline map stamp card to collect sweet local stamps!",
-    peakSafeHour: item.category === "nightlife" ? "11:30 PM - 02:00 AM" : "09:30 AM - 12:00 PM",
-    crowdVibe: item.category === "nightlife" ? "Vibrant & Celebratory" : "Cosy, Intellectual & Friendly",
-    guideQuote: codeSeed % 2 === 0
-      ? "« A true haven for local style seekers — ask for the secret botanical garden in the rear courtyards! »"
-      : "« Local favorite of mine since 2018. Very comfortable layout and exceptional attention to detail. »"
+    safetyNotes: item.description,
+    costEstimate: item.costEstimate,
+    gayFriendlyRating: item.gayFriendlyRating,
+    location: item.location,
+    peakSafeHour: peakHoursByTimeOfDay[item.timeOfDay] ?? "Varies",
+    crowdVibe: crowdVibeByCategory[item.category] ?? "Friendly & Inclusive",
   };
 };
 
@@ -807,58 +784,53 @@ export default function ItineraryViewer({ itinerary, isLoading, onRegenerate, on
                     const intel = getAiIntel(dayItems[activeItemIndex], itinerary.destination);
                     return (
                       <div className="p-4.5 bg-gradient-to-br from-purple-50 to-emerald-50 rounded-2xl border-2 border-purple-150 space-y-4 shadow-sm">
-                        
+
                         {/* Header status */}
                         <div className="flex justify-between items-center bg-white border border-slate-200 px-3 py-1.5 rounded-xl shadow-3xs">
                           <span className="text-[9px] font-mono text-purple-900 font-extrabold tracking-widest uppercase flex items-center gap-1">
                             <Sparkles className="w-3.5 h-3.5 text-purple-750 shrink-0" />
-                            AI Intel Added
+                            Stop Intel
                           </span>
                           <span className="text-[8px] bg-emerald-100 text-emerald-800 font-bold font-mono px-2 py-0.5 rounded">
-                            VERIFIED SECURE
+                            {"★".repeat(intel.gayFriendlyRating)} {intel.gayFriendlyRating}/5
                           </span>
                         </div>
 
                         {/* Split details layout */}
                         <div className="grid grid-cols-2 gap-3">
                           <div className="bg-white/80 p-3 rounded-xl border border-slate-200/60 shadow-3xs">
-                            <span className="text-[8px] font-mono font-bold text-slate-400 block uppercase tracking-wide leading-none">PEAK SAFE HOURS</span>
+                            <span className="text-[8px] font-mono font-bold text-slate-400 block uppercase tracking-wide leading-none">BEST TIME</span>
                             <span className="text-[11px] font-bold text-purple-950 mt-1 block">{intel.peakSafeHour}</span>
                           </div>
-                          
+
                           <div className="bg-white/80 p-3 rounded-xl border border-slate-200/60 shadow-3xs">
-                            <span className="text-[8px] font-mono font-bold text-slate-400 block uppercase tracking-wide leading-none">VERIFIED CROWD VIBE</span>
+                            <span className="text-[8px] font-mono font-bold text-slate-400 block uppercase tracking-wide leading-none">VIBE</span>
                             <span className="text-[11px] font-bold text-emerald-950 mt-1 block">{intel.crowdVibe}</span>
                           </div>
                         </div>
 
-                        {/* Secret doorway section */}
+                        {/* Location */}
                         <div className="bg-white p-3.5 rounded-xl border border-purple-200 shadow-2xs space-y-1.5">
                           <span className="text-[8px] font-mono font-bold text-purple-800 tracking-wider uppercase flex items-center gap-1 leading-none">
                             <Lock className="w-3.5 h-3.5 text-purple-700" />
-                            Hidden Door Passcode / Secretariat Tip
+                            Location
                           </span>
                           <p className="text-[11px] font-extrabold text-purple-950 leading-snug">
-                            {intel.doorPasscode}
+                            {intel.location}
                           </p>
                         </div>
 
-                        {/* Safety Corridors details */}
+                        {/* Description */}
                         <div className="space-y-1">
-                          <span className="text-[8px] font-mono font-bold text-slate-400 block uppercase tracking-wider leading-none">SAFETY REVIEWS & PROTOCOL</span>
+                          <span className="text-[8px] font-mono font-bold text-slate-400 block uppercase tracking-wider leading-none">ABOUT THIS STOP</span>
                           <p className="text-[11px] text-slate-600 leading-relaxed font-light">
-                            {intel.safetyTidbits}
+                            {intel.safetyNotes}
                           </p>
                         </div>
 
-                        {/* Neighbor stamp stamps details */}
-                        <div className="pt-2 border-t border-slate-200 text-[10px] italic text-slate-500 leading-relaxed">
-                          {intel.nearbyTip}
-                        </div>
-
-                        {/* Host review tagline details */}
-                        <div className="p-3 bg-purple-100/40 border border-purple-150 rounded-xl leading-relaxed text-[11px] font-medium text-purple-950 italic">
-                          {intel.guideQuote}
+                        {/* Cost */}
+                        <div className="pt-2 border-t border-slate-200 text-[10px] text-slate-500 leading-relaxed font-mono">
+                          Est. Cost: <span className="font-bold text-slate-700">{intel.costEstimate}</span>
                         </div>
 
                       </div>
