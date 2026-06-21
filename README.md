@@ -1,20 +1,22 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# Judy Project Build Status
 
-# Run and deploy your AI Studio app
+## Current Build Information
+- **Status:** Successful
+- **Build Date:** 2026-06-21
+- **Warnings:** `node-domexception@1.0.0` is deprecated (Use your platform's native DOMException instead).
+- **Vulnerabilities:** 4 vulnerabilities (1 low, 1 moderate, 2 high) reported during `npm install`.
 
-This contains everything you need to run your app locally.
+### Build Outputs
+- **Vite Build:** Built for production in 1.25s (Transformed 2079 modules).
+- **esbuild:** Bundled `server.ts` into `dist/server.cjs`.
 
-View your app in AI Studio: https://ai.studio/apps/bc88c61d-16a3-48aa-a84a-a7a56a9c8fa6
+### Build Artifacts
+- `dist/index.html`: 1.42 kB
+- `dist/assets/index.css`: 76.28 kB
+- `dist/assets/index.js`: 479.11 kB
+- `dist/server.cjs`: 28.7 kb
 
-## Run Locally
-
-**Prerequisites:**  Node.js
-
-
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+### Tech Stack
+- Frontend: React + Vite + Tailwind CSS
+- Backend: Express + tsx + esbuild
+- Mobile: Capacitor
