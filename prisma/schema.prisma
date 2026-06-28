@@ -1,0 +1,104 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  language  String   @default("en")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  trips              Trip[]
+  entertainmentPrefs EntertainmentPreference[]
+}
+
+model Trip {
+  id               String   @id @default(uuid())
+  userId           String
+  name             String
+  departureDate    DateTime
+  returnDate       DateTime
+  destinationName  String
+  destinationZip   String?
+  destinationState String?
+  destinationCountry String
+  destinationLat   Float?
+  destinationLng   Float?
+  originName       String?
+  originZip        String?
+  originState      String?
+  originCountry    String?
+  totalBudget      Float    @default(0)
+  airfareCost      Float    @default(0)
+  hotelCost        Float    @default(0)
+  spendingBudget   Float    @default(0)
+  notes            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  itineraryItems   ItineraryItem[]
+  budgetItems      BudgetItem[]
+  documents        Document[]
+}
+
+model ItineraryItem {
+  id          String   @id @default(uuid())
+  tripId      String
+  date        DateTime
+  time        String?
+  title       String
+  description String?
+  category    String?  // food, activity, transport, entertainment, relaxation
+  location    String?
+  address     String?
+  lat         Float?
+  lng         Float?
+  cost        Float?
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  trip        Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+}
+
+model BudgetItem {
+  id       String @id @default(uuid())
+  tripId   String
+  category String // dining, activities, transport, shopping, nightlife, misc
+  label    String
+  amount   Float
+  spent    Float  @default(0)
+
+  trip     Trip   @relation(fields: [tripId], references: [id], onDelete: Cascade)
+}
+
+model Document {
+  id        String   @id @default(uuid())
+  tripId    String
+  fileName  String
+  fileType  String   // image, pdf, text
+  fileUrl   String
+  notes     String?
+  createdAt DateTime @default(now())
+
+  trip      Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+}
+
+model EntertainmentPreference {
+  id     String @id @default(uuid())
+  userId String
+  type   String // outdoor, cuisine, liveMusic, nightlife, theater, relaxation, tours
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
