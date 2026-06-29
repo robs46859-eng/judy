@@ -1216,3 +1216,284 @@ a { color: inherit; text-decoration: none; }
   font-size: 0.8rem;
   color: var(--accent-color);
 }
+
+/* ═══════════════════════════════════════════
+   TRAVEL DADDY CHAT
+   ═══════════════════════════════════════════ */
+.travel-daddy-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.td-chat-toggle {
+  position: absolute;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1.4rem;
+  background: linear-gradient(135deg, var(--accent-color), var(--accent-hover));
+  color: #fff;
+  border: none;
+  border-radius: 99px;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  font-weight: 600;
+  box-shadow: 0 4px 20px var(--accent-glow);
+  transition: all var(--transition);
+  z-index: 20;
+  animation: chatPulse 2s ease-in-out infinite;
+}
+
+@keyframes chatPulse {
+  0%, 100% { box-shadow: 0 4px 20px var(--accent-glow); }
+  50% { box-shadow: 0 4px 30px var(--accent-glow), 0 0 50px rgba(247,129,102,0.15); }
+}
+
+.td-chat-toggle:hover {
+  transform: translateX(-50%) translateY(-2px);
+  box-shadow: 0 6px 25px var(--accent-glow);
+}
+
+.td-chat-panel {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 360px;
+  max-height: 480px;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel-bg-solid);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  z-index: 30;
+  overflow: hidden;
+  animation: chatSlideUp 0.2s ease-out;
+}
+
+@keyframes chatSlideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.td-chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: linear-gradient(135deg, rgba(247,129,102,0.15), rgba(247,129,102,0.05));
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.td-chat-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.td-avatar-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--success);
+  box-shadow: 0 0 6px rgba(63,185,80,0.4);
+  animation: dotPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes dotPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.td-chat-close {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0.3rem;
+  border-radius: 4px;
+  transition: all var(--transition);
+}
+
+.td-chat-close:hover {
+  color: var(--text-primary);
+  background: rgba(255,255,255,0.05);
+}
+
+.td-chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-height: 200px;
+  max-height: 320px;
+}
+
+.td-chat-messages::-webkit-scrollbar { width: 4px; }
+.td-chat-messages::-webkit-scrollbar-thumb {
+  background: var(--panel-border);
+  border-radius: 2px;
+}
+
+.td-msg {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.4rem;
+}
+
+.td-msg-user {
+  flex-direction: row-reverse;
+}
+
+.td-msg-avatar {
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.td-msg-bubble {
+  max-width: 80%;
+  padding: 0.6rem 0.85rem;
+  border-radius: var(--radius-md);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.td-msg-daddy .td-msg-bubble {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--panel-border);
+  color: var(--text-primary);
+  border-bottom-left-radius: 4px;
+}
+
+.td-msg-user .td-msg-bubble {
+  background: linear-gradient(135deg, var(--accent-color), var(--accent-hover));
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+
+/* Typing indicator */
+.td-typing {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0.8rem 1rem;
+}
+
+.td-typing span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  animation: typingBounce 1.4s ease-in-out infinite;
+}
+
+.td-typing span:nth-child(2) { animation-delay: 0.2s; }
+.td-typing span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typingBounce {
+  0%, 60%, 100% { transform: translateY(0); }
+  30% { transform: translateY(-6px); }
+}
+
+.td-chat-input-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  border-top: 1px solid var(--panel-border);
+}
+
+.td-chat-input {
+  flex: 1;
+  padding: 0.55rem 0.75rem;
+  background: rgba(0,0,0,0.15);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 0.82rem;
+  font-family: var(--font-sans);
+  transition: border-color var(--transition);
+  outline: none;
+}
+
+.td-chat-input:focus {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 2px var(--accent-glow);
+}
+
+.td-chat-input::placeholder {
+  color: var(--text-muted);
+}
+
+[data-theme='light'] .td-chat-input {
+  background: rgba(0,0,0,0.04);
+}
+
+.td-send-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: var(--accent-color);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition);
+  flex-shrink: 0;
+}
+
+.td-send-btn:hover:not(:disabled) {
+  background: var(--accent-hover);
+  transform: translateY(-1px);
+}
+
+.td-send-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ═══════════════════════════════════════════
+   WEATHER DETAILS
+   ═══════════════════════════════════════════ */
+.weather-details {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--panel-border);
+}
+
+.weather-detail {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+/* ═══════════════════════════════════════════
+   PHOTO ALBUM INTEGRATION
+   ═══════════════════════════════════════════ */
+.photo-album-page {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.photo-album-page h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 1.5rem;
+  margin-bottom: 1.5rem;
+}

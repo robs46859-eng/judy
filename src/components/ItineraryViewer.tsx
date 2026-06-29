@@ -6,7 +6,7 @@
 import { useState, useEffect } from "react";
 import { DestinationItinerary, ItineraryItem } from "../types";
 import { 
-  Calendar, Clock, MapPin, DollarSign, Star, Share2, RefreshCw, Twitter, 
+  Calendar, Clock, MapPin, DollarSign, Star, Share2, RefreshCw, ExternalLink, 
   CheckCircle, Compass, Navigation, Eye, ArrowRight, ShieldAlert,
   Camera, RotateCcw, RotateCw, Sparkles, Lock, PiggyBank, Settings, Activity, Award
 } from "lucide-react";
@@ -222,7 +222,7 @@ export default function ItineraryViewer({ itinerary, isLoading, onRegenerate, on
                   className="p-2 hover:bg-white rounded-lg text-slate-700 transition-colors active:scale-95"
                   title="Share in Social"
                 >
-                  <Twitter className="w-4 h-4 text-purple-600" />
+                  <ExternalLink className="w-4 h-4 text-purple-600" />
                 </button>
                 <span className="text-[10px] font-bold text-slate-600 uppercase px-2.5 shrink-0 tracking-widest select-none">Share</span>
               </div>
