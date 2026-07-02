@@ -40,7 +40,8 @@ See `.env.example` for the full annotated list. Summary:
 | `npm run dev` | Dev server |
 | `npm run build` | `prisma generate` + `next build` (no DB required at build time) |
 | `npm start` | Production server (`server.js`, Passenger-compatible) |
-| `npm run db:migrate` | `prisma migrate deploy` — run as an explicit release step, never during build |
+| `npm run db:migrate` | `prisma migrate deploy` — for `file:` (local SQLite) databases only |
+| `./scripts/apply-migrations-turso.sh <db>` | Applies migration SQL to a Turso database via the Turso CLI (Prisma Migrate cannot connect to remote `libsql://` URLs) |
 | `npm run lint` | ESLint |
 | `npm test` | Vitest unit tests (validation schemas, rate limiter) |
 
@@ -58,8 +59,10 @@ The deployment target is Hostinger with Phusion Passenger; `server.js` is the en
 
 1. Set the env vars from `.env.example` in the hosting panel (at minimum `DATABASE_URL`, `AUTH_SECRET`).
 2. Point `DATABASE_URL` at persistent storage — a hosted libSQL database (e.g. Turso) is recommended over a local file on shared hosting.
-3. Run `npm run build`.
-4. Run `npm run db:migrate` once per release that includes schema changes.
+3. Make sure the panel's build command is exactly `npm run build` — the build needs **no database connection**. If a build log ever shows `prisma db push`, the host is using a stale build command from before the 2026-07 repairs.
+4. Apply migrations once per release that includes schema changes:
+   - Turso: `./scripts/apply-migrations-turso.sh <db-name>` (Prisma Migrate can't connect to remote `libsql://` URLs — the script applies the SQL via the Turso CLI).
+   - Local/file DB: `npm run db:migrate`.
 5. Start/restart the app (Passenger runs `server.js`).
 
 CI (GitHub Actions) runs lint, tests, and a production build on every push/PR to `main`.
