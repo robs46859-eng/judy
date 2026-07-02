@@ -30,5 +30,5 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules", "server.ts", "vite.config.ts", "dist", "android", "ios", "src/main.tsx", "src/App.tsx"]
+  "exclude": ["node_modules"]
 }

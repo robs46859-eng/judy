@@ -157,8 +157,74 @@ interface TravelDaddyProps {
   tripContext?: any;
 }
 
+interface LiveAvatarSession {
+  sessionId: string;
+}
+
 export default function TravelDaddy({ tripContext }: TravelDaddyProps) {
   const [chatOpen, setChatOpen] = useState(false);
+  const [liveSession, setLiveSession] = useState<LiveAvatarSession | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const audioContainerRef = useRef<HTMLDivElement>(null);
+  const roomRef = useRef<import("livekit-client").Room | null>(null);
+
+  // Try to start a HeyGen interactive avatar session; fall back to the
+  // local 3D placeholder when unavailable (no key, quota, network, ...).
+  useEffect(() => {
+    let cancelled = false;
+    let sessionId: string | null = null;
+
+    const startLiveAvatar = async () => {
+      try {
+        const res = await fetch("/api/avatar/session", { method: "POST" });
+        if (!res.ok) return; // 501 = not configured → placeholder
+        const data = await res.json();
+        if (cancelled || !data.sessionId || !data.url || !data.accessToken) return;
+        sessionId = data.sessionId;
+
+        const { Room, RoomEvent, Track } = await import("livekit-client");
+        const room = new Room({ adaptiveStream: true });
+        roomRef.current = room;
+
+        room.on(RoomEvent.TrackSubscribed, (track: import("livekit-client").RemoteTrack) => {
+          if (cancelled) return;
+          if (track.kind === Track.Kind.Video && videoRef.current) {
+            track.attach(videoRef.current);
+          } else if (track.kind === Track.Kind.Audio && audioContainerRef.current) {
+            audioContainerRef.current.appendChild(track.attach());
+          }
+        });
+
+        await room.connect(data.url, data.accessToken);
+        if (cancelled) {
+          room.disconnect();
+          return;
+        }
+        setLiveSession({ sessionId: data.sessionId });
+      } catch {
+        // Any failure → keep the 3D placeholder silently.
+      }
+    };
+
+    startLiveAvatar();
+
+    return () => {
+      cancelled = true;
+      try {
+        roomRef.current?.disconnect();
+      } catch {
+        /* noop */
+      }
+      if (sessionId) {
+        fetch("/api/avatar/stop", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionId }),
+          keepalive: true,
+        }).catch(() => {});
+      }
+    };
+  }, []);
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: "daddy",
@@ -202,6 +268,15 @@ export default function TravelDaddy({ tripContext }: TravelDaddyProps) {
       const talkDuration = Math.min(reply.length * 40, 5000);
       setTimeout(() => setIsTalking(false), talkDuration);
 
+      // If the live HeyGen avatar is active, have it speak the reply.
+      if (liveSession) {
+        fetch("/api/avatar/speak", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionId: liveSession.sessionId, text: reply }),
+        }).catch(() => {});
+      }
+
       setMessages((prev) => [...prev, { role: "daddy", text: reply }]);
     } catch {
       setIsTalking(false);
@@ -212,7 +287,7 @@ export default function TravelDaddy({ tripContext }: TravelDaddyProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [input, isLoading, tripContext]);
+  }, [input, isLoading, tripContext, liveSession]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -223,16 +298,31 @@ export default function TravelDaddy({ tripContext }: TravelDaddyProps) {
 
   return (
     <div className="travel-daddy-wrapper">
-      {/* 3D Avatar */}
+      {/* Avatar: live HeyGen stream when available, 3D placeholder otherwise */}
       <div className="canvas-wrapper">
-        <Canvas shadows camera={{ position: [0, 2, 5], fov: 50 }}>
-          <ambientLight intensity={0.5} />
-          <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} intensity={1} castShadow />
-          <PlaceholderLumberjack isTalking={isTalking} />
-          <Environment preset="city" />
-          <ContactShadows position={[0, -1, 0]} opacity={0.4} scale={10} blur={2} far={4} />
-          <OrbitControls enableZoom={false} enablePan={false} maxPolarAngle={Math.PI / 2} minPolarAngle={Math.PI / 2} />
-        </Canvas>
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          style={{
+            display: liveSession ? "block" : "none",
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            borderRadius: "inherit",
+          }}
+        />
+        <div ref={audioContainerRef} style={{ display: "none" }} />
+        {!liveSession && (
+          <Canvas shadows camera={{ position: [0, 2, 5], fov: 50 }}>
+            <ambientLight intensity={0.5} />
+            <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} intensity={1} castShadow />
+            <PlaceholderLumberjack isTalking={isTalking} />
+            <Environment preset="city" />
+            <ContactShadows position={[0, -1, 0]} opacity={0.4} scale={10} blur={2} far={4} />
+            <OrbitControls enableZoom={false} enablePan={false} maxPolarAngle={Math.PI / 2} minPolarAngle={Math.PI / 2} />
+          </Canvas>
+        )}
       </div>
 
       {/* Chat toggle button */}

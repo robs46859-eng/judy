@@ -1,10 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getSessionUserId } from '@/lib/auth';
+import { enforceRateLimit } from '@/lib/rate-limit';
 
 /**
  * GET /api/places/details?placeId=...
  * Get full details for a place (address components, lat/lng)
  */
 export async function GET(request: NextRequest) {
+  const userId = await getSessionUserId();
+  if (!userId) {
+    return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+  }
+
+  const limited = enforceRateLimit(request, 'places-details', { limit: 30, windowMs: 60 * 1000 }, userId);
+  if (limited) return limited;
+
   const { searchParams } = new URL(request.url);
   const placeId = searchParams.get('placeId');
 

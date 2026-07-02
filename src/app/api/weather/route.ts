@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getSessionUserId } from '@/lib/auth';
+import { enforceRateLimit } from '@/lib/rate-limit';
 
 /**
  * GET /api/weather?lat=...&lng=...&departureDate=...
@@ -7,6 +9,14 @@ import { NextRequest, NextResponse } from 'next/server';
  * If departure <= 20 days, returns realtime forecast data.
  */
 export async function GET(request: NextRequest) {
+  const userId = await getSessionUserId();
+  if (!userId) {
+    return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+  }
+
+  const limited = enforceRateLimit(request, 'weather', { limit: 30, windowMs: 60 * 1000 }, userId);
+  if (limited) return limited;
+
   const { searchParams } = new URL(request.url);
   const lat = searchParams.get('lat');
   const lng = searchParams.get('lng');

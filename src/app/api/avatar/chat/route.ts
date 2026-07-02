@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getSessionUserId } from '@/lib/auth';
+import { enforceRateLimit } from '@/lib/rate-limit';
+import { chatSchema, formatZodError } from '@/lib/schemas';
 
 /**
  * POST /api/avatar/chat
@@ -7,13 +10,36 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
  * Returns AI response text (for HeyGen to vocalize or for text display).
  */
 export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const { message, tripContext } = body;
+  const userId = await getSessionUserId();
+  if (!userId) {
+    return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+  }
 
-    if (!message) {
-      return NextResponse.json({ error: 'message is required' }, { status: 400 });
+  const limited = enforceRateLimit(request, 'chat', { limit: 20, windowMs: 60 * 1000 }, userId);
+  if (limited) return limited;
+
+  try {
+    let rawBody: unknown;
+    try {
+      rawBody = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
     }
+
+    const parsed = chatSchema.safeParse(rawBody);
+    if (!parsed.success) {
+      return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 });
+    }
+    const { message } = parsed.data;
+    const tripContext = parsed.data.tripContext as {
+      name?: string;
+      destinationName?: string;
+      departureDate?: string;
+      returnDate?: string;
+      totalBudget?: number;
+      spendingBudget?: number;
+      itineraryItems?: Array<{ title: string }>;
+    } | null;
 
     const geminiKey = process.env.GEMINI_API_KEY;
     if (!geminiKey) {

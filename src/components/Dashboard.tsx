@@ -5,11 +5,11 @@ import {
   CreditCard, Compass, Cloud, ThermometerSun,
   PlaneTakeoff, Shield, Dog, Baby, Car, Banknote,
   ChevronDown, Timer, Utensils, Music, Mountain, Sparkles,
-  Home as HomeIcon, Eye, Camera, Mail, User, Droplets, Wind
+  Home as HomeIcon, Eye, Mail, User, Droplets, Wind, LogOut
 } from "lucide-react";
+import { signOut } from "next-auth/react";
 import TravelDaddy from "./TravelDaddy";
 import ItineraryBuilder from "./ItineraryBuilder";
-import PhotoAlbumEditor from "./PhotoAlbumEditor";
 import UserProfileModal from "./UserProfileModal";
 import ContactFormModal from "./ContactFormModal";
 
@@ -55,7 +55,12 @@ interface WeatherData {
   daysUntilDeparture?: number | null;
 }
 
-export default function Dashboard() {
+interface DashboardProps {
+  userName: string;
+  userEmail: string;
+}
+
+export default function Dashboard({ userName, userEmail }: DashboardProps) {
   const [theme, setTheme] = useState("dark");
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [langDropdownOpen, setLangDropdownOpen] = useState(false);
@@ -182,7 +187,6 @@ export default function Dashboard() {
     { key: "dashboard", icon: <Map size={24} />, label: "Dashboard" },
     { key: "itinerary", icon: <Calendar size={24} />, label: "Itinerary" },
     { key: "viewer", icon: <Eye size={24} />, label: "Trip Viewer" },
-    { key: "photos", icon: <Camera size={24} />, label: "Photo Album" },
     { key: "budget", icon: <CreditCard size={24} />, label: "Budget" },
     { key: "contact", icon: <Mail size={24} />, label: "Contact" },
     { key: "settings", icon: <Settings size={24} />, label: "Settings" },
@@ -200,7 +204,7 @@ export default function Dashboard() {
         </div>
 
         <div className="greeting">
-          Hello, Judy &mdash; be gay while away
+          Hello, {userName} &mdash; be gay while away
         </div>
 
         <div className="top-actions">
@@ -247,6 +251,15 @@ export default function Dashboard() {
           {/* Theme Toggle */}
           <button className="icon-button" onClick={toggleTheme} title="Toggle Theme">
             {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
+          </button>
+
+          {/* Sign Out */}
+          <button
+            className="icon-button"
+            onClick={() => signOut({ callbackUrl: "/login" })}
+            title="Sign Out"
+          >
+            <LogOut size={20} />
           </button>
 
           {/* Affiliate Links */}
@@ -560,12 +573,6 @@ export default function Dashboard() {
             </div>
           )}
 
-          {activeTab === "photos" && (
-            <div className="full-width-content">
-              <PhotoAlbumEditor />
-            </div>
-          )}
-
           {activeTab === "budget" && trip && (
             <div className="full-width-content">
               <div className="budget-page">
@@ -664,7 +671,7 @@ export default function Dashboard() {
       <UserProfileModal
         isOpen={profileOpen}
         onClose={() => setProfileOpen(false)}
-        userEmail="judy@example.com"
+        userEmail={userEmail}
       />
       <ContactFormModal
         isOpen={contactOpen}

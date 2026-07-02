@@ -1,14 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getSessionUserId } from '@/lib/auth';
+import { tripCreateSchema, formatZodError } from '@/lib/schemas';
 
-// GET all trips (or by userId)
-export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const userId = searchParams.get('userId');
+// GET all trips for the signed-in user
+export async function GET() {
+  const userId = await getSessionUserId();
+  if (!userId) {
+    return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+  }
 
   try {
     const trips = await prisma.trip.findMany({
-      where: userId ? { userId } : undefined,
+      where: { userId },
       include: {
         itineraryItems: { orderBy: [{ date: 'asc' }, { sortOrder: 'asc' }] },
         budgetItems: true,
@@ -17,94 +21,91 @@ export async function GET(request: NextRequest) {
       orderBy: { departureDate: 'asc' },
     });
     return NextResponse.json(trips);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    console.error('Trips fetch error:', error);
+    return NextResponse.json({ error: 'Could not load trips.' }, { status: 500 });
   }
 }
 
-// POST create a new trip
+// POST create a new trip for the signed-in user
 export async function POST(request: NextRequest) {
+  const userId = await getSessionUserId();
+  if (!userId) {
+    return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+  }
+
+  let body: unknown;
   try {
-    const body = await request.json();
-    const {
-      userId, name, departureDate, returnDate,
-      destinationName, destinationZip, destinationState, destinationCountry,
-      destinationLat, destinationLng,
-      originName, originZip, originState, originCountry,
-      totalBudget, airfareCost, hotelCost, notes,
-    } = body;
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
 
-    // Auto-create a default user if none exists
-    let finalUserId = userId;
-    if (!finalUserId) {
-      let defaultUser = await prisma.user.findFirst();
-      if (!defaultUser) {
-        defaultUser = await prisma.user.create({
-          data: { name: 'Judy User', email: 'judy@example.com' },
-        });
-      }
-      finalUserId = defaultUser.id;
-    }
+  const parsed = tripCreateSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 });
+  }
 
-    const spendingBudget = (totalBudget || 0) - (airfareCost || 0) - (hotelCost || 0);
+  const data = parsed.data;
+  const totalBudget = data.totalBudget ?? 0;
+  const airfareCost = data.airfareCost ?? 0;
+  const hotelCost = data.hotelCost ?? 0;
+  const spendingBudget = totalBudget - airfareCost - hotelCost;
 
+  try {
     const trip = await prisma.trip.create({
       data: {
-        userId: finalUserId,
-        name: name || 'My Trip',
-        departureDate: new Date(departureDate),
-        returnDate: new Date(returnDate),
-        destinationName,
-        destinationZip: destinationZip || null,
-        destinationState: destinationState || null,
-        destinationCountry: destinationCountry || 'US',
-        destinationLat: destinationLat ? parseFloat(destinationLat) : null,
-        destinationLng: destinationLng ? parseFloat(destinationLng) : null,
-        originName: originName || null,
-        originZip: originZip || null,
-        originState: originState || null,
-        originCountry: originCountry || null,
-        totalBudget: totalBudget || 0,
-        airfareCost: airfareCost || 0,
-        hotelCost: hotelCost || 0,
+        userId,
+        name: data.name || 'My Trip',
+        departureDate: data.departureDate,
+        returnDate: data.returnDate,
+        destinationName: data.destinationName,
+        destinationZip: data.destinationZip || null,
+        destinationState: data.destinationState || null,
+        destinationCountry: data.destinationCountry || 'US',
+        destinationLat: data.destinationLat ?? null,
+        destinationLng: data.destinationLng ?? null,
+        originName: data.originName || null,
+        originZip: data.originZip || null,
+        originState: data.originState || null,
+        originCountry: data.originCountry || null,
+        totalBudget,
+        airfareCost,
+        hotelCost,
         spendingBudget: spendingBudget > 0 ? spendingBudget : 0,
-        notes: notes || null,
+        notes: data.notes || null,
       },
-      include: { itineraryItems: true, budgetItems: true, documents: true },
     });
 
     // Auto-generate budget allocation
     if (spendingBudget > 0) {
       const allocations = [
-        { category: 'dining', label: 'Dining & Food', pct: 0.30 },
+        { category: 'dining', label: 'Dining & Food', pct: 0.3 },
         { category: 'activities', label: 'Activities & Tours', pct: 0.25 },
         { category: 'transport', label: 'Local Transport', pct: 0.15 },
-        { category: 'shopping', label: 'Shopping & Souvenirs', pct: 0.10 },
-        { category: 'nightlife', label: 'Nightlife & Entertainment', pct: 0.10 },
-        { category: 'misc', label: 'Miscellaneous', pct: 0.10 },
+        { category: 'shopping', label: 'Shopping & Souvenirs', pct: 0.1 },
+        { category: 'nightlife', label: 'Nightlife & Entertainment', pct: 0.1 },
+        { category: 'misc', label: 'Miscellaneous', pct: 0.1 },
       ];
 
-      for (const alloc of allocations) {
-        await prisma.budgetItem.create({
-          data: {
-            tripId: trip.id,
-            category: alloc.category,
-            label: alloc.label,
-            amount: Math.round(spendingBudget * alloc.pct * 100) / 100,
-          },
-        });
-      }
+      await prisma.budgetItem.createMany({
+        data: allocations.map((alloc) => ({
+          tripId: trip.id,
+          category: alloc.category,
+          label: alloc.label,
+          amount: Math.round(spendingBudget * alloc.pct * 100) / 100,
+        })),
+      });
     }
 
-    // Re-fetch with budget items
     const fullTrip = await prisma.trip.findUnique({
       where: { id: trip.id },
       include: { itineraryItems: true, budgetItems: true, documents: true },
     });
 
     return NextResponse.json(fullTrip, { status: 201 });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Trip create error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: 'Could not create trip.' }, { status: 500 });
   }
 }

@@ -1,18 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getSessionUserId } from '@/lib/auth';
+import { enforceRateLimit } from '@/lib/rate-limit';
+import { suggestionsSchema, formatZodError } from '@/lib/schemas';
 
 /**
  * POST /api/suggestions
  * Uses Gemini to suggest activities, restaurants, entertainment, etc. for a destination
  */
 export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const { destination, category, dates, preferences } = body;
+  const userId = await getSessionUserId();
+  if (!userId) {
+    return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+  }
 
-    if (!destination) {
-      return NextResponse.json({ error: 'destination is required' }, { status: 400 });
+  const limited = enforceRateLimit(request, 'suggestions', { limit: 10, windowMs: 60 * 1000 }, userId);
+  if (limited) return limited;
+
+  try {
+    let rawBody: unknown;
+    try {
+      rawBody = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
     }
+
+    const parsed = suggestionsSchema.safeParse(rawBody);
+    if (!parsed.success) {
+      return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 });
+    }
+    const { destination, category, dates, preferences } = parsed.data;
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
@@ -31,7 +48,7 @@ export async function POST(request: NextRequest) {
       rentals: 'privately owned vacation rental options',
     };
 
-    const categoryDesc = categoryDescriptions[category] || category;
+    const categoryDesc = (category && categoryDescriptions[category]) || category || 'popular activities';
     const dateInfo = dates ? `Travel dates: ${dates}.` : '';
     const prefInfo = preferences ? `User preferences: ${preferences}.` : '';
 
@@ -64,18 +81,18 @@ Format as JSON: { "overview": "...", "platforms": [{ "name": "...", "url": "..."
     const text = response.text() || '';
 
     // Try to extract JSON from the response
-    let parsed = null;
+    let extracted = null;
     const jsonMatch = text.match(/\[[\s\S]*\]/);
     const jsonObjMatch = text.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
-      try { parsed = JSON.parse(jsonMatch[0]); } catch { /* fall through */ }
+      try { extracted = JSON.parse(jsonMatch[0]); } catch { /* fall through */ }
     }
-    if (!parsed && jsonObjMatch) {
-      try { parsed = JSON.parse(jsonObjMatch[0]); } catch { /* fall through */ }
+    if (!extracted && jsonObjMatch) {
+      try { extracted = JSON.parse(jsonObjMatch[0]); } catch { /* fall through */ }
     }
 
     return NextResponse.json({
-      suggestions: parsed,
+      suggestions: extracted,
       rawText: text,
       category,
       destination,

@@ -1,14 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getSessionUserId } from '@/lib/auth';
+import { enforceRateLimit } from '@/lib/rate-limit';
 
 /**
  * GET /api/places/autocomplete?input=...
  * Uses Google Places Autocomplete to suggest locations
  */
 export async function GET(request: NextRequest) {
+  const userId = await getSessionUserId();
+  if (!userId) {
+    return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+  }
+
+  const limited = enforceRateLimit(request, 'places-auto', { limit: 60, windowMs: 60 * 1000 }, userId);
+  if (limited) return limited;
+
   const { searchParams } = new URL(request.url);
   const input = searchParams.get('input');
 
-  if (!input) {
+  if (!input || input.length > 200) {
     return NextResponse.json({ predictions: [] });
   }
 
