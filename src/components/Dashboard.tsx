@@ -1,11 +1,11 @@
 "use client";
 import React, { useState, useEffect, useCallback } from "react";
 import {
-  Sun, Moon, Globe, Settings, Map, Calendar,
+  Sun, Moon, Settings, Map, Calendar,
   CreditCard, Compass, Cloud, ThermometerSun,
   PlaneTakeoff, Shield, Dog, Baby, Car, Banknote,
-  ChevronDown, Timer, Utensils, Music, Mountain, Sparkles,
-  Home as HomeIcon, Eye, Mail, User, Droplets, Wind, LogOut
+  ChevronDown, Timer, Sparkles,
+  Eye, Mail, User, Droplets, Wind, LogOut
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import TravelDaddy from "./TravelDaddy";
@@ -26,11 +26,6 @@ const affiliates: AffiliateLink[] = [
   { name: "Child Sitter", url: "https://www.care.com", icon: <Baby size={16} /> },
   { name: "Transportation", url: "https://www.uber.com", icon: <Car size={16} /> },
   { name: "Currency Exchange", url: "https://www.westernunion.com", icon: <Banknote size={16} /> },
-];
-
-const languages = [
-  { code: "en", label: "English" },
-  { code: "es", label: "Español" },
 ];
 
 // Weather condition to icon mapping
@@ -61,10 +56,8 @@ interface DashboardProps {
 }
 
 export default function Dashboard({ userName, userEmail }: DashboardProps) {
-  const [theme, setTheme] = useState("dark");
+  const [theme, setTheme] = useState("light");
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [langDropdownOpen, setLangDropdownOpen] = useState(false);
-  const [language, setLanguage] = useState("en");
   const [activeTab, setActiveTab] = useState("dashboard");
   const [trip, setTrip] = useState<any>(null);
   const [countdown, setCountdown] = useState<{ days: number; hours: number; mins: number } | null>(null);
@@ -217,37 +210,6 @@ export default function Dashboard({ userName, userEmail }: DashboardProps) {
             <User size={20} />
           </button>
 
-          {/* Language Selector */}
-          <div className="dropdown-container">
-            <button
-              className="icon-button"
-              onClick={() => {
-                setLangDropdownOpen(!langDropdownOpen);
-                setDropdownOpen(false);
-              }}
-              title="Language"
-            >
-              <Globe size={20} />
-              <span className="btn-label">{language.toUpperCase()}</span>
-            </button>
-            {langDropdownOpen && (
-              <div className="dropdown-menu">
-                {languages.map((lang) => (
-                  <button
-                    key={lang.code}
-                    className={`dropdown-item ${language === lang.code ? "active" : ""}`}
-                    onClick={() => {
-                      setLanguage(lang.code);
-                      setLangDropdownOpen(false);
-                    }}
-                  >
-                    {lang.label}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
           {/* Theme Toggle */}
           <button className="icon-button" onClick={toggleTheme} title="Toggle Theme">
             {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
@@ -266,10 +228,7 @@ export default function Dashboard({ userName, userEmail }: DashboardProps) {
           <div className="dropdown-container">
             <button
               className="affiliate-btn"
-              onClick={() => {
-                setDropdownOpen(!dropdownOpen);
-                setLangDropdownOpen(false);
-              }}
+              onClick={() => setDropdownOpen(!dropdownOpen)}
             >
               <Compass size={18} /> Affiliate Links <ChevronDown size={14} />
             </button>
@@ -314,7 +273,7 @@ export default function Dashboard({ userName, userEmail }: DashboardProps) {
             <>
               {/* Avatar */}
               <div className="avatar-container">
-                <TravelDaddy tripContext={trip} />
+                <TravelDaddy tripContext={trip} userName={userName} />
               </div>
 
               {/* Right Widgets */}
@@ -474,28 +433,6 @@ export default function Dashboard({ userName, userEmail }: DashboardProps) {
                   </div>
                 )}
 
-                {/* Entertainment Preferences */}
-                <div className="widget">
-                  <div className="widget-header">
-                    <Music size={20} /> Entertainment
-                  </div>
-                  <div className="widget-content">
-                    <div className="pref-tags">
-                      <span className="pref-tag">
-                        <Mountain size={12} /> Outdoor Activities
-                      </span>
-                      <span className="pref-tag">
-                        <Utensils size={12} /> Local Cuisine
-                      </span>
-                      <span className="pref-tag">
-                        <Music size={12} /> Live Music
-                      </span>
-                      <span className="pref-tag">
-                        <HomeIcon size={12} /> Private Rentals
-                      </span>
-                    </div>
-                  </div>
-                </div>
               </div>
             </>
           )}
@@ -641,13 +578,6 @@ export default function Dashboard({ userName, userEmail }: DashboardProps) {
                   <Settings size={24} /> Settings
                 </h2>
                 <div className="settings-group">
-                  <label>Display Language</label>
-                  <select value={language} onChange={(e) => setLanguage(e.target.value)}>
-                    <option value="en">English</option>
-                    <option value="es">Español</option>
-                  </select>
-                </div>
-                <div className="settings-group">
                   <label>Theme</label>
                   <button className="theme-toggle-btn" onClick={toggleTheme}>
                     {theme === "dark" ? (
@@ -671,6 +601,7 @@ export default function Dashboard({ userName, userEmail }: DashboardProps) {
       <UserProfileModal
         isOpen={profileOpen}
         onClose={() => setProfileOpen(false)}
+        userName={userName}
         userEmail={userEmail}
       />
       <ContactFormModal
