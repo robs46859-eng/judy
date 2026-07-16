@@ -214,6 +214,13 @@ h1, h2, h3, h4,
   text-shadow: 0 0 30px var(--accent-glow);
 }
 
+.judy-logo {
+  display: block;
+  width: auto;
+  height: 48px;
+  object-fit: contain;
+}
+
 .greeting {
   font-size: 1.25rem;
   font-weight: 300;
@@ -442,6 +449,24 @@ h1, h2, h3, h4,
   height: 100%;
   position: absolute;
   top: 0; left: 0;
+}
+
+.td-static-avatar {
+  object-fit: contain;
+  object-position: center bottom;
+  border-radius: inherit;
+  transition: transform 220ms ease, filter 220ms ease;
+}
+
+.td-static-avatar.is-talking {
+  transform: scale(1.012);
+  filter: saturate(1.04) brightness(1.02);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .td-static-avatar {
+    transition: none;
+  }
 }
 
 /* ═══════════════════════════════════════════

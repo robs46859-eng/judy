@@ -8,6 +8,7 @@ import {
   Eye, Mail, User, Droplets, Wind, LogOut
 } from "lucide-react";
 import { signOut } from "next-auth/react";
+import Image from "next/image";
 import TravelDaddy from "./TravelDaddy";
 import ItineraryBuilder from "./ItineraryBuilder";
 import UserProfileModal from "./UserProfileModal";
@@ -193,7 +194,14 @@ export default function Dashboard({ userName, userEmail }: DashboardProps) {
       {/* Top Panel */}
       <header className="top-panel">
         <div className="logo-section">
-          <h1>Judy</h1>
+          <Image
+            src="/brand/judy-logo.png"
+            alt="Judy"
+            width={78}
+            height={52}
+            className="judy-logo"
+            priority
+          />
         </div>
 
         <div className="greeting">

@@ -1,22 +1,12 @@
 "use client";
 
-import { Canvas, useFrame } from "@react-three/fiber";
+import Image from "next/image";
 import {
-  OrbitControls,
-  Environment,
-  ContactShadows,
-  useGLTF,
-  useAnimations,
-} from "@react-three/drei";
-import {
-  Suspense,
   useRef,
   useState,
   useEffect,
   useCallback,
-  useMemo,
 } from "react";
-import * as THREE from "three";
 import { Send, Loader2, MessageCircle, X, Compass, Languages } from "lucide-react";
 import { useHermesJob } from "@/lib/hermes/useHermesJob";
 import { extractHermesText } from "@/lib/hermes/result";
@@ -25,116 +15,6 @@ interface ChatMessage {
   role: "user" | "daddy";
   text: string;
 }
-
-/* ── Avatar model ─────────────────────────────────────────────
-   Loads the glTF avatar (public/models/JobuJudy.glb — a placeholder
-   for now). Written generically so any rigged glTF drops in without
-   code changes: the model is auto-centered and scaled to frame, and
-   idle / talking clips are chosen by name with graceful fallbacks.
-   ──────────────────────────────────────────────────────────── */
-
-const AVATAR_URL = "/models/JobuJudy.glb";
-
-// Target height (world units) the model is scaled to fill in-frame.
-const AVATAR_HEIGHT = 1.5;
-
-/** First clip whose name contains one of `candidates` (case-insensitive);
- *  falls back to the clip at `fallbackIndex`, or null if there are none. */
-function pickClip(
-  names: string[],
-  candidates: string[],
-  fallbackIndex = 0
-): string | null {
-  if (names.length === 0) return null;
-  for (const c of candidates) {
-    const hit = names.find((n) => n.toLowerCase().includes(c));
-    if (hit) return hit;
-  }
-  return names[fallbackIndex] ?? null;
-}
-
-function AvatarModel({ isTalking }: { isTalking: boolean }) {
-  const group = useRef<THREE.Group>(null);
-  const { scene, animations } = useGLTF(AVATAR_URL);
-  const { actions, names } = useAnimations(animations, group);
-
-  // Shadows on every mesh.
-  useEffect(() => {
-    scene.traverse((o) => {
-      const mesh = o as THREE.Mesh;
-      if (mesh.isMesh) {
-        mesh.castShadow = true;
-        mesh.receiveShadow = true;
-      }
-    });
-  }, [scene]);
-
-  // Auto-fit: center horizontally, rest the model's feet on y = 0, and
-  // scale so its tallest dimension reads at AVATAR_HEIGHT.
-  const fit = useMemo(() => {
-    const box = new THREE.Box3().setFromObject(scene);
-    const size = new THREE.Vector3();
-    const center = new THREE.Vector3();
-    box.getSize(size);
-    box.getCenter(center);
-    const maxDim = Math.max(size.x, size.y, size.z) || 1;
-    const scale = AVATAR_HEIGHT / maxDim;
-    const position: [number, number, number] = [
-      -center.x * scale,
-      -box.min.y * scale,
-      -center.z * scale,
-    ];
-    return { scale, position };
-  }, [scene]);
-
-  // Idle when quiet; a livelier / jaw-moving clip while "speaking".
-  // Names are matched loosely so a future avatar with proper
-  // idle/talk/wave clips just works.
-  const idleClip = useMemo(
-    () => pickClip(names, ["idle", "breath", "stand", "playing", "photo"]),
-    [names]
-  );
-  const talkClip = useMemo(
-    () => pickClip(names, ["talk", "speak", "eating", "drinking", "playing"]),
-    [names]
-  );
-
-  // Crossfade between the current idle/talk clip.
-  useEffect(() => {
-    const clip = isTalking ? talkClip : idleClip;
-    if (!clip) return;
-    const action = actions[clip];
-    if (!action) return;
-    action
-      .reset()
-      .setLoop(THREE.LoopRepeat, Infinity)
-      .setEffectiveTimeScale(isTalking ? 1.15 : 1)
-      .setEffectiveWeight(1)
-      .fadeIn(0.35)
-      .play();
-    return () => {
-      action.fadeOut(0.35);
-    };
-  }, [isTalking, idleClip, talkClip, actions]);
-
-  // A touch of ambient life on the root — a slow gaze-sway, a hair more
-  // engaged while talking. (Root transform only; never fights the mixer.)
-  useFrame((state) => {
-    if (!group.current) return;
-    const t = state.clock.elapsedTime;
-    const engage = isTalking ? 1.5 : 1;
-    group.current.rotation.y = Math.sin(t * 0.25) * 0.08 * engage;
-    group.current.position.y = Math.sin(t * 0.7) * 0.01;
-  });
-
-  return (
-    <group ref={group} dispose={null}>
-      <primitive object={scene} scale={fit.scale} position={fit.position} />
-    </group>
-  );
-}
-
-useGLTF.preload(AVATAR_URL);
 
 /* ── Component ────────────────────────────────────────────── */
 
@@ -291,7 +171,7 @@ export default function TravelDaddy({ tripContext, userName }: TravelDaddyProps)
 
   return (
     <div className="travel-daddy-wrapper">
-      {/* Avatar: live HeyGen stream when available, 3D model otherwise */}
+      {/* Avatar: live HeyGen stream when available, approved portrait otherwise */}
       <div className="canvas-wrapper">
         <video
           ref={videoRef}
@@ -307,23 +187,14 @@ export default function TravelDaddy({ tripContext, userName }: TravelDaddyProps)
         />
         <div ref={audioContainerRef} style={{ display: "none" }} />
         {!liveSession && (
-          <Canvas shadows camera={{ position: [0, 0.75, 2.6], fov: 42 }}>
-            <ambientLight intensity={0.65} />
-            <directionalLight position={[3, 5, 4]} intensity={1.1} castShadow />
-            <directionalLight position={[-4, 2, -2]} intensity={0.3} color="#ece5f3" />
-            <Suspense fallback={null}>
-              <AvatarModel isTalking={isTalking} />
-              <Environment preset="city" />
-            </Suspense>
-            <ContactShadows position={[0, 0, 0]} opacity={0.35} scale={6} blur={2.4} far={3} />
-            <OrbitControls
-              enableZoom={false}
-              enablePan={false}
-              maxPolarAngle={Math.PI / 2}
-              minPolarAngle={Math.PI / 2.6}
-              target={[0, 0.7, 0]}
-            />
-          </Canvas>
+          <Image
+            src="/avatars/robjudy.jpg"
+            alt="Travel Daddy, Judy's travel translator and guide"
+            fill
+            sizes="(max-width: 768px) 100vw, 65vw"
+            priority
+            className={`td-static-avatar${isTalking ? " is-talking" : ""}`}
+          />
         )}
       </div>
 
