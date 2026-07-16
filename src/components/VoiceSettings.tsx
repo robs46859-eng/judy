@@ -73,11 +73,12 @@ export default function VoiceSettings() {
   return (
     <>
       <div className="settings-group">
-        <label>
-          <Volume2 size={14} /> Travel Daddy voice
+        <label htmlFor="voice-catalog-select">
+          <Volume2 size={14} aria-hidden="true" /> Travel Daddy voice
         </label>
         <span className="voice-select-wrap">
           <select
+            id="voice-catalog-select"
             value={voiceId}
             onChange={(e) => handleVoiceChange(e.target.value)}
             disabled={loading || saving}
@@ -89,10 +90,14 @@ export default function VoiceSettings() {
               </option>
             ))}
           </select>
-          {saving && <Loader2 size={14} className="spinner" />}
+          {saving && <Loader2 size={14} className="spinner" aria-hidden="true" />}
         </span>
       </div>
-      {error && <div className="onboarding-error">{error}</div>}
+      {error && (
+        <div className="onboarding-error" role="alert">
+          {error}
+        </div>
+      )}
 
       <div className="settings-group">
         <label htmlFor="speech-synthesis-toggle">Read replies aloud (browser voice, when not live)</label>

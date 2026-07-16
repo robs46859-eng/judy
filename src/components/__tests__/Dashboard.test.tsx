@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor, cleanup } from '@testing-library/react';
+import { render, screen, waitFor, cleanup, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import Dashboard from '../Dashboard';
 
@@ -155,5 +155,25 @@ describe('Dashboard', () => {
 
     expect(await screen.findByText('Weather unavailable')).toBeInTheDocument();
     expect(screen.getByText('Weather')).toBeInTheDocument();
+  });
+
+  it('J6: left nav items are real, keyboard-reachable buttons, not click-only divs', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => jsonResponse([]))
+    );
+
+    render(<Dashboard userName="Robert" userEmail="robs46859@gmail.com" />);
+    await waitFor(() => expect(screen.getByTestId('travel-daddy-stub')).toBeInTheDocument());
+
+    const dashboardNavBtn = screen.getByRole('button', { name: 'Dashboard' });
+    const settingsNavBtn = screen.getByRole('button', { name: 'Settings' });
+    expect(dashboardNavBtn).toHaveAttribute('aria-current', 'page');
+    expect(settingsNavBtn).not.toHaveAttribute('aria-current');
+
+    fireEvent.click(settingsNavBtn);
+
+    expect(await screen.findByText('Travel Daddy voice')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Settings' })).toHaveAttribute('aria-current', 'page');
   });
 });

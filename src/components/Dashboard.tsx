@@ -218,13 +218,19 @@ export default function Dashboard({ userName, userEmail }: DashboardProps) {
             className="icon-button"
             onClick={() => setProfileOpen(true)}
             title="Profile"
+            aria-label="Open profile"
           >
-            <User size={20} />
+            <User size={20} aria-hidden="true" />
           </button>
 
           {/* Theme Toggle */}
-          <button className="icon-button" onClick={toggleTheme} title="Toggle Theme">
-            {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
+          <button
+            className="icon-button"
+            onClick={toggleTheme}
+            title="Toggle Theme"
+            aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+          >
+            {theme === "dark" ? <Sun size={20} aria-hidden="true" /> : <Moon size={20} aria-hidden="true" />}
           </button>
 
           {/* Sign Out */}
@@ -232,8 +238,9 @@ export default function Dashboard({ userName, userEmail }: DashboardProps) {
             className="icon-button"
             onClick={() => signOut({ callbackUrl: "/login" })}
             title="Sign Out"
+            aria-label="Sign out"
           >
-            <LogOut size={20} />
+            <LogOut size={20} aria-hidden="true" />
           </button>
 
           {/* Affiliate Links */}
@@ -241,8 +248,10 @@ export default function Dashboard({ userName, userEmail }: DashboardProps) {
             <button
               className="affiliate-btn"
               onClick={() => setDropdownOpen(!dropdownOpen)}
+              aria-expanded={dropdownOpen}
+              aria-haspopup="true"
             >
-              <Compass size={18} /> Affiliate Links <ChevronDown size={14} />
+              <Compass size={18} aria-hidden="true" /> Affiliate Links <ChevronDown size={14} aria-hidden="true" />
             </button>
             {dropdownOpen && (
               <div className="dropdown-menu affiliate-menu">
@@ -262,9 +271,11 @@ export default function Dashboard({ userName, userEmail }: DashboardProps) {
         {/* Left Panel */}
         <aside className="left-panel">
           {navItems.map((item) => (
-            <div
+            <button
               key={item.key}
+              type="button"
               className={`nav-item ${activeTab === item.key ? "active" : ""}`}
+              aria-current={activeTab === item.key ? "page" : undefined}
               onClick={() => {
                 if (item.key === "contact") {
                   setContactOpen(true);
@@ -275,7 +286,7 @@ export default function Dashboard({ userName, userEmail }: DashboardProps) {
             >
               {item.icon}
               <span className="nav-label">{item.label}</span>
-            </div>
+            </button>
           ))}
         </aside>
 

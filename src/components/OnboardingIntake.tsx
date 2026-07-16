@@ -167,8 +167,8 @@ export default function OnboardingIntake({ userEmail, onDone }: OnboardingIntake
   if (state.phase === "done") {
     return (
       <div className="onboarding-intake">
-        <div className="onboarding-done">
-          <Check size={18} /> Saved — thanks!
+        <div className="onboarding-done" role="status" aria-live="polite">
+          <Check size={18} aria-hidden="true" /> Saved — thanks!
         </div>
       </div>
     );
@@ -208,10 +208,11 @@ export default function OnboardingIntake({ userEmail, onDone }: OnboardingIntake
                     <button
                       className="td-send-btn"
                       title="Save this answer"
+                      aria-label={`Save answer for ${FIELD_LABELS[key]}`}
                       onClick={submitAnswer}
                       disabled={!input.trim()}
                     >
-                      <Send size={16} />
+                      <Send size={16} aria-hidden="true" />
                     </button>
                   </div>
                 ) : (
@@ -220,9 +221,10 @@ export default function OnboardingIntake({ userEmail, onDone }: OnboardingIntake
                     <button
                       className="onboarding-icon-btn"
                       title={`Edit ${FIELD_LABELS[key]}`}
+                      aria-label={`Edit ${FIELD_LABELS[key]}`}
                       onClick={() => dispatch({ type: "EDIT", key })}
                     >
-                      <Pencil size={14} />
+                      <Pencil size={14} aria-hidden="true" />
                     </button>
                   </div>
                 )}
@@ -231,11 +233,15 @@ export default function OnboardingIntake({ userEmail, onDone }: OnboardingIntake
           })}
         </div>
 
-        {saveError && <div className="onboarding-error">{saveError}</div>}
+        {saveError && (
+          <div className="onboarding-error" role="alert">
+            {saveError}
+          </div>
+        )}
 
         <div className="onboarding-actions">
           <button className="onboarding-secondary-btn" title="Restart" onClick={handleRestart}>
-            <RotateCcw size={14} /> Restart
+            <RotateCcw size={14} aria-hidden="true" /> Restart
           </button>
           <button
             className="widget-action-btn onboarding-confirm-btn"
@@ -243,7 +249,7 @@ export default function OnboardingIntake({ userEmail, onDone }: OnboardingIntake
             onClick={handleConfirm}
             disabled={saving}
           >
-            {saving ? <Loader2 size={16} className="spinner" /> : <Check size={16} />}
+            {saving ? <Loader2 size={16} className="spinner" aria-hidden="true" /> : <Check size={16} aria-hidden="true" />}
             {saving ? "Saving…" : "Confirm"}
           </button>
         </div>
@@ -281,14 +287,14 @@ export default function OnboardingIntake({ userEmail, onDone }: OnboardingIntake
           onClick={() => dispatch({ type: "BACK" })}
           disabled={state.stepIndex === 0}
         >
-          <ArrowLeft size={14} /> Back
+          <ArrowLeft size={14} aria-hidden="true" /> Back
         </button>
         <button
           className="onboarding-secondary-btn"
           title="Skip this question"
           onClick={() => dispatch({ type: "SKIP" })}
         >
-          <SkipForward size={14} /> Skip
+          <SkipForward size={14} aria-hidden="true" /> Skip
         </button>
       </div>
 
@@ -308,8 +314,9 @@ export default function OnboardingIntake({ userEmail, onDone }: OnboardingIntake
           onClick={submitAnswer}
           disabled={!input.trim()}
           title="Send answer"
+          aria-label="Send answer"
         >
-          <Send size={18} />
+          <Send size={18} aria-hidden="true" />
         </button>
       </div>
     </div>
