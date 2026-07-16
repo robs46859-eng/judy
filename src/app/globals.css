@@ -133,15 +133,13 @@ h1, h2, h3, h4,
 }
 
 .logo-section h1,
-.auth-logo,
-.greeting {
+.auth-logo {
   font-family: var(--font-display);
   font-weight: 400;
   letter-spacing: 0;
 }
 
 .logo-section h1 { font-size: 2rem; }
-.greeting { font-size: 1.4rem; letter-spacing: 0; }
 
 /* ═══════════════════════════════════════════
    BACKGROUND LAYERS
@@ -219,15 +217,6 @@ h1, h2, h3, h4,
   width: auto;
   height: 48px;
   object-fit: contain;
-}
-
-.greeting {
-  font-size: 1.25rem;
-  font-weight: 300;
-  flex-grow: 1;
-  text-align: center;
-  letter-spacing: 1.5px;
-  color: var(--text-secondary);
 }
 
 .top-actions {
@@ -614,6 +603,16 @@ h1, h2, h3, h4,
   font-size: 0.85rem;
   color: var(--text-secondary);
 }
+.countdown-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 4.4rem;
+  padding: 0 0.5rem;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  text-align: center;
+}
 
 /* Weather */
 .weather-display {
@@ -647,6 +646,89 @@ h1, h2, h3, h4,
   border-radius: 99px;
   font-size: 0.8rem;
   color: var(--text-secondary);
+}
+
+/* ═══════════════════════════════════════════
+   DASHBOARD RESPONSIVE — mobile/tablet
+   Desktop keeps the two-column layout above
+   (dominant avatar + compact right column).
+   Below 1024px we switch to a single
+   scrollable column: avatar, countdown,
+   weather — in that DOM order.
+   ═══════════════════════════════════════════ */
+@supports (padding: max(0px)) {
+  .top-panel {
+    padding-left: max(2rem, env(safe-area-inset-left));
+    padding-right: max(2rem, env(safe-area-inset-right));
+  }
+}
+
+@media (max-width: 1024px) {
+  .main-body {
+    overflow: visible;
+  }
+
+  .content-area {
+    flex-direction: column;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 1rem;
+    gap: 1rem;
+  }
+
+  .avatar-container {
+    flex: none;
+    width: 100%;
+    min-height: 60vh;
+    min-width: 0;
+  }
+
+  .widgets-container {
+    width: 100%;
+    overflow-y: visible;
+  }
+
+  /* Keep chat/translate overlays fully within the viewport instead of a
+     fixed 360px panel that can overflow narrow screens. */
+  .td-chat-panel {
+    left: 0.5rem;
+    right: 0.5rem;
+    width: auto;
+    max-height: min(480px, 70vh);
+    bottom: max(0.5rem, env(safe-area-inset-bottom));
+  }
+
+  .td-chat-toggle {
+    bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+}
+
+@media (max-width: 480px) {
+  .top-panel {
+    padding: 0.6rem 1rem;
+    min-height: 52px;
+  }
+
+  .judy-logo {
+    height: 36px;
+  }
+
+  .content-area {
+    padding: 0.75rem;
+  }
+
+  .avatar-container {
+    min-height: 50vh;
+  }
+
+  .countdown-number {
+    font-size: 1.7rem;
+  }
+
+  .td-chat-panel {
+    left: 0.35rem;
+    right: 0.35rem;
+  }
 }
 
 /* ═══════════════════════════════════════════

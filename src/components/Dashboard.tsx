@@ -4,7 +4,7 @@ import {
   Sun, Moon, Settings, Map, Calendar,
   CreditCard, Compass, Cloud, ThermometerSun,
   PlaneTakeoff, Shield, Dog, Baby, Car, Banknote,
-  ChevronDown, Timer, Sparkles,
+  ChevronDown, Timer,
   Eye, Mail, User, Droplets, Wind, LogOut
 } from "lucide-react";
 import { signOut } from "next-auth/react";
@@ -13,6 +13,8 @@ import TravelDaddy from "./TravelDaddy";
 import ItineraryBuilder from "./ItineraryBuilder";
 import UserProfileModal from "./UserProfileModal";
 import ContactFormModal from "./ContactFormModal";
+import { selectTrip } from "@/lib/dashboard/selectTrip";
+import { computeCountdown } from "@/lib/dashboard/countdown";
 
 interface AffiliateLink {
   name: string;
@@ -49,6 +51,8 @@ interface WeatherData {
   isHistorical: boolean;
   historicalNote?: string;
   daysUntilDeparture?: number | null;
+  /** Set when the weather fetch failed — takes precedence in rendering. */
+  error?: string;
 }
 
 interface DashboardProps {
@@ -75,14 +79,14 @@ export default function Dashboard({ userName, userEmail }: DashboardProps) {
     document.documentElement.setAttribute("data-theme", newTheme);
   };
 
-  // Load trip from API
+  // Load trip from API — pick the nearest active/upcoming trip, falling back
+  // to the most recently updated past trip. See selectTrip() for why we
+  // can't just take the first item the API returns.
   const loadTrip = useCallback(async () => {
     try {
       const res = await fetch("/api/trips");
       const trips = await res.json();
-      if (trips.length > 0) {
-        setTrip(trips[0]); // Load the most recent trip
-      }
+      setTrip(selectTrip(Array.isArray(trips) ? trips : []));
     } catch {
       /* no trip yet */
     }
@@ -113,6 +117,14 @@ export default function Dashboard({ userName, userEmail }: DashboardProps) {
         const res = await fetch(`/api/weather?${params}`);
         const data = await res.json();
 
+        if (!res.ok || data?.error) {
+          setWeather({
+            isHistorical: false,
+            error: data?.error || "Weather is temporarily unavailable.",
+          });
+          return;
+        }
+
         // Parse the Google Weather API response
         const current = data.current;
         let temperature: number | undefined;
@@ -138,10 +150,11 @@ export default function Dashboard({ userName, userEmail }: DashboardProps) {
           daysUntilDeparture: data.daysUntilDeparture,
         });
       } catch {
-        // Fallback: show that we couldn't fetch
+        // Fallback: show that we couldn't fetch, without collapsing the
+        // widget or losing its size.
         setWeather({
           isHistorical: false,
-          historicalNote: "Unable to fetch weather data",
+          error: "Weather is temporarily unavailable. Showing the last known layout — try again shortly.",
         });
       } finally {
         setWeatherLoading(false);
@@ -151,22 +164,16 @@ export default function Dashboard({ userName, userEmail }: DashboardProps) {
     fetchWeather();
   }, [trip?.destinationLat, trip?.destinationLng, trip?.departureDate]);
 
-  // Countdown ticker
+  // Countdown ticker — seed the value immediately so the widget never
+  // shows a blank/zero state while waiting for the first interval tick.
   useEffect(() => {
-    if (!trip?.departureDate) return;
+    if (!trip?.departureDate) {
+      setCountdown(null);
+      return;
+    }
+    setCountdown(computeCountdown(trip.departureDate));
     const interval = setInterval(() => {
-      const dep = new Date(trip.departureDate).getTime();
-      const now = Date.now();
-      const diff = dep - now;
-      if (diff <= 0) {
-        setCountdown({ days: 0, hours: 0, mins: 0 });
-      } else {
-        setCountdown({
-          days: Math.floor(diff / (1000 * 60 * 60 * 24)),
-          hours: Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
-          mins: Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60)),
-        });
-      }
+      setCountdown(computeCountdown(trip.departureDate));
     }, 1000);
     return () => clearInterval(interval);
   }, [trip?.departureDate]);
@@ -202,10 +209,6 @@ export default function Dashboard({ userName, userEmail }: DashboardProps) {
             className="judy-logo"
             priority
           />
-        </div>
-
-        <div className="greeting">
-          Hello, {userName} &mdash; be gay while away
         </div>
 
         <div className="top-actions">
@@ -284,47 +287,44 @@ export default function Dashboard({ userName, userEmail }: DashboardProps) {
                 <TravelDaddy tripContext={trip} userName={userName} />
               </div>
 
-              {/* Right Widgets */}
+              {/* Right Widgets — countdown and weather only. The focused
+                  home screen intentionally omits Get Started, Next Up, and
+                  Budget Overview; those live on their dedicated tabs. */}
               <div className="widgets-container">
-                {/* Countdown */}
-                {countdown && (
-                  <div className="widget countdown-widget">
-                    <div className="countdown-label">
-                      <Timer size={16} /> Trip Countdown
-                    </div>
-                    <div className="countdown-display">
-                      <div className="countdown-unit">
-                        <span className="countdown-number">{countdown.days}</span>
-                        <span className="countdown-unit-label">Days</span>
-                      </div>
-                      <span className="countdown-sep">:</span>
-                      <div className="countdown-unit">
-                        <span className="countdown-number">{countdown.hours}</span>
-                        <span className="countdown-unit-label">Hrs</span>
-                      </div>
-                      <span className="countdown-sep">:</span>
-                      <div className="countdown-unit">
-                        <span className="countdown-number">{countdown.mins}</span>
-                        <span className="countdown-unit-label">Min</span>
-                      </div>
-                    </div>
-                    {trip && <div className="countdown-dest">{trip.destinationName}</div>}
+                {/* Countdown — always rendered at a stable size so there's
+                    no layout jump between the no-trip and active states. */}
+                <div className="widget countdown-widget">
+                  <div className="countdown-label">
+                    <Timer size={16} /> Trip Countdown
                   </div>
-                )}
-
-                {!trip && (
-                  <div className="widget">
-                    <div className="widget-header">
-                      <Sparkles size={20} /> Get Started
+                  {trip && countdown ? (
+                    <>
+                      <div className="countdown-display">
+                        <div className="countdown-unit">
+                          <span className="countdown-number">{countdown.days}</span>
+                          <span className="countdown-unit-label">Days</span>
+                        </div>
+                        <span className="countdown-sep">:</span>
+                        <div className="countdown-unit">
+                          <span className="countdown-number">{countdown.hours}</span>
+                          <span className="countdown-unit-label">Hrs</span>
+                        </div>
+                        <span className="countdown-sep">:</span>
+                        <div className="countdown-unit">
+                          <span className="countdown-number">{countdown.mins}</span>
+                          <span className="countdown-unit-label">Min</span>
+                        </div>
+                      </div>
+                      <div className="countdown-dest">{trip.destinationName}</div>
+                    </>
+                  ) : (
+                    <div className="countdown-empty">
+                      {trip
+                        ? "Calculating your countdown…"
+                        : "No upcoming trip yet — add one to start your countdown."}
                     </div>
-                    <div className="widget-content">
-                      <p>Create your first trip to see your dashboard come alive!</p>
-                      <button className="widget-action-btn" onClick={() => setActiveTab("itinerary")}>
-                        Build Itinerary
-                      </button>
-                    </div>
-                  </div>
-                )}
+                  )}
+                </div>
 
                 {/* Weather — Live Data */}
                 <div className="widget">
@@ -343,40 +343,50 @@ export default function Dashboard({ userName, userEmail }: DashboardProps) {
                           </div>
                         </div>
                       ) : weather ? (
-                        <>
+                        weather.error ? (
                           <div className="weather-display">
-                            {getWeatherIcon(weather.condition)}
+                            <Cloud size={32} />
                             <div>
-                              <div className="weather-temp">
-                                {weather.temperature !== undefined
-                                  ? `${Math.round(weather.temperature)}°F`
-                                  : weather.isHistorical
-                                    ? "Historical Avg"
-                                    : "—"}
-                                {weather.condition ? `, ${weather.condition}` : ""}
-                              </div>
-                              <div className="weather-note">
-                                {weather.isHistorical
-                                  ? weather.historicalNote || "Showing historical averages"
-                                  : weather.daysUntilDeparture !== null && weather.daysUntilDeparture !== undefined
-                                    ? `Real-time forecast • ${weather.daysUntilDeparture} days until departure`
-                                    : "Real-time forecast"}
-                              </div>
+                              <div className="weather-temp">Weather unavailable</div>
+                              <div className="weather-note">{weather.error}</div>
                             </div>
                           </div>
-                          {weather.humidity !== undefined && (
-                            <div className="weather-details">
-                              <span className="weather-detail">
-                                <Droplets size={14} /> {weather.humidity}% humidity
-                              </span>
-                              {weather.windSpeed !== undefined && (
-                                <span className="weather-detail">
-                                  <Wind size={14} /> {weather.windSpeed} mph
-                                </span>
-                              )}
+                        ) : (
+                          <>
+                            <div className="weather-display">
+                              {getWeatherIcon(weather.condition)}
+                              <div>
+                                <div className="weather-temp">
+                                  {weather.temperature !== undefined
+                                    ? `${Math.round(weather.temperature)}°F`
+                                    : weather.isHistorical
+                                      ? "Historical Avg"
+                                      : "—"}
+                                  {weather.condition ? `, ${weather.condition}` : ""}
+                                </div>
+                                <div className="weather-note">
+                                  {weather.isHistorical
+                                    ? weather.historicalNote || "Showing historical averages"
+                                    : weather.daysUntilDeparture !== null && weather.daysUntilDeparture !== undefined
+                                      ? `Real-time forecast • ${weather.daysUntilDeparture} days until departure`
+                                      : "Real-time forecast"}
+                                </div>
+                              </div>
                             </div>
-                          )}
-                        </>
+                            {weather.humidity !== undefined && (
+                              <div className="weather-details">
+                                <span className="weather-detail">
+                                  <Droplets size={14} /> {weather.humidity}% humidity
+                                </span>
+                                {weather.windSpeed !== undefined && (
+                                  <span className="weather-detail">
+                                    <Wind size={14} /> {weather.windSpeed} mph
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </>
+                        )
                       ) : (
                         <div className="weather-display">
                           <Cloud size={32} />
@@ -391,56 +401,6 @@ export default function Dashboard({ userName, userEmail }: DashboardProps) {
                     )}
                   </div>
                 </div>
-
-                {/* Next Itinerary Item */}
-                {trip?.itineraryItems?.length > 0 && (
-                  <div className="widget">
-                    <div className="widget-header">
-                      <Calendar size={20} /> Next Up
-                    </div>
-                    <div className="widget-content">
-                      <strong>{trip.itineraryItems[0].title}</strong>
-                      {trip.itineraryItems[0].time && (
-                        <span className="item-time"> at {trip.itineraryItems[0].time}</span>
-                      )}
-                      {trip.itineraryItems[0].description && <p>{trip.itineraryItems[0].description}</p>}
-                    </div>
-                  </div>
-                )}
-
-                {/* Budget Overview */}
-                {trip && (
-                  <div className="widget">
-                    <div className="widget-header">
-                      <CreditCard size={20} /> Budget Overview
-                    </div>
-                    <div className="widget-content">
-                      <div className="stat-row">
-                        <span>Total Budget</span>
-                        <span className="stat-value">${trip.totalBudget?.toFixed(2)}</span>
-                      </div>
-                      <div className="stat-row">
-                        <span>Airfare</span>
-                        <span className="stat-value">-${trip.airfareCost?.toFixed(2)}</span>
-                      </div>
-                      <div className="stat-row">
-                        <span>Hotel</span>
-                        <span className="stat-value">-${trip.hotelCost?.toFixed(2)}</span>
-                      </div>
-                      <div className="stat-row highlight">
-                        <span>Spending Budget</span>
-                        <span className="stat-value accent">${trip.spendingBudget?.toFixed(2)}</span>
-                      </div>
-                      {trip.budgetItems?.map((bi: any) => (
-                        <div className="stat-row sub" key={bi.id}>
-                          <span>{bi.label}</span>
-                          <span>${bi.amount?.toFixed(2)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
               </div>
             </>
           )}
