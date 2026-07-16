@@ -284,7 +284,7 @@ export default function Dashboard({ userName, userEmail }: DashboardProps) {
             <>
               {/* Avatar */}
               <div className="avatar-container">
-                <TravelDaddy tripContext={trip} userName={userName} />
+                <TravelDaddy tripContext={trip} userName={userName} userEmail={userEmail} />
               </div>
 
               {/* Right Widgets — countdown and weather only. The focused

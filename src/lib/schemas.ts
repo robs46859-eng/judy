@@ -75,6 +75,24 @@ export const avatarStopSchema = z.object({
   sessionId: z.string().trim().min(1).max(200),
 });
 
+/**
+ * Conversational onboarding preferences (Swarm J2/J3). `.strict()` so any
+ * unlisted key — including anything a model might try to smuggle in — is
+ * rejected outright rather than silently ignored or written to Prisma.
+ * `completeOnboarding` is a signal, not a timestamp: the server stamps
+ * `onboardingCompletedAt` itself, it never trusts a client-supplied date.
+ */
+export const userPreferencesPatchSchema = z
+  .object({
+    nativeLanguage: z.string().trim().min(1).max(60).nullable().optional(),
+    translationLanguage: z.string().trim().min(1).max(60).nullable().optional(),
+    travelRoute: z.string().trim().max(300).nullable().optional(),
+    preTravelTasks: z.string().trim().max(1000).nullable().optional(),
+    helpPreference: z.string().trim().max(1000).nullable().optional(),
+    completeOnboarding: z.boolean().optional(),
+  })
+  .strict();
+
 /** Formats zod errors into a single human-readable message. */
 export function formatZodError(error: z.ZodError): string {
   return error.issues

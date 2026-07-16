@@ -19,6 +19,18 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  // Conversational onboarding preferences (Swarm J2/J3). All nullable/additive —
+  // existing rows simply have no answers until the user completes the intake
+  // flow. `language` above predates these fields and is unused by application
+  // code today; left untouched rather than repurposed.
+  nativeLanguage        String?
+  translationLanguage   String?
+  travelRoute           String?
+  preTravelTasks        String?
+  helpPreference        String?
+  voiceId               String?
+  onboardingCompletedAt DateTime?
+
   trips              Trip[]
   entertainmentPrefs EntertainmentPreference[]
   hermesJobs         HermesJob[]

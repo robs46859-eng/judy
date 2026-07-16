@@ -10,6 +10,7 @@ import {
 import { Send, Loader2, MessageCircle, X, Compass, Languages } from "lucide-react";
 import { useHermesJob } from "@/lib/hermes/useHermesJob";
 import { extractHermesText } from "@/lib/hermes/result";
+import OnboardingIntake from "./OnboardingIntake";
 
 interface ChatMessage {
   role: "user" | "daddy";
@@ -21,24 +22,58 @@ interface ChatMessage {
 interface TravelDaddyProps {
   tripContext?: any;
   userName?: string;
+  userEmail?: string;
 }
 
 interface LiveAvatarSession {
   sessionId: string;
 }
 
-export default function TravelDaddy({ tripContext, userName }: TravelDaddyProps) {
+type OnboardingStatus = "loading" | "pending" | "complete";
+
+export default function TravelDaddy({ tripContext, userName, userEmail }: TravelDaddyProps) {
   const [chatOpen, setChatOpen] = useState(false);
   const [translateOpen, setTranslateOpen] = useState(false);
   const [translateText, setTranslateText] = useState("");
   const [targetLang, setTargetLang] = useState("Spanish");
   const translation = useHermesJob("translate");
   const [liveSession, setLiveSession] = useState<LiveAvatarSession | null>(null);
+  const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus>("loading");
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioContainerRef = useRef<HTMLDivElement>(null);
   const roomRef = useRef<import("livekit-client").Room | null>(null);
 
   const userInitial = (userName || "You").trim().charAt(0).toUpperCase();
+
+  // Deterministic onboarding intake (Swarm J3): if the signed-in user hasn't
+  // completed it yet, open the chat panel automatically with the intake
+  // flow instead of free-form chat. Any failure here fails OPEN to normal
+  // chat — a broken preferences check must never trap the user.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/user/preferences");
+        if (!res.ok) {
+          if (!cancelled) setOnboardingStatus("complete");
+          return;
+        }
+        const data = await res.json();
+        if (cancelled) return;
+        if (!data?.onboardingCompletedAt) {
+          setOnboardingStatus("pending");
+          setChatOpen(true);
+        } else {
+          setOnboardingStatus("complete");
+        }
+      } catch {
+        if (!cancelled) setOnboardingStatus("complete");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Try to start a HeyGen interactive avatar session; fall back to the
   // local 3D model when unavailable (no key, quota, network, ...).
@@ -296,61 +331,72 @@ export default function TravelDaddy({ tripContext, userName }: TravelDaddyProps)
         </button>
       )}
 
-      {/* Chat panel */}
+      {/* Chat panel — runs the deterministic onboarding intake first (if not
+          yet completed), then falls through to normal free-form chat. The
+          close button always works so the panel is never a trap. */}
       {chatOpen && (
         <div className="td-chat-panel">
           <div className="td-chat-header">
             <div className="td-chat-title">
               <div className="td-avatar-dot" />
-              <span>Travel Daddy</span>
+              <span>{onboardingStatus === "pending" ? "Getting to know you" : "Travel Daddy"}</span>
             </div>
             <button className="td-chat-close" onClick={() => setChatOpen(false)}>
               <X size={16} />
             </button>
           </div>
 
-          <div className="td-chat-messages">
-            {messages.map((msg, i) => (
-              <div key={i} className={`td-msg ${msg.role === "user" ? "td-msg-user" : "td-msg-daddy"}`}>
-                <span className="td-msg-avatar" aria-hidden>
-                  {msg.role === "daddy" ? <Compass size={14} /> : userInitial}
-                </span>
-                <div className="td-msg-bubble">
-                  {msg.text}
-                </div>
-              </div>
-            ))}
-            {isLoading && (
-              <div className="td-msg td-msg-daddy">
-                <span className="td-msg-avatar" aria-hidden><Compass size={14} /></span>
-                <div className="td-msg-bubble td-typing">
-                  <span /><span /><span />
-                </div>
-              </div>
-            )}
-            <div ref={chatEndRef} />
-          </div>
-
-          <div className="td-chat-input-bar">
-            <input
-              ref={inputRef}
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Ask Travel Daddy anything..."
-              className="td-chat-input"
-              disabled={isLoading}
+          {onboardingStatus === "pending" ? (
+            <OnboardingIntake
+              userEmail={userEmail ?? ""}
+              onDone={() => setOnboardingStatus("complete")}
             />
-            <button
-              className="td-send-btn"
-              onClick={sendMessage}
-              disabled={isLoading || !input.trim()}
-              title="Send message"
-            >
-              {isLoading ? <Loader2 size={18} className="spinner" /> : <Send size={18} />}
-            </button>
-          </div>
+          ) : (
+            <>
+              <div className="td-chat-messages">
+                {messages.map((msg, i) => (
+                  <div key={i} className={`td-msg ${msg.role === "user" ? "td-msg-user" : "td-msg-daddy"}`}>
+                    <span className="td-msg-avatar" aria-hidden>
+                      {msg.role === "daddy" ? <Compass size={14} /> : userInitial}
+                    </span>
+                    <div className="td-msg-bubble">
+                      {msg.text}
+                    </div>
+                  </div>
+                ))}
+                {isLoading && (
+                  <div className="td-msg td-msg-daddy">
+                    <span className="td-msg-avatar" aria-hidden><Compass size={14} /></span>
+                    <div className="td-msg-bubble td-typing">
+                      <span /><span /><span />
+                    </div>
+                  </div>
+                )}
+                <div ref={chatEndRef} />
+              </div>
+
+              <div className="td-chat-input-bar">
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Ask Travel Daddy anything..."
+                  className="td-chat-input"
+                  disabled={isLoading}
+                />
+                <button
+                  className="td-send-btn"
+                  onClick={sendMessage}
+                  disabled={isLoading || !input.trim()}
+                  title="Send message"
+                >
+                  {isLoading ? <Loader2 size={18} className="spinner" /> : <Send size={18} />}
+                </button>
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>
