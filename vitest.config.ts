@@ -10,4 +10,7 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  test: {
+    setupFiles: [fileURLToPath(new URL('./src/test/setup.ts', import.meta.url))],
+  },
 });

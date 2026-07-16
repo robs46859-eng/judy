@@ -7,14 +7,36 @@ import {
   useEffect,
   useCallback,
 } from "react";
-import { Send, Loader2, MessageCircle, X, Compass, Languages } from "lucide-react";
+import {
+  Send,
+  Loader2,
+  MessageCircle,
+  X,
+  Compass,
+  Languages,
+  Video,
+  Volume2,
+  VolumeX,
+  RotateCcw,
+  Square,
+  ArrowLeftRight,
+} from "lucide-react";
 import { useHermesJob } from "@/lib/hermes/useHermesJob";
 import { extractHermesText } from "@/lib/hermes/result";
 import OnboardingIntake from "./OnboardingIntake";
+import { SPEECH_SYNTHESIS_STORAGE_KEY } from "./VoiceSettings";
+
+interface ChatTranslation {
+  original: string;
+  translatedText: string;
+  sourceLanguage: string | null;
+  targetLanguage: string;
+}
 
 interface ChatMessage {
   role: "user" | "daddy";
   text: string;
+  translation?: ChatTranslation;
 }
 
 /* ── Component ────────────────────────────────────────────── */
@@ -31,17 +53,38 @@ interface LiveAvatarSession {
 
 type OnboardingStatus = "loading" | "pending" | "complete";
 
+const TRANSLATE_LANGUAGES = [
+  "Spanish", "French", "Portuguese", "Italian", "German",
+  "Dutch", "Greek", "Thai", "Japanese", "Korean",
+  "Mandarin Chinese", "Arabic", "Turkish", "English",
+];
+
 export default function TravelDaddy({ tripContext, userName, userEmail }: TravelDaddyProps) {
   const [chatOpen, setChatOpen] = useState(false);
   const [translateOpen, setTranslateOpen] = useState(false);
   const [translateText, setTranslateText] = useState("");
+  const [sourceLang, setSourceLang] = useState("Auto-detect");
   const [targetLang, setTargetLang] = useState("Spanish");
   const translation = useHermesJob("translate");
   const [liveSession, setLiveSession] = useState<LiveAvatarSession | null>(null);
+  // J5: the live HeyGen session never starts on its own — the person has to
+  // click "Go live" first. `liveOptIn` is the gate; the effect below only
+  // does anything once it flips true, and flipping it back to false is what
+  // triggers the effect's cleanup (disconnect + /api/avatar/stop).
+  const [liveOptIn, setLiveOptIn] = useState(false);
+  const [muted, setMuted] = useState(false);
+  // Read once at mount — Dashboard unmounts/remounts TravelDaddy whenever the
+  // person leaves and returns to this tab, so a change made in Settings is
+  // picked up on the next mount without needing a live cross-component sync.
+  const [speechEnabled] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem(SPEECH_SYNTHESIS_STORAGE_KEY) === "true";
+  });
   const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus>("loading");
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioContainerRef = useRef<HTMLDivElement>(null);
   const roomRef = useRef<import("livekit-client").Room | null>(null);
+  const mutedRef = useRef(false);
 
   const userInitial = (userName || "You").trim().charAt(0).toUpperCase();
 
@@ -75,9 +118,22 @@ export default function TravelDaddy({ tripContext, userName, userEmail }: Travel
     };
   }, []);
 
-  // Try to start a HeyGen interactive avatar session; fall back to the
-  // local 3D model when unavailable (no key, quota, network, ...).
+  // Keep newly-attached audio elements in sync with the Mute control.
   useEffect(() => {
+    mutedRef.current = muted;
+    audioContainerRef.current
+      ?.querySelectorAll("audio")
+      .forEach((el) => {
+        el.muted = muted;
+      });
+  }, [muted]);
+
+  // Try to start a HeyGen interactive avatar session — only once the user has
+  // explicitly opted in (Swarm J5). Falls back to the static portrait when
+  // unavailable (no key, quota, network, ...) or whenever the user stops it.
+  useEffect(() => {
+    if (!liveOptIn) return;
+
     let cancelled = false;
     let sessionId: string | null = null;
 
@@ -98,7 +154,9 @@ export default function TravelDaddy({ tripContext, userName, userEmail }: Travel
           if (track.kind === Track.Kind.Video && videoRef.current) {
             track.attach(videoRef.current);
           } else if (track.kind === Track.Kind.Audio && audioContainerRef.current) {
-            audioContainerRef.current.appendChild(track.attach());
+            const el = track.attach();
+            el.muted = mutedRef.current;
+            audioContainerRef.current.appendChild(el);
           }
         });
 
@@ -131,6 +189,27 @@ export default function TravelDaddy({ tripContext, userName, userEmail }: Travel
         }).catch(() => {});
       }
     };
+  }, [liveOptIn]);
+
+  const stopLiveSession = useCallback(() => {
+    // Flipping liveOptIn off triggers the effect's own cleanup (disconnect +
+    // /api/avatar/stop); resetting liveSession here just gives instant visual
+    // feedback (the static portrait) without waiting on that async teardown.
+    setLiveOptIn(false);
+    setLiveSession(null);
+  }, []);
+
+  // Feature-flagged browser speech synthesis — only used as a GLB/text
+  // fallback voice when there's no live HeyGen session. Best-effort: any
+  // failure (no speechSynthesis, blocked autoplay, ...) is silently ignored.
+  const speak = useCallback((text: string) => {
+    if (typeof window === "undefined" || !window.speechSynthesis) return;
+    try {
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+    } catch {
+      /* best-effort only */
+    }
   }, []);
 
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -149,6 +228,21 @@ export default function TravelDaddy({ tripContext, userName, userEmail }: Travel
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  const handleReplay = useCallback(() => {
+    const lastDaddyMsg = [...messages].reverse().find((m) => m.role === "daddy");
+    if (!lastDaddyMsg) return;
+    const textToSpeak = lastDaddyMsg.translation?.translatedText || lastDaddyMsg.text;
+    if (liveSession) {
+      fetch("/api/avatar/speak", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId: liveSession.sessionId, text: textToSpeak }),
+      }).catch(() => {});
+    } else if (speechEnabled) {
+      speak(textToSpeak);
+    }
+  }, [messages, liveSession, speechEnabled, speak]);
 
   const sendMessage = useCallback(async () => {
     const trimmed = input.trim();
@@ -171,21 +265,33 @@ export default function TravelDaddy({ tripContext, userName, userEmail }: Travel
       });
       const data = await res.json();
       const reply = data.reply || "Hmm, the trail went quiet for a moment. Try again, friend!";
+      const replyTranslation: ChatTranslation | undefined = data.translation
+        ? {
+            original: data.translation.original,
+            translatedText: data.translation.translatedText,
+            sourceLanguage: data.translation.sourceLanguage ?? null,
+            targetLanguage: data.translation.targetLanguage,
+          }
+        : undefined;
+      const spokenText = replyTranslation?.translatedText || reply;
 
       // Talking duration paced to reply length (human reading speed)
-      const talkDuration = Math.min(reply.length * 55, 8000);
+      const talkDuration = Math.min(spokenText.length * 55, 8000);
       setTimeout(() => setIsTalking(false), talkDuration);
 
-      // If the live HeyGen avatar is active, have it speak the reply.
+      // Live HeyGen avatar speaks the reply; otherwise fall back to the
+      // browser voice, but only when the person has opted into it.
       if (liveSession) {
         fetch("/api/avatar/speak", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sessionId: liveSession.sessionId, text: reply }),
+          body: JSON.stringify({ sessionId: liveSession.sessionId, text: spokenText }),
         }).catch(() => {});
+      } else if (speechEnabled) {
+        speak(spokenText);
       }
 
-      setMessages((prev) => [...prev, { role: "daddy", text: reply }]);
+      setMessages((prev) => [...prev, { role: "daddy", text: reply, translation: replyTranslation }]);
     } catch {
       setIsTalking(false);
       setMessages((prev) => [
@@ -195,7 +301,7 @@ export default function TravelDaddy({ tripContext, userName, userEmail }: Travel
     } finally {
       setIsLoading(false);
     }
-  }, [input, isLoading, tripContext, liveSession]);
+  }, [input, isLoading, tripContext, liveSession, speechEnabled, speak]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -204,9 +310,37 @@ export default function TravelDaddy({ tripContext, userName, userEmail }: Travel
     }
   };
 
+  const runTranslate = useCallback(
+    (text: string, from: string, to: string) => {
+      translation.submit({
+        input: text,
+        target_language: to,
+        ...(from !== "Auto-detect" ? { source_language: from } : {}),
+      });
+    },
+    [translation]
+  );
+
+  // Swap languages (Swarm J4): swaps the source/target selectors and resubmits
+  // the last translated text through in the opposite direction. "Auto-detect"
+  // has no concrete language to swap into, so it falls back to English as the
+  // new target — the person can always change it again before resubmitting.
+  const handleSwap = useCallback(() => {
+    const translatedText = extractHermesText(translation.result);
+    if (!translatedText) return;
+    const newSource = targetLang;
+    const newTarget = sourceLang === "Auto-detect" ? "English" : sourceLang;
+    setSourceLang(newSource);
+    setTargetLang(newTarget);
+    setTranslateText(translatedText);
+    runTranslate(translatedText, newSource, newTarget);
+  }, [translation.result, sourceLang, targetLang, runTranslate]);
+
+  const hasDaddyReply = messages.some((m) => m.role === "daddy");
+
   return (
     <div className="travel-daddy-wrapper">
-      {/* Avatar: live HeyGen stream when available, approved portrait otherwise */}
+      {/* Avatar: live HeyGen stream when opted in, approved portrait otherwise */}
       <div className="canvas-wrapper">
         <video
           ref={videoRef}
@@ -231,6 +365,44 @@ export default function TravelDaddy({ tripContext, userName, userEmail }: Travel
             className={`td-static-avatar${isTalking ? " is-talking" : ""}`}
           />
         )}
+
+        {/* Live-session controls (Swarm J5): opt-in gate + Mute/Stop/Replay */}
+        <div className="td-avatar-controls">
+          <button
+            className="td-avatar-control-btn"
+            onClick={handleReplay}
+            disabled={!hasDaddyReply || (!liveSession && !speechEnabled)}
+            title="Replay last reply"
+          >
+            <RotateCcw size={16} />
+          </button>
+          {!liveOptIn ? (
+            <button
+              className="td-avatar-control-btn td-live-btn"
+              onClick={() => setLiveOptIn(true)}
+              title="Start the live avatar"
+            >
+              <Video size={16} /> <span>Go live</span>
+            </button>
+          ) : (
+            <>
+              <button
+                className="td-avatar-control-btn"
+                onClick={() => setMuted((m) => !m)}
+                title={muted ? "Unmute" : "Mute"}
+              >
+                {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+              </button>
+              <button
+                className="td-avatar-control-btn"
+                onClick={stopLiveSession}
+                title="Stop live avatar"
+              >
+                <Square size={16} />
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Translate toggle button (gay-travel translation avatar) */}
@@ -265,29 +437,33 @@ export default function TravelDaddy({ tripContext, userName, userEmail }: Travel
             />
             <div className="td-translate-controls">
               <label className="td-translate-lang-label">
+                <span>from</span>
+                <select
+                  className="td-translate-lang"
+                  value={sourceLang}
+                  onChange={(e) => setSourceLang(e.target.value)}
+                >
+                  <option value="Auto-detect">Auto-detect</option>
+                  {TRANSLATE_LANGUAGES.map((lang) => (
+                    <option key={lang} value={lang}>{lang}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="td-translate-lang-label">
                 <span>to</span>
                 <select
                   className="td-translate-lang"
                   value={targetLang}
                   onChange={(e) => setTargetLang(e.target.value)}
                 >
-                  {[
-                    "Spanish", "French", "Portuguese", "Italian", "German",
-                    "Dutch", "Greek", "Thai", "Japanese", "Korean",
-                    "Mandarin Chinese", "Arabic", "Turkish", "English",
-                  ].map((lang) => (
+                  {TRANSLATE_LANGUAGES.map((lang) => (
                     <option key={lang} value={lang}>{lang}</option>
                   ))}
                 </select>
               </label>
               <button
                 className="td-send-btn td-translate-go"
-                onClick={() =>
-                  translation.submit({
-                    input: translateText.trim(),
-                    target_language: targetLang,
-                  })
-                }
+                onClick={() => runTranslate(translateText.trim(), sourceLang, targetLang)}
                 disabled={translation.isBusy || !translateText.trim()}
                 title="Translate"
               >
@@ -303,9 +479,21 @@ export default function TravelDaddy({ tripContext, userName, userEmail }: Travel
               <div className="td-translate-hint">Asking Gemma…</div>
             )}
             {translation.status === "succeeded" && (
-              <div className="td-translate-result">
-                {extractHermesText(translation.result) || "No translation returned."}
-              </div>
+              <>
+                <div className="td-translate-result">
+                  {extractHermesText(translation.result) || "No translation returned."}
+                </div>
+                <div className="td-translate-swap-row">
+                  <button
+                    className="td-translate-swap"
+                    onClick={handleSwap}
+                    disabled={translation.isBusy || !extractHermesText(translation.result)}
+                    title="Swap languages and translate back"
+                  >
+                    <ArrowLeftRight size={14} /> Swap languages
+                  </button>
+                </div>
+              </>
             )}
             {translation.status === "failed" && (
               <div className="td-translate-error">
@@ -361,6 +549,15 @@ export default function TravelDaddy({ tripContext, userName, userEmail }: Travel
                     </span>
                     <div className="td-msg-bubble">
                       {msg.text}
+                      {msg.translation && (
+                        <div className="td-translation-inline">
+                          <div className="td-translation-lang-label">
+                            {(msg.translation.sourceLanguage ?? "Detected")} → {msg.translation.targetLanguage}
+                          </div>
+                          <div className="td-translation-original">{msg.translation.original}</div>
+                          <div className="td-translation-translated">{msg.translation.translatedText}</div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isApprovedVoiceId } from '@/lib/voice/catalog';
 
 /** Shared zod schemas for API request-body validation. */
 
@@ -89,6 +90,15 @@ export const userPreferencesPatchSchema = z
     travelRoute: z.string().trim().max(300).nullable().optional(),
     preTravelTasks: z.string().trim().max(1000).nullable().optional(),
     helpPreference: z.string().trim().max(1000).nullable().optional(),
+    // Server-approved catalog only (Swarm J5) — never an arbitrary provider ID.
+    voiceId: z
+      .string()
+      .trim()
+      .min(1)
+      .max(100)
+      .refine(isApprovedVoiceId, 'Unknown voice — must be one of the approved catalog entries.')
+      .nullable()
+      .optional(),
     completeOnboarding: z.boolean().optional(),
   })
   .strict();

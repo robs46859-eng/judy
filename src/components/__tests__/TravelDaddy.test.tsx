@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, waitFor, cleanup } from '@testing-library/react';
+import { render, screen, waitFor, cleanup, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import TravelDaddy from '../TravelDaddy';
 
@@ -51,5 +51,54 @@ describe('TravelDaddy avatar fallback', () => {
     // live session, so the static avatar/text/translation stay usable.
     const video = document.querySelector('video');
     expect(video).toHaveStyle({ display: 'none' });
+  });
+});
+
+describe('TravelDaddy live session opt-in gate (Swarm J5)', () => {
+  it('never calls /api/avatar/session on mount — the live session requires an explicit "Go live" click', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : input.toString();
+      if (url.includes('/api/user/preferences')) {
+        return { ok: true, status: 200, json: async () => ({ onboardingCompletedAt: new Date().toISOString() }) } as Response;
+      }
+      return { ok: false, status: 501, json: async () => ({}) } as Response;
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<TravelDaddy userName="Robert" />);
+
+    await screen.findByAltText(AVATAR_ALT);
+    await screen.findByTitle('Start the live avatar');
+
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      expect.stringContaining('/api/avatar/session'),
+      expect.anything()
+    );
+  });
+
+  it('only requests a live session after the person clicks "Go live"', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : input.toString();
+      if (url.includes('/api/user/preferences')) {
+        return { ok: true, status: 200, json: async () => ({ onboardingCompletedAt: new Date().toISOString() }) } as Response;
+      }
+      if (url.includes('/api/avatar/session')) {
+        return { ok: false, status: 501, json: async () => ({}) } as Response;
+      }
+      return { ok: false, status: 404, json: async () => ({}) } as Response;
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<TravelDaddy userName="Robert" />);
+
+    const goLiveBtn = await screen.findByTitle('Start the live avatar');
+    fireEvent.click(goLiveBtn);
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('/api/avatar/session'),
+        expect.anything()
+      )
+    );
   });
 });

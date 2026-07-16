@@ -1380,6 +1380,12 @@ h1, h2, h3, h4,
   font-family: var(--font-sans);
 }
 
+.voice-select-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .theme-toggle-btn {
   display: flex;
   align-items: center;
@@ -1938,6 +1944,116 @@ h1, h2, h3, h4,
   display: flex;
   align-items: center;
   gap: 0.4rem;
+}
+
+.td-translate-swap-row {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.td-translate-swap {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: none;
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-sm);
+  padding: 0.35rem 0.6rem;
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.td-translate-swap:hover:not(:disabled) {
+  color: #fff;
+  background: var(--lilac);
+  border-color: var(--lilac);
+}
+
+.td-translate-swap:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ═══════════════════════════════════════════
+   AVATAR CONTROLS (Swarm J5: opt-in live session)
+   ═══════════════════════════════════════════ */
+.td-avatar-controls {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  z-index: 20;
+}
+
+.td-avatar-control-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  background: var(--panel-bg-solid);
+  color: var(--text-secondary);
+  border: 1px solid var(--panel-border);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition);
+}
+
+.td-avatar-control-btn:hover:not(:disabled) {
+  color: #fff;
+  background: var(--lilac);
+  border-color: var(--lilac);
+}
+
+.td-avatar-control-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.td-live-btn {
+  width: auto;
+  border-radius: 999px;
+  padding: 0 0.85rem;
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+}
+
+/* Inline translated bubble rendered in normal chat (Swarm J4) */
+.td-translation-inline {
+  margin-top: 0.5rem;
+  padding: 0.55rem 0.7rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--panel-border);
+  border-left: 3px solid var(--lilac);
+  border-radius: var(--radius-sm);
+}
+
+.td-translation-lang-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 0.3rem;
+}
+
+.td-translation-original {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.25rem;
+}
+
+.td-translation-translated {
+  font-size: 0.9rem;
+  color: var(--chat-daddy-text);
+  font-weight: 500;
 }
 
 /* ═══════════════════════════════════════════

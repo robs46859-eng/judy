@@ -13,6 +13,7 @@ import TravelDaddy from "./TravelDaddy";
 import ItineraryBuilder from "./ItineraryBuilder";
 import UserProfileModal from "./UserProfileModal";
 import ContactFormModal from "./ContactFormModal";
+import VoiceSettings from "./VoiceSettings";
 import { selectTrip } from "@/lib/dashboard/selectTrip";
 import { computeCountdown } from "@/lib/dashboard/countdown";
 
@@ -559,6 +560,7 @@ export default function Dashboard({ userName, userEmail }: DashboardProps) {
                     )}
                   </button>
                 </div>
+                <VoiceSettings />
               </div>
             </div>
           )}

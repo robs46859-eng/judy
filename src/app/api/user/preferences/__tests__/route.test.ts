@@ -122,6 +122,33 @@ describe('PATCH /api/user/preferences', () => {
     expect(callArgs.data.onboardingCompletedAt).toBeInstanceOf(Date);
   });
 
+  it('accepts a voiceId from the approved catalog', async () => {
+    mocks.getSessionUserId.mockResolvedValue('user-a');
+    mocks.update.mockResolvedValue({
+      nativeLanguage: null,
+      translationLanguage: null,
+      travelRoute: null,
+      preTravelTasks: null,
+      helpPreference: null,
+      voiceId: 'travel-daddy-warm-en',
+      onboardingCompletedAt: null,
+    });
+
+    const response = await PATCH(jsonRequest({ voiceId: 'travel-daddy-warm-en' }));
+
+    expect(response.status).toBe(200);
+    const [[callArgs]] = mocks.update.mock.calls;
+    expect(callArgs.data.voiceId).toBe('travel-daddy-warm-en');
+  });
+
+  it('rejects a voiceId that is not in the approved catalog', async () => {
+    mocks.getSessionUserId.mockResolvedValue('user-a');
+    const response = await PATCH(jsonRequest({ voiceId: 'some-unapproved-provider-id' }));
+
+    expect(response.status).toBe(400);
+    expect(mocks.update).not.toHaveBeenCalled();
+  });
+
   it('rejects a malformed JSON body', async () => {
     mocks.getSessionUserId.mockResolvedValue('user-a');
     const request = new Request('http://localhost/api/user/preferences', {

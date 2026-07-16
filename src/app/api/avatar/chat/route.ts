@@ -4,7 +4,10 @@ import { getSessionUserId } from '@/lib/auth';
 import { enforceRateLimit } from '@/lib/rate-limit';
 import { chatSchema, formatZodError } from '@/lib/schemas';
 import { runTravelKnowledge } from '@/lib/hermes/knowledge-runner';
+import { runTravelTranslation } from '@/lib/hermes/translation-runner';
 import { retrieveContext } from '@/lib/rag/retriever';
+import { detectTranslationIntent } from '@/lib/translation-intent';
+import { prisma } from '@/lib/prisma';
 
 export const runtime = 'nodejs';
 
@@ -60,6 +63,46 @@ ${tripContext.itineraryItems?.length ? `- Itinerary: ${tripContext.itineraryItem
 `;
     }
 
+    // Confirmed onboarding preferences (Swarm J2/J3) — grounds the system
+    // prompt and drives implicit translation routing below. A lookup
+    // failure here must never break chat, so it's best-effort.
+    let preferences: {
+      nativeLanguage: string | null;
+      translationLanguage: string | null;
+      travelRoute: string | null;
+      preTravelTasks: string | null;
+      helpPreference: string | null;
+    } | null = null;
+    try {
+      preferences = await prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          nativeLanguage: true,
+          translationLanguage: true,
+          travelRoute: true,
+          preTravelTasks: true,
+          helpPreference: true,
+        },
+      });
+    } catch {
+      preferences = null;
+    }
+
+    let preferencesInfo = '';
+    if (preferences) {
+      const bits: string[] = [];
+      if (preferences.nativeLanguage) bits.push(`Native language: ${preferences.nativeLanguage}`);
+      if (preferences.translationLanguage) {
+        bits.push(`Prefers translating to/from: ${preferences.translationLanguage}`);
+      }
+      if (preferences.travelRoute) bits.push(`Travel route: ${preferences.travelRoute}`);
+      if (preferences.preTravelTasks) bits.push(`Before-travel notes: ${preferences.preTravelTasks}`);
+      if (preferences.helpPreference) bits.push(`Wants help with: ${preferences.helpPreference}`);
+      if (bits.length > 0) {
+        preferencesInfo = `\nThe user's stated preferences:\n- ${bits.join('\n- ')}\n`;
+      }
+    }
+
     const systemPrompt = `You are "Travel Daddy," a hearty woodsman and lumberjack travel companion for the Judy travel app. Your personality:
 
 - You are warm, friendly, and protective — like a big bear of a travel buddy
@@ -71,8 +114,40 @@ ${tripContext.itineraryItems?.length ? `- Itinerary: ${tripContext.itineraryItem
 - Keep responses concise (2-4 sentences) unless the user asks for detailed information
 - You care deeply about the user's safety and enjoyment
 - You address the user affectionately as "traveler," "friend," or "amigo/amiga"
-${tripInfo}
+${tripInfo}${preferencesInfo}
 Respond naturally as Travel Daddy. Do NOT use markdown formatting — speak plainly as if talking out loud.`;
+
+    // Implicit translation routing (Swarm J4): an explicit request, or the
+    // message's script not matching the user's stored native language. Runs
+    // before the normal reply — safe fallback means a null result here just
+    // falls through to Gemma/Gemini below instead of surfacing an error.
+    const intent = detectTranslationIntent(message, preferences?.nativeLanguage ?? null);
+    if (intent) {
+      const translated = await runTravelTranslation(request.headers, userId, {
+        text: intent.textToTranslate,
+        targetLanguage: intent.targetLanguage,
+        sourceLanguage: intent.sourceLanguage,
+      });
+      if (translated) {
+        // Telemetry: routing decision only — never message content.
+        console.info('[avatar-chat] routed', { userId, route: 'translation', reason: intent.reason });
+        return NextResponse.json({
+          reply:
+            intent.reason === 'explicit'
+              ? `Here you go, friend — translated to ${translated.targetLanguage}:`
+              : `Looks like that's ${translated.sourceLanguage ?? 'a different language'} — here it is in ${translated.targetLanguage}:`,
+          source: 'hermes-translate',
+          translation: {
+            original: intent.textToTranslate,
+            translatedText: translated.translatedText,
+            sourceLanguage: translated.sourceLanguage ?? null,
+            targetLanguage: translated.targetLanguage,
+          },
+        });
+      }
+      // Translation unavailable right now (Hermes off/quota/timeout) —
+      // fall through to a normal conversational reply instead of erroring.
+    }
 
     // Gemma-first: try the Hermes knowledge worker, grounded on the trip
     // context plus any relevant chunks from the local RAG index, then fall back
@@ -84,6 +159,7 @@ Respond naturally as Travel Daddy. Do NOT use markdown formatting — speak plai
       contextChunks: [systemPrompt, ...retrieved],
     });
     if (gemmaReply) {
+      console.info('[avatar-chat] routed', { userId, route: 'gemma' });
       return NextResponse.json({ reply: gemmaReply, source: 'gemma' });
     }
 
@@ -104,6 +180,7 @@ Respond naturally as Travel Daddy. Do NOT use markdown formatting — speak plai
     const response = result.response;
     const text = response.text() || "HAH! Sorry traveler, my brain froze for a second there. Ask me again!";
 
+    console.info('[avatar-chat] routed', { userId, route: 'gemini' });
     return NextResponse.json({ reply: text });
   } catch (error: any) {
     console.error('Avatar chat error:', error);
