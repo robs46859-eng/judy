@@ -26,7 +26,12 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // 1. Create a new streaming session
+    // 1. Create a new streaming session. avatar_name/voice are only included
+    // when the corresponding env vars are set, so omitting either preserves
+    // the account default behavior exactly as before.
+    const avatarId = process.env.HEYGEN_AVATAR_ID;
+    const voiceId = process.env.HEYGEN_VOICE_ID;
+
     const newRes = await fetch(`${HEYGEN_BASE}/streaming.new`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
@@ -34,6 +39,8 @@ export async function POST(request: NextRequest) {
         quality: 'medium',
         version: 'v2',
         video_encoding: 'H264',
+        ...(avatarId ? { avatar_name: avatarId } : {}),
+        ...(voiceId ? { voice: { voice_id: voiceId } } : {}),
       }),
     });
 

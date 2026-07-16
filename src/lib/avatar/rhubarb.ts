@@ -13,10 +13,10 @@ import { parseRhubarbResult, type RhubarbCue } from './visemeTimeline';
  *
  * Local dev path observed on this machine: /Users/robert/.local/opt/rhubarb-1.14.0/rhubarb
  * Production (VPS/Hostinger) needs the same binary installed there too —
- * set RHUBARB_BIN_PATH to wherever it lives on that host. Nothing here
- * assumes a specific install location beyond that env var (with the local
- * dev path as a fallback default so this works out of the box on this
- * machine without extra setup).
+ * set RHUBARB_BIN to wherever it lives on that host. Nothing here assumes a
+ * specific install location beyond that env var (with the local dev path as
+ * a fallback default so this works out of the box on this machine without
+ * extra setup).
  */
 
 const DEFAULT_BIN_PATH = '/Users/robert/.local/opt/rhubarb-1.14.0/rhubarb';
@@ -28,7 +28,7 @@ export interface RunRhubarbOptions {
   /** Path to a plain-text transcript of the audio — improves recognition accuracy. */
   dialogFilePath?: string;
   timeoutMs?: number;
-  /** Overrides RHUBARB_BIN_PATH / the local dev default. */
+  /** Overrides RHUBARB_BIN / the local dev default. */
   binPath?: string;
 }
 
@@ -50,7 +50,7 @@ export function buildRhubarbArgs(wavPath: string, options?: RunRhubarbOptions): 
 }
 
 function resolveBinPath(options?: RunRhubarbOptions): string {
-  return options?.binPath || process.env.RHUBARB_BIN_PATH || DEFAULT_BIN_PATH;
+  return options?.binPath || process.env.RHUBARB_BIN || DEFAULT_BIN_PATH;
 }
 
 /**
