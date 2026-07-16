@@ -8,8 +8,10 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Judy App — Be Gay While Away",
-  description: "Your ultimate LGBTQ+ travel companion. Plan trips, manage budgets, get AI-powered suggestions, and let Travel Daddy guide your journey.",
-  keywords: "travel, LGBTQ, trip planner, itinerary, budget, travel companion",
+  description:
+    "The LGBTQ+ travel companion for gay travelers. Plan trips, auto-budget, discover queer-friendly experiences, translate on the go, and let Travel Daddy — your AI avatar guide — plan your journey.",
+  keywords:
+    "gay travel, LGBTQ travel, queer travel planner, gay friendly destinations, gay travel guide, AI travel avatar, travel translation, gay itinerary planner, gay travel budget, LGBTQ trip planner",
 };
 
 export default function RootLayout({
@@ -19,7 +21,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        {children}
+        {/* Global 35mm film-emulation overlays (see globals.css) */}
+        <div className="film-grade" aria-hidden />
+        <div className="film-vignette" aria-hidden />
+        <div className="film-grain" aria-hidden />
+      </body>
     </html>
   );
 }

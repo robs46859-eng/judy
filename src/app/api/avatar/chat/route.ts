@@ -3,6 +3,9 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { getSessionUserId } from '@/lib/auth';
 import { enforceRateLimit } from '@/lib/rate-limit';
 import { chatSchema, formatZodError } from '@/lib/schemas';
+import { runTravelKnowledge } from '@/lib/hermes/knowledge-runner';
+
+export const runtime = 'nodejs';
 
 /**
  * POST /api/avatar/chat
@@ -41,14 +44,6 @@ export async function POST(request: NextRequest) {
       itineraryItems?: Array<{ title: string }>;
     } | null;
 
-    const geminiKey = process.env.GEMINI_API_KEY;
-    if (!geminiKey) {
-      return NextResponse.json({ error: 'GEMINI_API_KEY not configured' }, { status: 500 });
-    }
-
-    const genAI = new GoogleGenerativeAI(geminiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
-
     // Build trip context for the system prompt
     let tripInfo = '';
     if (tripContext) {
@@ -77,6 +72,26 @@ ${tripContext.itineraryItems?.length ? `- Itinerary: ${tripContext.itineraryItem
 - You address the user affectionately as "traveler," "friend," or "amigo/amiga"
 ${tripInfo}
 Respond naturally as Travel Daddy. Do NOT use markdown formatting — speak plainly as if talking out loud.`;
+
+    // Gemma-first: try the Hermes knowledge worker (grounded on the trip
+    // context passed as a knowledge chunk), then fall back to Gemini. Returns
+    // null — and we fall through — whenever Hermes is disabled or its low daily
+    // quota is spent, so chat never breaks.
+    const gemmaReply = await runTravelKnowledge(request.headers, userId, {
+      prompt: message,
+      contextChunks: [systemPrompt],
+    });
+    if (gemmaReply) {
+      return NextResponse.json({ reply: gemmaReply, source: 'gemma' });
+    }
+
+    // Fallback: Gemini.
+    const geminiKey = process.env.GEMINI_API_KEY;
+    if (!geminiKey) {
+      return NextResponse.json({ error: 'GEMINI_API_KEY not configured' }, { status: 500 });
+    }
+    const genAI = new GoogleGenerativeAI(geminiKey);
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
     const result = await model.generateContent({
       contents: [

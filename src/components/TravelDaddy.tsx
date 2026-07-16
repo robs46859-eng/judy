@@ -1,332 +1,140 @@
 "use client";
 
 import { Canvas, useFrame } from "@react-three/fiber";
-import { OrbitControls, Environment, ContactShadows } from "@react-three/drei";
-import { useRef, useState, useEffect, useCallback, useMemo } from "react";
+import {
+  OrbitControls,
+  Environment,
+  ContactShadows,
+  useGLTF,
+  useAnimations,
+} from "@react-three/drei";
+import {
+  Suspense,
+  useRef,
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+} from "react";
 import * as THREE from "three";
-import { Send, Loader2, MessageCircle, X, Compass } from "lucide-react";
+import { Send, Loader2, MessageCircle, X, Compass, Languages } from "lucide-react";
+import { useHermesJob } from "@/lib/hermes/useHermesJob";
+import { extractHermesText } from "@/lib/hermes/result";
 
 interface ChatMessage {
   role: "user" | "daddy";
   text: string;
 }
 
-/* ── Materials & textures ─────────────────────────────────── */
+/* ── Avatar model ─────────────────────────────────────────────
+   Loads the glTF avatar (public/models/JobuJudy.glb — a placeholder
+   for now). Written generically so any rigged glTF drops in without
+   code changes: the model is auto-centered and scaled to frame, and
+   idle / talking clips are chosen by name with graceful fallbacks.
+   ──────────────────────────────────────────────────────────── */
 
-function usePlaidTexture() {
-  return useMemo(() => {
-    const canvas = document.createElement("canvas");
-    canvas.width = 256;
-    canvas.height = 256;
-    const ctx = canvas.getContext("2d")!;
+const AVATAR_URL = "/models/JobuJudy.glb";
 
-    // Warm flannel base
-    ctx.fillStyle = "#8f4634";
-    ctx.fillRect(0, 0, 256, 256);
+// Target height (world units) the model is scaled to fill in-frame.
+const AVATAR_HEIGHT = 1.5;
 
-    // Wide cross bands
-    ctx.fillStyle = "rgba(58, 42, 34, 0.55)";
-    for (let i = 0; i < 256; i += 64) {
-      ctx.fillRect(i, 0, 22, 256);
-      ctx.fillRect(0, i, 256, 22);
-    }
-    // Thin cream lines
-    ctx.strokeStyle = "rgba(236, 229, 243, 0.5)";
-    ctx.lineWidth = 3;
-    for (let i = 32; i < 256; i += 64) {
-      ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, 256); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(256, i); ctx.stroke();
-    }
-    // Subtle weave noise (seeded LCG so render stays pure/deterministic)
-    let seed = 42;
-    const rand = () => {
-      seed = (seed * 1664525 + 1013904223) % 4294967296;
-      return seed / 4294967296;
-    };
-    for (let i = 0; i < 2200; i++) {
-      ctx.fillStyle = `rgba(0,0,0,${rand() * 0.06})`;
-      ctx.fillRect(rand() * 256, rand() * 256, 2, 1);
-    }
-
-    const tex = new THREE.CanvasTexture(canvas);
-    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-    tex.repeat.set(2.5, 2.5);
-    return tex;
-  }, []);
+/** First clip whose name contains one of `candidates` (case-insensitive);
+ *  falls back to the clip at `fallbackIndex`, or null if there are none. */
+function pickClip(
+  names: string[],
+  candidates: string[],
+  fallbackIndex = 0
+): string | null {
+  if (names.length === 0) return null;
+  for (const c of candidates) {
+    const hit = names.find((n) => n.toLowerCase().includes(c));
+    if (hit) return hit;
+  }
+  return names[fallbackIndex] ?? null;
 }
 
-const SKIN = "#c98e6b";
-const SKIN_SHADOW = "#b57a58";
-const HAIR = "#7a4a33";
-const BEARD = "#8a5038";
-const BEARD_GRAY = "#a89a90";
-const IRIS = "#5a3c28";
-const JEANS = "#3a4560";
-const BOOT = "#4a3423";
+function AvatarModel({ isTalking }: { isTalking: boolean }) {
+  const group = useRef<THREE.Group>(null);
+  const { scene, animations } = useGLTF(AVATAR_URL);
+  const { actions, names } = useAnimations(animations, group);
 
-/* ── Human Travel Daddy ───────────────────────────────────── */
-
-function HumanTravelDaddy({ isTalking }: { isTalking: boolean }) {
-  const root = useRef<THREE.Group>(null);
-  const chest = useRef<THREE.Group>(null);
-  const head = useRef<THREE.Group>(null);
-  const jaw = useRef<THREE.Group>(null);
-  const lidL = useRef<THREE.Mesh>(null);
-  const lidR = useRef<THREE.Mesh>(null);
-  const armL = useRef<THREE.Group>(null);
-  const armR = useRef<THREE.Group>(null);
-  const nextBlink = useRef(2.5);
-  const blinkPhase = useRef(0);
-
-  const plaid = usePlaidTexture();
-
-  const skinMat = useMemo(
-    () => new THREE.MeshStandardMaterial({ color: SKIN, roughness: 0.62 }),
-    []
-  );
-  const shirtMat = useMemo(
-    () => new THREE.MeshStandardMaterial({ map: plaid, roughness: 0.85 }),
-    [plaid]
-  );
-
-  useFrame((state, delta) => {
-    const t = state.clock.elapsedTime;
-
-    // Human-paced idle: slow breathing, gentle weight shift
-    if (chest.current) {
-      const breathe = 1 + Math.sin(t * 1.4) * 0.012;
-      chest.current.scale.set(breathe, 1, breathe);
-    }
-    if (root.current) {
-      root.current.position.y = -0.92 + Math.sin(t * 0.7) * 0.008;
-      root.current.rotation.y = Math.sin(t * 0.22) * 0.06;
-      root.current.rotation.z = Math.sin(t * 0.31) * 0.008;
-    }
-    // Subtle head life: slow gaze drift, more engaged while talking
-    if (head.current) {
-      const engage = isTalking ? 1.6 : 1;
-      head.current.rotation.y = Math.sin(t * 0.45) * 0.07 * engage;
-      head.current.rotation.x = Math.sin(t * 0.35) * 0.035 + (isTalking ? 0.02 : 0);
-      head.current.rotation.z = Math.sin(t * 0.2) * 0.015;
-    }
-    // Arms: relaxed micro-sway; a light gesture cadence while talking
-    if (armL.current && armR.current) {
-      const g = isTalking ? Math.sin(t * 2.1) * 0.06 : 0;
-      armL.current.rotation.x = Math.sin(t * 0.8) * 0.02 + g;
-      armR.current.rotation.x = Math.sin(t * 0.8 + 1.3) * 0.02 - g;
-      armL.current.rotation.z = 0.08 + Math.sin(t * 0.6) * 0.01;
-      armR.current.rotation.z = -0.08 - Math.sin(t * 0.6 + 0.7) * 0.01;
-    }
-    // Speech: jaw opens/closes at syllable pace with a phrase envelope
-    if (jaw.current) {
-      if (isTalking) {
-        const syllable = Math.max(0, Math.sin(t * 11) * 0.6 + Math.sin(t * 7.3) * 0.4);
-        const phrase = 0.55 + 0.45 * Math.abs(Math.sin(t * 1.7));
-        jaw.current.rotation.x = 0.02 + syllable * phrase * 0.22;
-      } else {
-        jaw.current.rotation.x = THREE.MathUtils.lerp(jaw.current.rotation.x, 0, delta * 8);
+  // Shadows on every mesh.
+  useEffect(() => {
+    scene.traverse((o) => {
+      const mesh = o as THREE.Mesh;
+      if (mesh.isMesh) {
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
       }
-    }
-    // Natural blinking every few seconds
-    nextBlink.current -= delta;
-    if (nextBlink.current <= 0) {
-      blinkPhase.current = 0.14; // blink duration
-      nextBlink.current = 2.5 + Math.random() * 3.5;
-    }
-    if (blinkPhase.current > 0) blinkPhase.current -= delta;
-    const lidScale = blinkPhase.current > 0 ? 1 : 0.12;
-    if (lidL.current && lidR.current) {
-      lidL.current.scale.y = THREE.MathUtils.lerp(lidL.current.scale.y, lidScale, delta * 22);
-      lidR.current.scale.y = THREE.MathUtils.lerp(lidR.current.scale.y, lidScale, delta * 22);
-    }
+    });
+  }, [scene]);
+
+  // Auto-fit: center horizontally, rest the model's feet on y = 0, and
+  // scale so its tallest dimension reads at AVATAR_HEIGHT.
+  const fit = useMemo(() => {
+    const box = new THREE.Box3().setFromObject(scene);
+    const size = new THREE.Vector3();
+    const center = new THREE.Vector3();
+    box.getSize(size);
+    box.getCenter(center);
+    const maxDim = Math.max(size.x, size.y, size.z) || 1;
+    const scale = AVATAR_HEIGHT / maxDim;
+    const position: [number, number, number] = [
+      -center.x * scale,
+      -box.min.y * scale,
+      -center.z * scale,
+    ];
+    return { scale, position };
+  }, [scene]);
+
+  // Idle when quiet; a livelier / jaw-moving clip while "speaking".
+  // Names are matched loosely so a future avatar with proper
+  // idle/talk/wave clips just works.
+  const idleClip = useMemo(
+    () => pickClip(names, ["idle", "breath", "stand", "playing", "photo"]),
+    [names]
+  );
+  const talkClip = useMemo(
+    () => pickClip(names, ["talk", "speak", "eating", "drinking", "playing"]),
+    [names]
+  );
+
+  // Crossfade between the current idle/talk clip.
+  useEffect(() => {
+    const clip = isTalking ? talkClip : idleClip;
+    if (!clip) return;
+    const action = actions[clip];
+    if (!action) return;
+    action
+      .reset()
+      .setLoop(THREE.LoopRepeat, Infinity)
+      .setEffectiveTimeScale(isTalking ? 1.15 : 1)
+      .setEffectiveWeight(1)
+      .fadeIn(0.35)
+      .play();
+    return () => {
+      action.fadeOut(0.35);
+    };
+  }, [isTalking, idleClip, talkClip, actions]);
+
+  // A touch of ambient life on the root — a slow gaze-sway, a hair more
+  // engaged while talking. (Root transform only; never fights the mixer.)
+  useFrame((state) => {
+    if (!group.current) return;
+    const t = state.clock.elapsedTime;
+    const engage = isTalking ? 1.5 : 1;
+    group.current.rotation.y = Math.sin(t * 0.25) * 0.08 * engage;
+    group.current.position.y = Math.sin(t * 0.7) * 0.01;
   });
 
   return (
-    <group ref={root} position={[0, -0.92, 0]}>
-      {/* Legs */}
-      <mesh castShadow position={[-0.11, 0.42, 0]}>
-        <capsuleGeometry args={[0.085, 0.62, 8, 16]} />
-        <meshStandardMaterial color={JEANS} roughness={0.9} />
-      </mesh>
-      <mesh castShadow position={[0.11, 0.42, 0]}>
-        <capsuleGeometry args={[0.085, 0.62, 8, 16]} />
-        <meshStandardMaterial color={JEANS} roughness={0.9} />
-      </mesh>
-      {/* Boots */}
-      <mesh castShadow position={[-0.11, 0.05, 0.04]}>
-        <boxGeometry args={[0.13, 0.1, 0.26]} />
-        <meshStandardMaterial color={BOOT} roughness={0.7} />
-      </mesh>
-      <mesh castShadow position={[0.11, 0.05, 0.04]}>
-        <boxGeometry args={[0.13, 0.1, 0.26]} />
-        <meshStandardMaterial color={BOOT} roughness={0.7} />
-      </mesh>
-
-      {/* Torso (plaid flannel) */}
-      <group ref={chest} position={[0, 1.05, 0]}>
-        <mesh castShadow material={shirtMat}>
-          <capsuleGeometry args={[0.21, 0.42, 8, 24]} />
-        </mesh>
-        {/* Collar */}
-        <mesh position={[0, 0.28, 0.02]} material={shirtMat}>
-          <torusGeometry args={[0.1, 0.035, 10, 24]} />
-        </mesh>
-        {/* Belt */}
-        <mesh position={[0, -0.3, 0]}>
-          <cylinderGeometry args={[0.215, 0.215, 0.06, 24]} />
-          <meshStandardMaterial color={BOOT} roughness={0.6} />
-        </mesh>
-        <mesh position={[0, -0.3, 0.21]}>
-          <boxGeometry args={[0.07, 0.05, 0.02]} />
-          <meshStandardMaterial color="#c9a25a" metalness={0.7} roughness={0.3} />
-        </mesh>
-
-        {/* Arms */}
-        <group ref={armL} position={[-0.26, 0.18, 0]}>
-          <mesh castShadow position={[0, -0.2, 0]} rotation={[0, 0, 0.12]} material={shirtMat}>
-            <capsuleGeometry args={[0.062, 0.42, 8, 16]} />
-          </mesh>
-          <mesh castShadow position={[-0.055, -0.47, 0.01]} material={skinMat}>
-            <sphereGeometry args={[0.062, 20, 20]} />
-          </mesh>
-        </group>
-        <group ref={armR} position={[0.26, 0.18, 0]}>
-          <mesh castShadow position={[0, -0.2, 0]} rotation={[0, 0, -0.12]} material={shirtMat}>
-            <capsuleGeometry args={[0.062, 0.42, 8, 16]} />
-          </mesh>
-          <mesh castShadow position={[0.055, -0.47, 0.01]} material={skinMat}>
-            <sphereGeometry args={[0.062, 20, 20]} />
-          </mesh>
-        </group>
-      </group>
-
-      {/* Neck */}
-      <mesh position={[0, 1.44, 0]} material={skinMat}>
-        <cylinderGeometry args={[0.062, 0.075, 0.12, 20]} />
-      </mesh>
-
-      {/* Head */}
-      <group ref={head} position={[0, 1.62, 0]}>
-        {/* Skull + face */}
-        <mesh castShadow material={skinMat} scale={[0.9, 1.06, 0.94]}>
-          <sphereGeometry args={[0.155, 32, 32]} />
-        </mesh>
-
-        {/* Hair — short, receding, natural */}
-        <mesh position={[0, 0.075, -0.022]} scale={[0.94, 0.72, 0.96]}>
-          <sphereGeometry args={[0.152, 32, 24, 0, Math.PI * 2, 0, Math.PI * 0.55]} />
-          <meshStandardMaterial color={HAIR} roughness={0.95} />
-        </mesh>
-
-        {/* Ears */}
-        <mesh position={[-0.14, -0.005, 0]} scale={[0.5, 1, 0.8]} material={skinMat}>
-          <sphereGeometry args={[0.038, 16, 16]} />
-        </mesh>
-        <mesh position={[0.14, -0.005, 0]} scale={[0.5, 1, 0.8]} material={skinMat}>
-          <sphereGeometry args={[0.038, 16, 16]} />
-        </mesh>
-
-        {/* Eyes: sclera, iris, pupil, lids */}
-        {[-1, 1].map((side) => (
-          <group key={side} position={[side * 0.052, 0.018, 0.128]}>
-            <mesh scale={[1, 0.82, 0.6]}>
-              <sphereGeometry args={[0.026, 20, 20]} />
-              <meshStandardMaterial color="#f4efe9" roughness={0.25} />
-            </mesh>
-            <mesh position={[0, 0, 0.013]}>
-              <sphereGeometry args={[0.0125, 16, 16]} />
-              <meshStandardMaterial color={IRIS} roughness={0.2} />
-            </mesh>
-            <mesh position={[0, 0, 0.021]}>
-              <sphereGeometry args={[0.0055, 12, 12]} />
-              <meshStandardMaterial color="#161010" roughness={0.1} />
-            </mesh>
-            {/* Eyelid (closes on blink) */}
-            <mesh
-              ref={side === -1 ? lidL : lidR}
-              position={[0, 0.012, 0.004]}
-              scale={[1.08, 0.12, 0.7]}
-              material={skinMat}
-            >
-              <sphereGeometry args={[0.028, 16, 16]} />
-            </mesh>
-          </group>
-        ))}
-
-        {/* Eyebrows */}
-        <mesh position={[-0.052, 0.062, 0.135]} rotation={[0.15, 0, 0.06]}>
-          <boxGeometry args={[0.052, 0.011, 0.014]} />
-          <meshStandardMaterial color={HAIR} roughness={0.95} />
-        </mesh>
-        <mesh position={[0.052, 0.062, 0.135]} rotation={[0.15, 0, -0.06]}>
-          <boxGeometry args={[0.052, 0.011, 0.014]} />
-          <meshStandardMaterial color={HAIR} roughness={0.95} />
-        </mesh>
-
-        {/* Nose */}
-        <mesh position={[0, -0.02, 0.15]} scale={[0.7, 1, 0.9]} material={skinMat}>
-          <sphereGeometry args={[0.026, 16, 16]} />
-        </mesh>
-        {/* Cheek warmth */}
-        <mesh position={[-0.075, -0.03, 0.115]} scale={[1, 0.7, 0.5]}>
-          <sphereGeometry args={[0.03, 12, 12]} />
-          <meshStandardMaterial color={SKIN_SHADOW} roughness={0.7} transparent opacity={0.35} />
-        </mesh>
-        <mesh position={[0.075, -0.03, 0.115]} scale={[1, 0.7, 0.5]}>
-          <sphereGeometry args={[0.03, 12, 12]} />
-          <meshStandardMaterial color={SKIN_SHADOW} roughness={0.7} transparent opacity={0.35} />
-        </mesh>
-
-        {/* Mustache + upper lip (static) */}
-        <mesh position={[0, -0.062, 0.138]} rotation={[0.35, 0, 0]} scale={[1, 0.55, 0.6]}>
-          <sphereGeometry args={[0.042, 16, 16]} />
-          <meshStandardMaterial color={BEARD} roughness={0.95} />
-        </mesh>
-
-        {/* Jaw group — rotates to open the mouth while speaking */}
-        <group ref={jaw} position={[0, -0.06, 0.02]}>
-          {/* Chin + jawline */}
-          <mesh position={[0, -0.055, 0.055]} scale={[0.78, 0.62, 0.8]} material={skinMat}>
-            <sphereGeometry args={[0.115, 24, 24]} />
-          </mesh>
-          {/* Lower lip */}
-          <mesh position={[0, -0.028, 0.122]} scale={[1, 0.4, 0.5]}>
-            <sphereGeometry args={[0.028, 16, 16]} />
-            <meshStandardMaterial color="#a86450" roughness={0.55} />
-          </mesh>
-          {/* Mouth interior (visible when jaw opens) */}
-          <mesh position={[0, -0.012, 0.1]} scale={[1, 0.5, 0.4]}>
-            <sphereGeometry args={[0.026, 12, 12]} />
-            <meshStandardMaterial color="#4a2028" roughness={0.9} />
-          </mesh>
-          {/* Beard around the jaw — salted auburn */}
-          <mesh position={[0, -0.075, 0.05]} scale={[0.95, 0.75, 0.9]}>
-            <sphereGeometry args={[0.118, 24, 24, 0, Math.PI * 2, Math.PI * 0.35, Math.PI * 0.65]} />
-            <meshStandardMaterial color={BEARD} roughness={0.98} />
-          </mesh>
-          <mesh position={[-0.055, -0.085, 0.075]} scale={[0.4, 0.5, 0.35]}>
-            <sphereGeometry args={[0.05, 12, 12]} />
-            <meshStandardMaterial color={BEARD_GRAY} roughness={0.98} transparent opacity={0.6} />
-          </mesh>
-          <mesh position={[0.05, -0.09, 0.08]} scale={[0.35, 0.45, 0.3]}>
-            <sphereGeometry args={[0.05, 12, 12]} />
-            <meshStandardMaterial color={BEARD_GRAY} roughness={0.98} transparent opacity={0.5} />
-          </mesh>
-        </group>
-
-        {/* Sideburns connecting hair to beard */}
-        <mesh position={[-0.125, -0.045, 0.045]} scale={[0.35, 0.9, 0.55]}>
-          <sphereGeometry args={[0.05, 12, 12]} />
-          <meshStandardMaterial color={BEARD} roughness={0.98} />
-        </mesh>
-        <mesh position={[0.125, -0.045, 0.045]} scale={[0.35, 0.9, 0.55]}>
-          <sphereGeometry args={[0.05, 12, 12]} />
-          <meshStandardMaterial color={BEARD} roughness={0.98} />
-        </mesh>
-      </group>
+    <group ref={group} dispose={null}>
+      <primitive object={scene} scale={fit.scale} position={fit.position} />
     </group>
   );
 }
+
+useGLTF.preload(AVATAR_URL);
 
 /* ── Component ────────────────────────────────────────────── */
 
@@ -341,6 +149,10 @@ interface LiveAvatarSession {
 
 export default function TravelDaddy({ tripContext, userName }: TravelDaddyProps) {
   const [chatOpen, setChatOpen] = useState(false);
+  const [translateOpen, setTranslateOpen] = useState(false);
+  const [translateText, setTranslateText] = useState("");
+  const [targetLang, setTargetLang] = useState("Spanish");
+  const translation = useHermesJob("translate");
   const [liveSession, setLiveSession] = useState<LiveAvatarSession | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioContainerRef = useRef<HTMLDivElement>(null);
@@ -495,23 +307,108 @@ export default function TravelDaddy({ tripContext, userName }: TravelDaddyProps)
         />
         <div ref={audioContainerRef} style={{ display: "none" }} />
         {!liveSession && (
-          <Canvas shadows camera={{ position: [0, 0.35, 2.4], fov: 40 }}>
+          <Canvas shadows camera={{ position: [0, 0.75, 2.6], fov: 42 }}>
             <ambientLight intensity={0.65} />
             <directionalLight position={[3, 5, 4]} intensity={1.1} castShadow />
             <directionalLight position={[-4, 2, -2]} intensity={0.3} color="#ece5f3" />
-            <HumanTravelDaddy isTalking={isTalking} />
-            <Environment preset="city" />
-            <ContactShadows position={[0, -0.95, 0]} opacity={0.35} scale={6} blur={2.4} far={3} />
+            <Suspense fallback={null}>
+              <AvatarModel isTalking={isTalking} />
+              <Environment preset="city" />
+            </Suspense>
+            <ContactShadows position={[0, 0, 0]} opacity={0.35} scale={6} blur={2.4} far={3} />
             <OrbitControls
               enableZoom={false}
               enablePan={false}
               maxPolarAngle={Math.PI / 2}
               minPolarAngle={Math.PI / 2.6}
-              target={[0, 0.35, 0]}
+              target={[0, 0.7, 0]}
             />
           </Canvas>
         )}
       </div>
+
+      {/* Translate toggle button (gay-travel translation avatar) */}
+      <button
+        className={`td-translate-toggle${translateOpen ? " active" : ""}`}
+        onClick={() => setTranslateOpen((v) => !v)}
+        title="Translate a phrase"
+      >
+        <Languages size={18} />
+      </button>
+
+      {/* Translate panel — powered by Gemma via Hermes */}
+      {translateOpen && (
+        <div className="td-chat-panel td-translate-panel">
+          <div className="td-chat-header">
+            <div className="td-chat-title">
+              <Languages size={16} />
+              <span>Translate</span>
+            </div>
+            <button className="td-chat-close" onClick={() => setTranslateOpen(false)}>
+              <X size={16} />
+            </button>
+          </div>
+          <div className="td-translate-body">
+            <textarea
+              className="td-translate-input"
+              value={translateText}
+              onChange={(e) => setTranslateText(e.target.value)}
+              placeholder="Type a phrase to translate…"
+              rows={3}
+              maxLength={6000}
+            />
+            <div className="td-translate-controls">
+              <label className="td-translate-lang-label">
+                <span>to</span>
+                <select
+                  className="td-translate-lang"
+                  value={targetLang}
+                  onChange={(e) => setTargetLang(e.target.value)}
+                >
+                  {[
+                    "Spanish", "French", "Portuguese", "Italian", "German",
+                    "Dutch", "Greek", "Thai", "Japanese", "Korean",
+                    "Mandarin Chinese", "Arabic", "Turkish", "English",
+                  ].map((lang) => (
+                    <option key={lang} value={lang}>{lang}</option>
+                  ))}
+                </select>
+              </label>
+              <button
+                className="td-send-btn td-translate-go"
+                onClick={() =>
+                  translation.submit({
+                    input: translateText.trim(),
+                    target_language: targetLang,
+                  })
+                }
+                disabled={translation.isBusy || !translateText.trim()}
+                title="Translate"
+              >
+                {translation.isBusy ? (
+                  <Loader2 size={16} className="spinner" />
+                ) : (
+                  <Send size={16} />
+                )}
+              </button>
+            </div>
+
+            {translation.isBusy && (
+              <div className="td-translate-hint">Asking Gemma…</div>
+            )}
+            {translation.status === "succeeded" && (
+              <div className="td-translate-result">
+                {extractHermesText(translation.result) || "No translation returned."}
+              </div>
+            )}
+            {translation.status === "failed" && (
+              <div className="td-translate-error">
+                {translation.error || "Translation is unavailable right now."}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Chat toggle button */}
       {!chatOpen && (

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const HERMES_TRANSLATION_INPUT_MAX_CHARS = 5965;
+export const HERMES_TRANSLATION_INPUT_MAX_CHARS = 5_965;
 export const HERMES_KNOWLEDGE_PROMPT_MAX_CHARS = 4_000;
 export const HERMES_KNOWLEDGE_CONTEXT_CHUNK_MAX_CHARS = 20_000;
 export const HERMES_KNOWLEDGE_CONTEXT_TOTAL_MAX_CHARS = 80_000;
@@ -32,6 +32,8 @@ export const hermesTranslationSchema = z
   })
   .strict()
   .refine(
+    // Budget covers the input plus the fixed relay context the client adds,
+    // matching the worker's total input budget.
     (value) =>
       utf8Size(value.input, HERMES_TRANSLATION_CONTEXT) <= HERMES_TRANSLATION_INPUT_MAX_BYTES,
     {
