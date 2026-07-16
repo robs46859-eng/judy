@@ -8,7 +8,8 @@
     "db:migrate": "prisma migrate deploy",
     "start": "node server.js",
     "lint": "eslint",
-    "test": "vitest run"
+    "test": "vitest run",
+    "rag:ingest": "npx --yes tsx src/lib/rag/ingest.ts"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

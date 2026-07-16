@@ -4,6 +4,7 @@ import { getSessionUserId } from '@/lib/auth';
 import { enforceRateLimit } from '@/lib/rate-limit';
 import { chatSchema, formatZodError } from '@/lib/schemas';
 import { runTravelKnowledge } from '@/lib/hermes/knowledge-runner';
+import { retrieveContext } from '@/lib/rag/retriever';
 
 export const runtime = 'nodejs';
 
@@ -73,13 +74,14 @@ ${tripContext.itineraryItems?.length ? `- Itinerary: ${tripContext.itineraryItem
 ${tripInfo}
 Respond naturally as Travel Daddy. Do NOT use markdown formatting — speak plainly as if talking out loud.`;
 
-    // Gemma-first: try the Hermes knowledge worker (grounded on the trip
-    // context passed as a knowledge chunk), then fall back to Gemini. Returns
-    // null — and we fall through — whenever Hermes is disabled or its low daily
-    // quota is spent, so chat never breaks.
+    // Gemma-first: try the Hermes knowledge worker, grounded on the trip
+    // context plus any relevant chunks from the local RAG index, then fall back
+    // to Gemini. Returns null — and we fall through — whenever Hermes is
+    // disabled or its low daily quota is spent, so chat never breaks.
+    const retrieved = await retrieveContext(message, { k: 3, maxChars: 2_000 });
     const gemmaReply = await runTravelKnowledge(request.headers, userId, {
       prompt: message,
-      contextChunks: [systemPrompt],
+      contextChunks: [systemPrompt, ...retrieved],
     });
     if (gemmaReply) {
       return NextResponse.json({ reply: gemmaReply, source: 'gemma' });

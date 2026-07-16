@@ -3,6 +3,7 @@ import 'server-only';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { z } from 'zod';
 import { runTravelKnowledge } from '@/lib/hermes/knowledge-runner';
+import { retrieveContext } from '@/lib/rag/retriever';
 
 /**
  * SEO generation for gay-travel destination pages.
@@ -171,14 +172,18 @@ export async function generateDestinationSeo(
 ): Promise<SeoResult> {
   const prompt = buildPrompt(input);
 
-  // 1) Gemma (grounded) first.
-  const gemmaText = await runTravelKnowledge(headers, userId, {
-    prompt,
-    contextChunks:
-      input.contextChunks && input.contextChunks.length > 0
-        ? input.contextChunks
-        : [`Destination SEO request for ${input.destination}.`],
+  // 1) Gemma (grounded) first — pull relevant chunks from the local RAG index
+  //    and merge with any caller-supplied context.
+  const retrieved = await retrieveContext(`${input.destination} gay travel`, {
+    k: 3,
+    maxChars: 2_000,
   });
+  const contextChunks = [...(input.contextChunks ?? []), ...retrieved];
+  if (contextChunks.length === 0) {
+    contextChunks.push(`Destination SEO request for ${input.destination}.`);
+  }
+
+  const gemmaText = await runTravelKnowledge(headers, userId, { prompt, contextChunks });
   const fromGemma = normalize(extractJsonObject(gemmaText), input, 'gemma');
   if (fromGemma) return fromGemma;
 

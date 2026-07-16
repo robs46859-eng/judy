@@ -118,21 +118,29 @@ the new ceilings once the VPS capacity is in place and I'll set them.
 compact chunks that ride along with the prompt (byte-budgeted under the 8 KB
 knowledge cap). Use it wherever the answer should be about *this* user's trip.
 
-**5b. Corpus ingestion (needs a worker endpoint).**
-For durable knowledge — your travel datasets, destination feeds, gay-travel
-guides — documents should live in the worker's `judy-travel` collection so Gemma
-retrieves them for everyone. `datasetToIngestionDocuments()` + `toJsonl()`
-produce the upload shape:
+**5b. Local RAG index (built — the chosen path).**
+Finding: the edge bridge exposes **only** `POST /v1/jobs` + `GET /v1/jobs/:id`.
+There is no ingestion endpoint — the `collection: "judy-travel"` value is just a
+query-time tag telling the worker which collection to retrieve from. Populating
+that collection is a worker/VPS concern, not something the producer apps do.
+(The PawsMemories app confirms this: it uses the same two bridge routes and does
+its own retrieval locally in `agent/knowledge/`.)
 
-```json
-{ "id": "lisbon-nightlife", "text": "…", "collection": "judy-travel",
-  "metadata": { "source": "feed", "region": "PT" } }
-```
+So Judy now grounds knowledge with a **local RAG index**, no worker change:
 
-**What I need from the worker to finish this:** the ingestion endpoint contract
-(URL, auth, batch format — does it accept this JSONL, or a specific schema?).
-Once you share it, I'll build the exporter job that pushes app data + feeds on a
-schedule.
+- `data/rag/sources/` — drop your datasets/feeds here (`.md`, `.txt`, or `.json`
+  arrays of `{ id?, text, metadata? }`).
+- `npm run rag:ingest` — chunks → embeds with Gemini `text-embedding-004` →
+  writes `data/rag/index/{chunks,embeddings}.json`.
+- `src/lib/rag/retriever.ts` — `retrieveContext(query)` returns top-k chunks
+  (cosine similarity, keyword fallback), byte-budgeted for the 8 KB cap.
+- Wired into the chat route and SEO generator: retrieved chunks are merged into
+  each knowledge job's `context_chunks`.
+
+Re-run `npm run rag:ingest` whenever the sources change. If you later stand up a
+worker-side ingestion endpoint, `datasetToIngestionDocuments()` + `toJsonl()` in
+`grounding.ts` still produce a clean `{ id, text, collection, metadata }` upload
+shape to push into `judy-travel`.
 
 ---
 
@@ -169,9 +177,10 @@ When you're ready to build Memories, we'll pick that media service separately.
 
 ## 8. Open questions for you
 
-1. **Ingestion contract** — what endpoint/format does the worker expose for
-   loading documents into `judy-travel`?
-2. **Target quotas** — what daily/throughput ceilings should we aim for once
+1. **Target quotas** — what daily/throughput ceilings should we aim for once
    compute is added?
-3. **Media service** — for Memories editing, do you want to stand up ffmpeg on
+2. **Media service** — for Memories editing, do you want to stand up ffmpeg on
    the VPS, or use a hosted media/vision API?
+3. **Worker-side corpus (optional)** — if you'd rather ground shared knowledge
+   on the VPS than per-app, we'd add an ingestion endpoint to the worker and
+   push via `datasetToIngestionDocuments()`. Local RAG (§5b) covers Judy for now.
