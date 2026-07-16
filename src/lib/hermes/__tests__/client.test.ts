@@ -201,4 +201,39 @@ describe('HermesClient', () => {
     });
     expect(String(error)).not.toContain('internal.example.test');
   });
+
+  it('preserves a bounded Retry-After value from bridge rate limits', async () => {
+    const fetchMock = vi.fn(async () =>
+      new Response(JSON.stringify({ error: 'slow down' }), {
+        status: 429,
+        headers: { 'Content-Type': 'application/json', 'Retry-After': '120' },
+      })
+    );
+    const client = new HermesClient(config(), fetchMock as typeof fetch);
+
+    await expect(client.getJob('bridge-job')).rejects.toMatchObject({
+      code: 'rate_limited',
+      httpStatus: 429,
+      retryAfterSeconds: 60,
+      publicMessage: 'Hermes service is busy. Please retry shortly.',
+    });
+  });
+
+  it('cancels a queued bridge job without sending a request body', async () => {
+    const fetchMock = vi.fn(
+      async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+        expect(String(input)).toBe('https://relay.example.test/v1/jobs/bridge-job');
+        expect(init?.method).toBe('DELETE');
+        expect(init?.body).toBeUndefined();
+        return jsonResponse({ job_id: 'bridge-job', status: 'failed', canceled: true });
+      }
+    );
+    const client = new HermesClient(config(), fetchMock as typeof fetch);
+
+    await expect(client.cancelJob('bridge-job')).resolves.toEqual({
+      job_id: 'bridge-job',
+      status: 'failed',
+      canceled: true,
+    });
+  });
 });

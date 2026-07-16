@@ -165,5 +165,14 @@ export const hermesStatusResponseSchema = z
   })
   .strict();
 
+export const hermesCancelResponseSchema = z
+  .object({
+    job_id: bridgeJobIdSchema,
+    status: z.literal('failed'),
+    canceled: z.literal(true),
+  })
+  .strict();
+
 export type HermesCreateResponse = z.infer<typeof hermesCreateResponseSchema>;
 export type HermesStatusResponse = z.infer<typeof hermesStatusResponseSchema>;
+export type HermesCancelResponse = z.infer<typeof hermesCancelResponseSchema>;

@@ -4,10 +4,12 @@ import { z } from 'zod';
 import { HermesClientError, HermesConfigError } from './errors';
 import {
   hermesCreateResponseSchema,
+  hermesCancelResponseSchema,
   hermesPayloadSchemas,
   hermesStatusResponseSchema,
   HERMES_TRANSLATION_CONTEXT,
   type HermesCreateResponse,
+  type HermesCancelResponse,
   type HermesJobType,
   type HermesKnowledgePayload,
   type HermesPayloadByType,
@@ -19,6 +21,7 @@ export const HERMES_DEFAULT_TIMEOUT_MS = 5_000;
 export const HERMES_MIN_TIMEOUT_MS = 100;
 export const HERMES_MAX_TIMEOUT_MS = 10_000;
 const HERMES_MAX_RESPONSE_BYTES = 64 * 1024;
+const HERMES_MAX_RETRY_AFTER_SECONDS = 60;
 
 export type DisabledHermesConfig = { enabled: false };
 export type EnabledHermesConfig = {
@@ -221,6 +224,24 @@ export class HermesClient {
     );
   }
 
+  async cancelJob(bridgeJobId: string): Promise<HermesCancelResponse> {
+    if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(bridgeJobId)) {
+      throw new HermesClientError('invalid_response', 'Hermes service returned an invalid response.');
+    }
+
+    return this.request(
+      `/v1/jobs/${encodeURIComponent(bridgeJobId)}`,
+      {
+        method: 'DELETE',
+        headers: {
+          Accept: 'application/json',
+          Authorization: `Bearer ${this.config.producerSecret}`,
+        },
+      },
+      hermesCancelResponseSchema
+    );
+  }
+
   private async request<T>(
     path: string,
     init: RequestInit,
@@ -240,6 +261,22 @@ export class HermesClient {
       });
 
       if (!response.ok) {
+        if (response.status === 429) {
+          const retryAfterHeader = response.headers.get('retry-after');
+          const rawRetryAfter = retryAfterHeader === null ? NaN : Number(retryAfterHeader);
+          const retryAfterSeconds = Number.isFinite(rawRetryAfter)
+            ? Math.min(
+                HERMES_MAX_RETRY_AFTER_SECONDS,
+                Math.max(1, Math.ceil(rawRetryAfter))
+              )
+            : 5;
+          throw new HermesClientError(
+            'rate_limited',
+            'Hermes service is busy. Please retry shortly.',
+            429,
+            retryAfterSeconds
+          );
+        }
         throw new HermesClientError('upstream_status', 'Hermes service request failed.');
       }
       if (!isJsonResponse(response)) {

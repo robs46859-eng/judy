@@ -14,6 +14,7 @@ export class HermesConfigError extends Error {
 export type HermesClientErrorCode =
   | 'network'
   | 'timeout'
+  | 'rate_limited'
   | 'upstream_status'
   | 'invalid_response';
 
@@ -21,7 +22,8 @@ export class HermesClientError extends Error {
   constructor(
     readonly code: HermesClientErrorCode,
     readonly publicMessage: string,
-    readonly httpStatus: 502 | 504 = 502
+    readonly httpStatus: 429 | 502 | 504 = 502,
+    readonly retryAfterSeconds?: number
   ) {
     super(publicMessage);
     this.name = 'HermesClientError';
@@ -54,7 +56,8 @@ export class HermesSubmissionError extends Error {
   constructor(
     readonly localJobId: string,
     readonly publicMessage: string,
-    readonly httpStatus: 502 | 504
+    readonly httpStatus: 429 | 502 | 504,
+    readonly retryAfterSeconds?: number
   ) {
     super(publicMessage);
     this.name = 'HermesSubmissionError';
@@ -92,10 +95,15 @@ export function sanitizeHermesJobError(
 
 export function publicClientError(error: unknown): {
   message: string;
-  status: 502 | 504;
+  status: 429 | 502 | 504;
+  retryAfterSeconds?: number;
 } {
   if (error instanceof HermesClientError) {
-    return { message: error.publicMessage, status: error.httpStatus };
+    return {
+      message: error.publicMessage,
+      status: error.httpStatus,
+      retryAfterSeconds: error.retryAfterSeconds,
+    };
   }
   return { message: 'Hermes service request failed.', status: 502 };
 }

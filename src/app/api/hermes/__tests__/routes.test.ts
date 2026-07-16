@@ -6,14 +6,16 @@ const mocks = vi.hoisted(() => ({
   getHermesService: vi.fn(),
   createJob: vi.fn(),
   getJob: vi.fn(),
+  cancelJob: vi.fn(),
 }));
 
 vi.mock('@/lib/auth', () => ({ getSessionUserId: mocks.getSessionUserId }));
 vi.mock('@/lib/hermes/server', () => ({ getHermesService: mocks.getHermesService }));
 
-import { GET as getStatus } from '../jobs/[id]/route';
+import { DELETE as cancelStatus, GET as getStatus } from '../jobs/[id]/route';
 import { POST as createKnowledge } from '../knowledge/route';
 import { POST as createTranslation } from '../translate/route';
+import { HermesClientError } from '@/lib/hermes/errors';
 
 const localId = '00000000-0000-4000-8000-000000000001';
 
@@ -22,9 +24,11 @@ beforeEach(() => {
   mocks.getHermesService.mockReset();
   mocks.createJob.mockReset();
   mocks.getJob.mockReset();
+  mocks.cancelJob.mockReset();
   mocks.getHermesService.mockReturnValue({
     createJob: mocks.createJob,
     getJob: mocks.getJob,
+    cancelJob: mocks.cancelJob,
   });
 });
 
@@ -107,5 +111,50 @@ describe('Hermes route response shaping', () => {
       error: null,
     });
     expect(JSON.stringify(body)).not.toContain('bridge-private');
+  });
+
+  it('passes a bounded bridge Retry-After header to polling clients', async () => {
+    mocks.getSessionUserId.mockResolvedValue('user-a');
+    mocks.getJob.mockRejectedValue(
+      new HermesClientError(
+        'rate_limited',
+        'Hermes service is busy. Please retry shortly.',
+        429,
+        12
+      )
+    );
+    const request = new Request(
+      `http://localhost/api/hermes/jobs/${localId}`,
+      { headers: { 'x-forwarded-for': '192.0.2.5' } }
+    ) as NextRequest;
+
+    const response = await getStatus(request, { params: Promise.resolve({ id: localId }) });
+
+    expect(response.status).toBe(429);
+    expect(response.headers.get('retry-after')).toBe('12');
+    expect(await response.json()).toEqual({
+      error: 'Hermes service is busy. Please retry shortly.',
+    });
+  });
+
+  it('cancels an owned queued job through the local ID', async () => {
+    mocks.getSessionUserId.mockResolvedValue('user-a');
+    mocks.cancelJob.mockResolvedValue({ job_id: localId, status: 'failed' });
+    const request = new Request(`http://localhost/api/hermes/jobs/${localId}`, {
+      method: 'DELETE',
+      headers: { 'x-forwarded-for': '192.0.2.5' },
+    }) as NextRequest;
+
+    const response = await cancelStatus(request, {
+      params: Promise.resolve({ id: localId }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ job_id: localId, status: 'failed' });
+    expect(mocks.cancelJob).toHaveBeenCalledWith({
+      userId: 'user-a',
+      localJobId: localId,
+      networkKey: 'ip:192.0.2.5',
+    });
   });
 });

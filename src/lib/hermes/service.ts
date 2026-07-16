@@ -17,6 +17,7 @@ import {
 import {
   normalizeHermesStatus,
   type HermesCreateResponse,
+  type HermesCancelResponse,
   type HermesJobStatus,
   type HermesJobType,
   type HermesJsonValue,
@@ -72,6 +73,7 @@ export interface HermesClientPort {
     idempotencyKey: string
   ): Promise<HermesCreateResponse>;
   getJob(bridgeJobId: string): Promise<HermesStatusResponse>;
+  cancelJob(bridgeJobId: string): Promise<HermesCancelResponse>;
 }
 
 export type PublicHermesJob = {
@@ -188,7 +190,12 @@ export class HermesService {
         resultJson: null,
         error: safeError,
       });
-      throw new HermesSubmissionError(localJob.id, safeError, clientError.status);
+      throw new HermesSubmissionError(
+        localJob.id,
+        safeError,
+        clientError.status,
+        clientError.retryAfterSeconds
+      );
     }
   }
 
@@ -234,6 +241,25 @@ export class HermesService {
         status === 'failed'
           ? sanitizeHermesJobError(upstream.error, [localJob.bridgeJobId])
           : null,
+    });
+    return publicJob(updated);
+  }
+
+  async cancelJob(input: {
+    userId: string;
+    networkKey: string;
+    localJobId: string;
+  }): Promise<PublicHermesJob> {
+    await this.enforceMinuteQuota('status', input.userId, input.networkKey);
+    const localJob = await this.store.findOwnedJob(input.localJobId, input.userId);
+    if (!localJob) throw new HermesNotFoundError();
+    if (isTerminal(localJob.status) || !localJob.bridgeJobId) return publicJob(localJob);
+
+    await this.client.cancelJob(localJob.bridgeJobId);
+    const updated = await this.store.transitionJob(localJob.id, {
+      status: 'failed',
+      resultJson: null,
+      error: 'Timed out and canceled before processing.',
     });
     return publicJob(updated);
   }

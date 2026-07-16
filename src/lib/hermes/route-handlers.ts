@@ -40,14 +40,23 @@ function errorResponse(error: unknown): NextResponse {
         status: 'failed',
         error: error.publicMessage,
       },
-      error.httpStatus
+      error.httpStatus,
+      error.retryAfterSeconds
+        ? { 'Retry-After': String(error.retryAfterSeconds) }
+        : undefined
     );
   }
   if (error instanceof HermesConfigError) {
     return json({ error: error.publicMessage }, error.httpStatus);
   }
   if (error instanceof HermesClientError) {
-    return json({ error: error.publicMessage }, error.httpStatus);
+    return json(
+      { error: error.publicMessage },
+      error.httpStatus,
+      error.retryAfterSeconds
+        ? { 'Retry-After': String(error.retryAfterSeconds) }
+        : undefined
+    );
   }
 
   console.error('Hermes route failed.');
@@ -109,6 +118,25 @@ export async function handleHermesStatus(
       },
       200
     );
+  } catch (error) {
+    return errorResponse(error);
+  }
+}
+
+export async function handleHermesCancel(
+  request: NextRequest,
+  localJobId: string
+): Promise<NextResponse> {
+  const userId = await getSessionUserId();
+  if (!userId) return json({ error: 'Authentication required' }, 401);
+
+  try {
+    const job = await getHermesService().cancelJob({
+      userId,
+      networkKey: getHermesNetworkQuotaKey(request.headers, userId),
+      localJobId,
+    });
+    return json({ job_id: job.job_id, status: job.status }, 200);
   } catch (error) {
     return errorResponse(error);
   }

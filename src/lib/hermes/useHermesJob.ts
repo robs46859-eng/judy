@@ -31,9 +31,9 @@ interface HermesJobResponse {
 }
 
 interface UseHermesJobOptions {
-  /** Delay between status polls. Default 900ms. */
+  /** Delay between status polls. Default 5s. */
   pollIntervalMs?: number;
-  /** Overall budget before giving up. Default 30s. */
+  /** Overall budget before giving up. Default 45s. */
   timeoutMs?: number;
 }
 
@@ -44,9 +44,17 @@ const ENDPOINTS: Record<HermesJobType, string> = {
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
+function retryAfterMs(response: Response): number {
+  const retryAfterHeader = response.headers.get('retry-after');
+  const seconds = retryAfterHeader === null ? NaN : Number(retryAfterHeader);
+  return Number.isFinite(seconds)
+    ? Math.min(60_000, Math.max(1_000, Math.ceil(seconds * 1_000)))
+    : 5_000;
+}
+
 export function useHermesJob(type: HermesJobType, options?: UseHermesJobOptions) {
-  const pollIntervalMs = options?.pollIntervalMs ?? 900;
-  const timeoutMs = options?.timeoutMs ?? 30_000;
+  const pollIntervalMs = options?.pollIntervalMs ?? 5_000;
+  const timeoutMs = options?.timeoutMs ?? 45_000;
 
   const [status, setStatus] = useState<HermesUiStatus>('idle');
   const [result, setResult] = useState<unknown>(null);
@@ -125,7 +133,12 @@ export function useHermesJob(type: HermesJobType, options?: UseHermesJobOptions)
 
           if (!pollRes.ok) {
             // Rate-limited: back off and keep waiting. Other errors are fatal.
-            if (pollRes.status === 429) continue;
+            if (pollRes.status === 429) {
+              const backoffMs = retryAfterMs(pollRes);
+              if (Date.now() + backoffMs >= deadline) break;
+              await sleep(backoffMs);
+              continue;
+            }
             return fail(pollData.error || `Status check failed (${pollRes.status}).`);
           }
           if (pollData.status === 'succeeded') return succeed(pollData.result);
@@ -135,6 +148,9 @@ export function useHermesJob(type: HermesJobType, options?: UseHermesJobOptions)
         }
 
         if (run.cancelled) return null;
+        await fetch(`/api/hermes/jobs/${encodeURIComponent(jobId)}`, {
+          method: 'DELETE',
+        }).catch(() => undefined);
         return fail('Timed out waiting for a response.');
       } catch {
         return fail('Network error — please try again.');

@@ -11,6 +11,7 @@ import {
 } from '../service';
 import type {
   HermesCreateResponse,
+  HermesCancelResponse,
   HermesJobStatus,
   HermesJobType,
   HermesJsonValue,
@@ -144,6 +145,11 @@ class CountingClient implements HermesClientPort {
     this.getCalls.push(bridgeJobId);
     return this.statusHandler ? this.statusHandler(bridgeJobId) : this.statusResponse;
   }
+
+  async cancelJob(bridgeJobId: string): Promise<HermesCancelResponse> {
+    this.getCalls.push(`cancel:${bridgeJobId}`);
+    return { job_id: bridgeJobId, status: 'failed', canceled: true };
+  }
 }
 
 function createService(store: MemoryStore, client: CountingClient, idFactory = () => localId) {
@@ -251,6 +257,33 @@ describe('HermesService create flow', () => {
 });
 
 describe('HermesService status flow', () => {
+  it('cancels an owned nonterminal bridge job and records a safe local failure', async () => {
+    const store = new MemoryStore();
+    const client = new CountingClient();
+    store.addJob({
+      id: localId,
+      userId: 'user-a',
+      type: 'knowledge',
+      bridgeJobId: 'bridge-private',
+      status: 'queued',
+    });
+    const service = createService(store, client);
+
+    const result = await service.cancelJob({
+      userId: 'user-a',
+      networkKey: 'ip:198.51.100.1',
+      localJobId: localId,
+    });
+
+    expect(result).toEqual({
+      job_id: localId,
+      status: 'failed',
+      result: null,
+      error: 'Timed out and canceled before processing.',
+    });
+    expect(client.getCalls).toEqual(['cancel:bridge-private']);
+  });
+
   it('checks quota before owner lookup and returns the same 404 for another user', async () => {
     const store = new MemoryStore();
     const client = new CountingClient();
