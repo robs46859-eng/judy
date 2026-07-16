@@ -372,6 +372,12 @@ h1, h2, h3, h4,
   transition: all var(--transition);
   width: 100%;
   white-space: nowrap;
+  /* Button reset (Swarm J6: nav items are real <button>s now, for keyboard
+     access) — undo the browser's default button chrome/typography. */
+  background: none;
+  border: none;
+  text-align: left;
+  font: inherit;
 }
 
 .nav-item:hover {
@@ -445,6 +451,19 @@ h1, h2, h3, h4,
   object-position: center bottom;
   border-radius: inherit;
   transition: transform 220ms ease, filter 220ms ease;
+}
+
+/* J7: rigged GLB avatar — fills the same canvas-wrapper the static portrait
+   and HeyGen video use, so all three avatar modes share one layout box. */
+.td-glb-avatar {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
+}
+
+.td-glb-avatar canvas {
+  border-radius: inherit;
 }
 
 .td-static-avatar.is-talking {
@@ -2513,7 +2532,51 @@ h1, h2, h3, h4,
   100% { transform: translate(0, 0); }
 }
 
+/* Screen-reader-only text — visually hidden but still announced. Used for
+   status text (e.g. "Travel Daddy is typing…") that has a visual-only
+   equivalent (the bouncing dots). */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Live-avatar caption overlay (Swarm J6 — spec calls for captions/transcript
+   alongside Mute/Stop/Replay; the chat panel is the transcript, this is the
+   caption for whenever it's collapsed while the avatar is talking). */
+.td-caption {
+  position: absolute;
+  left: 1rem;
+  right: 1rem;
+  bottom: 1rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(0, 0, 0, 0.62);
+  color: #fff;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  border-radius: var(--radius-sm);
+  text-align: center;
+  z-index: 15;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .film-grain { animation: none; }
   .bg-skyline { animation: none; }
+
+  /* J6 QA: the chat/avatar UI has several purely-decorative infinite
+     animations (glow pulse, entrance slide, typing dots, live-status dot).
+     None of them carry meaning beyond "something is active," which is
+     already conveyed by the surrounding text/state, so they're safe to
+     fully disable rather than just slow down. */
+  .td-chat-toggle { animation: none; }
+  .td-chat-panel { animation: none; }
+  .td-avatar-dot { animation: none; }
+  .td-typing span { animation: none; }
+  .td-static-avatar.is-talking { transition: none; }
 }

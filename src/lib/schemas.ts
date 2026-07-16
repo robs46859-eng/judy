@@ -76,6 +76,12 @@ export const avatarStopSchema = z.object({
   sessionId: z.string().trim().min(1).max(200),
 });
 
+/** Swarm J7 stage 2 — text to synthesize + Rhubarb-lip-sync for the GLB avatar. */
+export const avatarLipsyncSchema = z.object({
+  text: z.string().trim().min(1).max(2000),
+  language: z.string().trim().min(1).max(20).optional(),
+});
+
 /**
  * Conversational onboarding preferences (Swarm J2/J3). `.strict()` so any
  * unlisted key — including anything a model might try to smuggle in — is

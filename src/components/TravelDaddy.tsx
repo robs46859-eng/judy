@@ -25,6 +25,11 @@ import { useHermesJob } from "@/lib/hermes/useHermesJob";
 import { extractHermesText } from "@/lib/hermes/result";
 import OnboardingIntake from "./OnboardingIntake";
 import { SPEECH_SYNTHESIS_STORAGE_KEY } from "./VoiceSettings";
+import AvatarStage from "./avatar/AvatarStage";
+import type { RhubarbCue } from "@/lib/avatar/visemeTimeline";
+
+/** Placeholder rig — swap to /models/RobJudy.glb once it's added under public/models/. */
+const GLB_AVATAR_MODEL_URL = "/models/JobuJudy.glb";
 
 interface ChatTranslation {
   original: string;
@@ -81,6 +86,15 @@ export default function TravelDaddy({ tripContext, userName, userEmail }: Travel
     return window.localStorage.getItem(SPEECH_SYNTHESIS_STORAGE_KEY) === "true";
   });
   const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus>("loading");
+  // J7: rigged GLB is the primary local avatar now — robjudy.jpg is the
+  // last-resort fallback for when the GLB fails to load/render (missing
+  // file, malformed GLTF, no WebGL, ...), not the everyday default.
+  const [glbAvatarFailed, setGlbAvatarFailed] = useState(false);
+  // Stage 2 (accurate lip sync) — populated once /api/avatar/chat (or a
+  // dedicated visemes endpoint) returns a Rhubarb cue timeline for the
+  // current reply. Null means "no timeline yet" and AvatarMesh falls back
+  // to the stage-1 approximate jaw movement driven by `isTalking`.
+  const [visemeCues, setVisemeCues] = useState<RhubarbCue[] | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioContainerRef = useRef<HTMLDivElement>(null);
   const roomRef = useRef<import("livekit-client").Room | null>(null);
@@ -253,6 +267,9 @@ export default function TravelDaddy({ tripContext, userName, userEmail }: Travel
     setInput("");
     setIsLoading(true);
     setIsTalking(true);
+    // Clear any cue timeline from the previous reply — stage-1 approximate
+    // jaw movement covers this reply until (if) a fresh timeline arrives.
+    setVisemeCues(null);
 
     try {
       const res = await fetch("/api/avatar/chat", {
@@ -289,6 +306,22 @@ export default function TravelDaddy({ tripContext, userName, userEmail }: Travel
         }).catch(() => {});
       } else if (speechEnabled) {
         speak(spokenText);
+        // Stage 2 (Swarm J7): best-effort request for a precise Rhubarb
+        // cue timeline to replace the stage-1 approximate jaw movement.
+        // Until a TTS provider is configured this always 501s, which is
+        // expected — the catch below just means "stay on stage 1".
+        fetch("/api/avatar/lipsync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: spokenText }),
+        })
+          .then((lipsyncRes) => (lipsyncRes.ok ? lipsyncRes.json() : null))
+          .then((lipsyncData) => {
+            if (lipsyncData?.cues?.length) setVisemeCues(lipsyncData.cues);
+          })
+          .catch(() => {
+            /* stage 1 remains the fallback — nothing to do here */
+          });
       }
 
       setMessages((prev) => [...prev, { role: "daddy", text: reply, translation: replyTranslation }]);
@@ -355,7 +388,20 @@ export default function TravelDaddy({ tripContext, userName, userEmail }: Travel
           }}
         />
         <div ref={audioContainerRef} style={{ display: "none" }} />
-        {!liveSession && (
+        {/* J7: rigged GLB is the primary local avatar (jaw/viseme-driven
+            "talking" motion); the flat portrait is only the last-resort
+            fallback if the 3D model can't load or render at all. */}
+        {!liveSession && !glbAvatarFailed && (
+          <div className="td-glb-avatar" role="img" aria-label="Travel Daddy, Judy's travel translator and guide">
+            <AvatarStage
+              modelUrl={GLB_AVATAR_MODEL_URL}
+              talking={isTalking}
+              cues={visemeCues}
+              onUnavailable={() => setGlbAvatarFailed(true)}
+            />
+          </div>
+        )}
+        {!liveSession && glbAvatarFailed && (
           <Image
             src="/avatars/robjudy.jpg"
             alt="Travel Daddy, Judy's travel translator and guide"
@@ -373,8 +419,9 @@ export default function TravelDaddy({ tripContext, userName, userEmail }: Travel
             onClick={handleReplay}
             disabled={!hasDaddyReply || (!liveSession && !speechEnabled)}
             title="Replay last reply"
+            aria-label="Replay last reply"
           >
-            <RotateCcw size={16} />
+            <RotateCcw size={16} aria-hidden="true" />
           </button>
           {!liveOptIn ? (
             <button
@@ -382,7 +429,7 @@ export default function TravelDaddy({ tripContext, userName, userEmail }: Travel
               onClick={() => setLiveOptIn(true)}
               title="Start the live avatar"
             >
-              <Video size={16} /> <span>Go live</span>
+              <Video size={16} aria-hidden="true" /> <span>Go live</span>
             </button>
           ) : (
             <>
@@ -390,19 +437,35 @@ export default function TravelDaddy({ tripContext, userName, userEmail }: Travel
                 className="td-avatar-control-btn"
                 onClick={() => setMuted((m) => !m)}
                 title={muted ? "Unmute" : "Mute"}
+                aria-label={muted ? "Unmute live avatar" : "Mute live avatar"}
+                aria-pressed={muted}
               >
-                {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+                {muted ? <VolumeX size={16} aria-hidden="true" /> : <Volume2 size={16} aria-hidden="true" />}
               </button>
               <button
                 className="td-avatar-control-btn"
                 onClick={stopLiveSession}
                 title="Stop live avatar"
+                aria-label="Stop live avatar"
               >
-                <Square size={16} />
+                <Square size={16} aria-hidden="true" />
               </button>
             </>
           )}
         </div>
+
+        {/* Caption (Swarm J6): the chat panel is the full transcript, but the
+            person may have it collapsed while the avatar is talking — show a
+            live caption of the current line so audio is never the only way
+            to get the reply. */}
+        {isTalking && hasDaddyReply && (
+          <div className="td-caption" role="status" aria-live="polite">
+            {(() => {
+              const lastDaddyMsg = [...messages].reverse().find((m) => m.role === "daddy");
+              return lastDaddyMsg?.translation?.translatedText || lastDaddyMsg?.text || "";
+            })()}
+          </div>
+        )}
       </div>
 
       {/* Translate toggle button (gay-travel translation avatar) */}
@@ -410,8 +473,10 @@ export default function TravelDaddy({ tripContext, userName, userEmail }: Travel
         className={`td-translate-toggle${translateOpen ? " active" : ""}`}
         onClick={() => setTranslateOpen((v) => !v)}
         title="Translate a phrase"
+        aria-label="Translate a phrase"
+        aria-pressed={translateOpen}
       >
-        <Languages size={18} />
+        <Languages size={18} aria-hidden="true" />
       </button>
 
       {/* Translate panel — powered by Gemma via Hermes */}
@@ -419,11 +484,15 @@ export default function TravelDaddy({ tripContext, userName, userEmail }: Travel
         <div className="td-chat-panel td-translate-panel">
           <div className="td-chat-header">
             <div className="td-chat-title">
-              <Languages size={16} />
+              <Languages size={16} aria-hidden="true" />
               <span>Translate</span>
             </div>
-            <button className="td-chat-close" onClick={() => setTranslateOpen(false)}>
-              <X size={16} />
+            <button
+              className="td-chat-close"
+              onClick={() => setTranslateOpen(false)}
+              aria-label="Close translate panel"
+            >
+              <X size={16} aria-hidden="true" />
             </button>
           </div>
           <div className="td-translate-body">
@@ -466,21 +535,22 @@ export default function TravelDaddy({ tripContext, userName, userEmail }: Travel
                 onClick={() => runTranslate(translateText.trim(), sourceLang, targetLang)}
                 disabled={translation.isBusy || !translateText.trim()}
                 title="Translate"
+                aria-label="Translate"
               >
                 {translation.isBusy ? (
-                  <Loader2 size={16} className="spinner" />
+                  <Loader2 size={16} className="spinner" aria-hidden="true" />
                 ) : (
-                  <Send size={16} />
+                  <Send size={16} aria-hidden="true" />
                 )}
               </button>
             </div>
 
             {translation.isBusy && (
-              <div className="td-translate-hint">Asking Gemma…</div>
+              <div className="td-translate-hint" role="status" aria-live="polite">Asking Gemma…</div>
             )}
             {translation.status === "succeeded" && (
               <>
-                <div className="td-translate-result">
+                <div className="td-translate-result" role="status" aria-live="polite">
                   {extractHermesText(translation.result) || "No translation returned."}
                 </div>
                 <div className="td-translate-swap-row">
@@ -490,13 +560,13 @@ export default function TravelDaddy({ tripContext, userName, userEmail }: Travel
                     disabled={translation.isBusy || !extractHermesText(translation.result)}
                     title="Swap languages and translate back"
                   >
-                    <ArrowLeftRight size={14} /> Swap languages
+                    <ArrowLeftRight size={14} aria-hidden="true" /> Swap languages
                   </button>
                 </div>
               </>
             )}
             {translation.status === "failed" && (
-              <div className="td-translate-error">
+              <div className="td-translate-error" role="alert">
                 {translation.error || "Translation is unavailable right now."}
               </div>
             )}
@@ -514,7 +584,7 @@ export default function TravelDaddy({ tripContext, userName, userEmail }: Travel
           }}
           title="Chat with Travel Daddy"
         >
-          <MessageCircle size={20} />
+          <MessageCircle size={20} aria-hidden="true" />
           <span>Ask Travel Daddy</span>
         </button>
       )}
@@ -526,11 +596,15 @@ export default function TravelDaddy({ tripContext, userName, userEmail }: Travel
         <div className="td-chat-panel">
           <div className="td-chat-header">
             <div className="td-chat-title">
-              <div className="td-avatar-dot" />
+              <div className="td-avatar-dot" aria-hidden="true" />
               <span>{onboardingStatus === "pending" ? "Getting to know you" : "Travel Daddy"}</span>
             </div>
-            <button className="td-chat-close" onClick={() => setChatOpen(false)}>
-              <X size={16} />
+            <button
+              className="td-chat-close"
+              onClick={() => setChatOpen(false)}
+              aria-label="Close chat"
+            >
+              <X size={16} aria-hidden="true" />
             </button>
           </div>
 
@@ -541,10 +615,10 @@ export default function TravelDaddy({ tripContext, userName, userEmail }: Travel
             />
           ) : (
             <>
-              <div className="td-chat-messages">
+              <div className="td-chat-messages" role="log" aria-live="polite" aria-relevant="additions">
                 {messages.map((msg, i) => (
                   <div key={i} className={`td-msg ${msg.role === "user" ? "td-msg-user" : "td-msg-daddy"}`}>
-                    <span className="td-msg-avatar" aria-hidden>
+                    <span className="td-msg-avatar" aria-hidden="true">
                       {msg.role === "daddy" ? <Compass size={14} /> : userInitial}
                     </span>
                     <div className="td-msg-bubble">
@@ -563,9 +637,10 @@ export default function TravelDaddy({ tripContext, userName, userEmail }: Travel
                 ))}
                 {isLoading && (
                   <div className="td-msg td-msg-daddy">
-                    <span className="td-msg-avatar" aria-hidden><Compass size={14} /></span>
+                    <span className="td-msg-avatar" aria-hidden="true"><Compass size={14} /></span>
                     <div className="td-msg-bubble td-typing">
-                      <span /><span /><span />
+                      <span aria-hidden="true" /><span aria-hidden="true" /><span aria-hidden="true" />
+                      <span className="sr-only">Travel Daddy is typing…</span>
                     </div>
                   </div>
                 )}
@@ -582,14 +657,16 @@ export default function TravelDaddy({ tripContext, userName, userEmail }: Travel
                   placeholder="Ask Travel Daddy anything..."
                   className="td-chat-input"
                   disabled={isLoading}
+                  aria-label="Message to Travel Daddy"
                 />
                 <button
                   className="td-send-btn"
                   onClick={sendMessage}
                   disabled={isLoading || !input.trim()}
                   title="Send message"
+                  aria-label="Send message"
                 >
-                  {isLoading ? <Loader2 size={18} className="spinner" /> : <Send size={18} />}
+                  {isLoading ? <Loader2 size={18} className="spinner" aria-hidden="true" /> : <Send size={18} aria-hidden="true" />}
                 </button>
               </div>
             </>

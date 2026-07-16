@@ -40,6 +40,20 @@ function installMemoryStorage() {
   });
 }
 
+/**
+ * jsdom doesn't implement `Element.prototype.scrollIntoView` at all (a
+ * long-standing, well-known gap) — any component that calls it (e.g. an
+ * auto-scroll-to-latest-message effect) throws "scrollIntoView is not a
+ * function" the moment it runs against a real jsdom node. A no-op stub is
+ * all tests need; nothing here asserts on scroll behavior.
+ */
+function installScrollIntoViewStub() {
+  if (typeof window === 'undefined') return;
+  if (typeof window.Element.prototype.scrollIntoView === 'function') return;
+  window.Element.prototype.scrollIntoView = () => {};
+}
+
 beforeEach(() => {
   installMemoryStorage();
+  installScrollIntoViewStub();
 });
