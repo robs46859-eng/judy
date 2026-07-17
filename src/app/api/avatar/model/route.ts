@@ -28,13 +28,17 @@ function modelResponse(
   });
 }
 
-async function bundledFallback(request: NextRequest): Promise<NextResponse> {
+async function bundledFallback(): Promise<NextResponse> {
   const facePath = join(process.cwd(), 'public', 'models', 'judyface.glb');
   if (existsSync(facePath)) {
-    const response = NextResponse.redirect(new URL('/models/judyface.glb', request.url));
-    response.headers.set('Cache-Control', 'no-cache');
-    response.headers.set('X-Content-Type-Options', 'nosniff');
-    return response;
+    try {
+      const bytes = await readFile(facePath);
+      const sha256 = createHash('sha256').update(bytes).digest('hex');
+      return modelResponse(bytes, sha256, 'no-cache');
+    } catch {
+      // Fall through to the older bundled model if the preferred file is
+      // present but temporarily unreadable.
+    }
   }
 
   try {
@@ -65,10 +69,10 @@ export async function GET(request: NextRequest) {
   try {
     current = await readCurrentAvatar();
   } catch {
-    return bundledFallback(request);
+    return bundledFallback();
   }
 
-  if (!current) return bundledFallback(request);
+  if (!current) return bundledFallback();
 
   return modelResponse(
     current.bytes,

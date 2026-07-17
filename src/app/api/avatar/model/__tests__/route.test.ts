@@ -55,13 +55,16 @@ describe('GET /api/avatar/model', () => {
     expect((await GET(request('?v=000000000000'))).headers.get('Cache-Control')).toBe('no-cache');
   });
 
-  it('redirects to the preferred bundled face when no upload is active', async () => {
+  it('serves the preferred bundled face directly when no upload is active', async () => {
     mocks.readCurrentAvatar.mockResolvedValue(null);
     mocks.existsSync.mockReturnValue(true);
+    const bundledFace = Buffer.from('bundled face glTF bytes');
+    mocks.readFile.mockResolvedValue(bundledFace);
 
     const response = await GET(request());
-    expect(response.status).toBe(307);
-    expect(response.headers.get('Location')).toBe('http://localhost/models/judyface.glb');
+    expect(response.status).toBe(200);
+    expect(Buffer.from(await response.arrayBuffer())).toEqual(bundledFace);
+    expect(response.headers.get('Content-Type')).toBe('model/gltf-binary');
     expect(response.headers.get('Cache-Control')).toBe('no-cache');
   });
 
