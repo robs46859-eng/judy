@@ -64,10 +64,13 @@ export async function POST(request: NextRequest) {
   let tempDir: string | null = null;
   try {
     tempDir = await mkdtemp(join(tmpdir(), 'judy-lipsync-'));
-    const wavPath = join(tempDir, `${randomUUID()}.wav`);
+    const requestId = randomUUID();
+    const wavPath = join(tempDir, `${requestId}.wav`);
+    const dialogFilePath = join(tempDir, `${requestId}.txt`);
     await writeFile(wavPath, speech.audio);
+    await writeFile(dialogFilePath, parsed.data.text, { encoding: 'utf8', mode: 0o600 });
 
-    const cues = await runRhubarb(wavPath);
+    const cues = await runRhubarb(wavPath, { dialogFilePath });
     return NextResponse.json({ audio: audioBase64, mimeType: speech.mimeType, cues });
   } catch (error) {
     if (error instanceof RhubarbUnavailableError) {

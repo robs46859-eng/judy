@@ -26,10 +26,11 @@ import { extractHermesText } from "@/lib/hermes/result";
 import OnboardingIntake from "./OnboardingIntake";
 import { SPEECH_SYNTHESIS_STORAGE_KEY } from "./VoiceSettings";
 import AvatarStage from "./avatar/AvatarStage";
+import VoiceInputButton from "./avatar/VoiceInputButton";
 import type { RhubarbCue } from "@/lib/avatar/visemeTimeline";
 
-/** Placeholder rig — swap to /models/RobJudy.glb once it's added under public/models/. */
-const GLB_AVATAR_MODEL_URL = "/models/JobuJudy.glb";
+/** Versioned filename avoids stale CDN/browser caches after replacing the GLB. */
+export const GLB_AVATAR_MODEL_URL = "/models/judyrig.glb";
 
 interface ChatTranslation {
   original: string;
@@ -56,6 +57,12 @@ interface LiveAvatarSession {
   sessionId: string;
 }
 
+interface LipSyncResponse {
+  audio?: unknown;
+  mimeType?: unknown;
+  cues?: unknown;
+}
+
 type OnboardingStatus = "loading" | "pending" | "complete";
 
 const TRANSLATE_LANGUAGES = [
@@ -63,6 +70,15 @@ const TRANSLATE_LANGUAGES = [
   "Dutch", "Greek", "Thai", "Japanese", "Korean",
   "Mandarin Chinese", "Arabic", "Turkish", "English",
 ];
+
+function audioBlobFromBase64(audio: string, mimeType: string): Blob {
+  const decoded = window.atob(audio);
+  const bytes = new Uint8Array(decoded.length);
+  for (let index = 0; index < decoded.length; index += 1) {
+    bytes[index] = decoded.charCodeAt(index);
+  }
+  return new Blob([bytes], { type: mimeType });
+}
 
 export default function TravelDaddy({ tripContext, userName, userEmail }: TravelDaddyProps) {
   const [chatOpen, setChatOpen] = useState(false);
@@ -99,6 +115,22 @@ export default function TravelDaddy({ tripContext, userName, userEmail }: Travel
   const audioContainerRef = useRef<HTMLDivElement>(null);
   const roomRef = useRef<import("livekit-client").Room | null>(null);
   const mutedRef = useRef(false);
+  const localAudioRef = useRef<HTMLAudioElement | null>(null);
+  const localAudioUrlRef = useRef<string | null>(null);
+  const speechRequestRef = useRef(0);
+  const talkingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    {
+      role: "daddy",
+      text: "Hey there, traveler! I'm Travel Daddy — your trusty woodsman guide. Ask me anything about your trip and I'll steer you right! HAH!",
+    },
+  ]);
+  const [input, setInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [isTalking, setIsTalking] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const userInitial = (userName || "You").trim().charAt(0).toUpperCase();
 
@@ -213,30 +245,130 @@ export default function TravelDaddy({ tripContext, userName, userEmail }: Travel
     setLiveSession(null);
   }, []);
 
-  // Feature-flagged browser speech synthesis — only used as a GLB/text
-  // fallback voice when there's no live HeyGen session. Best-effort: any
-  // failure (no speechSynthesis, blocked autoplay, ...) is silently ignored.
-  const speak = useCallback((text: string) => {
-    if (typeof window === "undefined" || !window.speechSynthesis) return;
-    try {
-      window.speechSynthesis.cancel();
-      window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
-    } catch {
-      /* best-effort only */
+  const releaseLocalAudio = useCallback((updateUi = true) => {
+    const audio = localAudioRef.current;
+    if (audio) {
+      audio.onplay = null;
+      audio.onended = null;
+      audio.onerror = null;
+      audio.pause();
+      localAudioRef.current = null;
+    }
+    if (localAudioUrlRef.current) {
+      URL.revokeObjectURL(localAudioUrlRef.current);
+      localAudioUrlRef.current = null;
+    }
+    if (updateUi) {
+      setIsTalking(false);
+      setVisemeCues(null);
     }
   }, []);
 
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      role: "daddy",
-      text: "Hey there, traveler! I'm Travel Daddy — your trusty woodsman guide. Ask me anything about your trip and I'll steer you right! HAH!",
-    },
-  ]);
-  const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [isTalking, setIsTalking] = useState(false);
-  const chatEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const stopLocalSpeech = useCallback(() => {
+    speechRequestRef.current += 1;
+    if (talkingTimerRef.current) {
+      clearTimeout(talkingTimerRef.current);
+      talkingTimerRef.current = null;
+    }
+    if (typeof window !== "undefined") {
+      window.speechSynthesis?.cancel();
+    }
+    releaseLocalAudio();
+  }, [releaseLocalAudio]);
+
+  const speakWithBrowser = useCallback((text: string) => {
+    if (typeof window === "undefined" || !window.speechSynthesis) return;
+    stopLocalSpeech();
+    const requestId = speechRequestRef.current;
+    try {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.onstart = () => {
+        if (speechRequestRef.current === requestId) setIsTalking(true);
+      };
+      const finish = () => {
+        if (speechRequestRef.current !== requestId) return;
+        setIsTalking(false);
+        setVisemeCues(null);
+      };
+      utterance.onend = finish;
+      utterance.onerror = finish;
+      window.speechSynthesis.speak(utterance);
+    } catch {
+      setIsTalking(false);
+    }
+  }, [stopLocalSpeech]);
+
+  /**
+   * Play the exact WAV Rhubarb analyzed. Starting the cue clock from the
+   * audio element's `play` event keeps the visible mouth and audible voice
+   * on the same timeline. Browser speech remains the fail-open fallback.
+   */
+  const speakWithLipSync = useCallback(async (text: string, language?: string) => {
+    stopLocalSpeech();
+    const requestId = speechRequestRef.current;
+    try {
+      const response = await fetch("/api/avatar/lipsync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, ...(language ? { language } : {}) }),
+      });
+      if (!response.ok) throw new Error("Lip sync unavailable");
+
+      const payload = (await response.json()) as LipSyncResponse;
+      if (
+        speechRequestRef.current !== requestId ||
+        typeof payload.audio !== "string" ||
+        typeof payload.mimeType !== "string"
+      ) {
+        if (speechRequestRef.current === requestId) throw new Error("Invalid lip sync response");
+        return;
+      }
+
+      const cues = Array.isArray(payload.cues) ? (payload.cues as RhubarbCue[]) : [];
+      const url = URL.createObjectURL(audioBlobFromBase64(payload.audio, payload.mimeType));
+      const audio = new Audio(url);
+      localAudioRef.current = audio;
+      localAudioUrlRef.current = url;
+
+      const finish = () => {
+        if (localAudioRef.current !== audio) return;
+        releaseLocalAudio();
+      };
+      audio.onplay = () => {
+        if (speechRequestRef.current !== requestId || localAudioRef.current !== audio) return;
+        setVisemeCues(cues.length > 0 ? cues : null);
+        setIsTalking(true);
+      };
+      audio.onended = finish;
+      audio.onerror = () => {
+        if (speechRequestRef.current !== requestId || localAudioRef.current !== audio) return;
+        releaseLocalAudio();
+        speakWithBrowser(text);
+      };
+      await audio.play();
+    } catch {
+      if (speechRequestRef.current === requestId) speakWithBrowser(text);
+    }
+  }, [releaseLocalAudio, speakWithBrowser, stopLocalSpeech]);
+
+  const showEstimatedTalking = useCallback((text: string) => {
+    if (talkingTimerRef.current) clearTimeout(talkingTimerRef.current);
+    setIsTalking(true);
+    const duration = Math.min(Math.max(text.length * 55, 1200), 8000);
+    talkingTimerRef.current = setTimeout(() => {
+      talkingTimerRef.current = null;
+      setIsTalking(false);
+    }, duration);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      speechRequestRef.current += 1;
+      if (talkingTimerRef.current) clearTimeout(talkingTimerRef.current);
+      window.speechSynthesis?.cancel();
+      releaseLocalAudio(false);
+    };
+  }, [releaseLocalAudio]);
 
   // Auto-scroll to bottom of chat
   useEffect(() => {
@@ -248,15 +380,16 @@ export default function TravelDaddy({ tripContext, userName, userEmail }: Travel
     if (!lastDaddyMsg) return;
     const textToSpeak = lastDaddyMsg.translation?.translatedText || lastDaddyMsg.text;
     if (liveSession) {
+      showEstimatedTalking(textToSpeak);
       fetch("/api/avatar/speak", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sessionId: liveSession.sessionId, text: textToSpeak }),
       }).catch(() => {});
     } else if (speechEnabled) {
-      speak(textToSpeak);
+      void speakWithLipSync(textToSpeak);
     }
-  }, [messages, liveSession, speechEnabled, speak]);
+  }, [messages, liveSession, speechEnabled, showEstimatedTalking, speakWithLipSync]);
 
   const sendMessage = useCallback(async () => {
     const trimmed = input.trim();
@@ -266,10 +399,7 @@ export default function TravelDaddy({ tripContext, userName, userEmail }: Travel
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
     setIsLoading(true);
-    setIsTalking(true);
-    // Clear any cue timeline from the previous reply — stage-1 approximate
-    // jaw movement covers this reply until (if) a fresh timeline arrives.
-    setVisemeCues(null);
+    stopLocalSpeech();
 
     try {
       const res = await fetch("/api/avatar/chat", {
@@ -292,39 +422,25 @@ export default function TravelDaddy({ tripContext, userName, userEmail }: Travel
         : undefined;
       const spokenText = replyTranslation?.translatedText || reply;
 
-      // Talking duration paced to reply length (human reading speed)
-      const talkDuration = Math.min(spokenText.length * 55, 8000);
-      setTimeout(() => setIsTalking(false), talkDuration);
+      setMessages((prev) => [...prev, { role: "daddy", text: reply, translation: replyTranslation }]);
 
-      // Live HeyGen avatar speaks the reply; otherwise fall back to the
-      // browser voice, but only when the person has opted into it.
+      // Live HeyGen owns its own stream. The local GLB instead plays the
+      // exact ElevenLabs WAV that Rhubarb analyzed, with browser TTS as a
+      // best-effort fallback when server speech is unavailable.
       if (liveSession) {
+        showEstimatedTalking(spokenText);
         fetch("/api/avatar/speak", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ sessionId: liveSession.sessionId, text: spokenText }),
         }).catch(() => {});
       } else if (speechEnabled) {
-        speak(spokenText);
-        // Stage 2 (Swarm J7): best-effort request for a precise Rhubarb
-        // cue timeline to replace the stage-1 approximate jaw movement.
-        // Until a TTS provider is configured this always 501s, which is
-        // expected — the catch below just means "stay on stage 1".
-        fetch("/api/avatar/lipsync", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text: spokenText }),
-        })
-          .then((lipsyncRes) => (lipsyncRes.ok ? lipsyncRes.json() : null))
-          .then((lipsyncData) => {
-            if (lipsyncData?.cues?.length) setVisemeCues(lipsyncData.cues);
-          })
-          .catch(() => {
-            /* stage 1 remains the fallback — nothing to do here */
-          });
+        void speakWithLipSync(spokenText);
+      } else {
+        // Keep the existing visual/caption response when audio is disabled.
+        // This is an intentionally approximate animation, not lip sync.
+        showEstimatedTalking(spokenText);
       }
-
-      setMessages((prev) => [...prev, { role: "daddy", text: reply, translation: replyTranslation }]);
     } catch {
       setIsTalking(false);
       setMessages((prev) => [
@@ -334,7 +450,16 @@ export default function TravelDaddy({ tripContext, userName, userEmail }: Travel
     } finally {
       setIsLoading(false);
     }
-  }, [input, isLoading, tripContext, liveSession, speechEnabled, speak]);
+  }, [
+    input,
+    isLoading,
+    tripContext,
+    liveSession,
+    speechEnabled,
+    showEstimatedTalking,
+    speakWithLipSync,
+    stopLocalSpeech,
+  ]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -658,6 +783,13 @@ export default function TravelDaddy({ tripContext, userName, userEmail }: Travel
                   className="td-chat-input"
                   disabled={isLoading}
                   aria-label="Message to Travel Daddy"
+                />
+                <VoiceInputButton
+                  disabled={isLoading}
+                  onTranscript={(transcript) => {
+                    setInput((current) => `${current}${current.trim() ? " " : ""}${transcript}`);
+                    inputRef.current?.focus();
+                  }}
                 />
                 <button
                   className="td-send-btn"

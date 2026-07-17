@@ -88,5 +88,9 @@ describe('POST /api/avatar/lipsync', () => {
 
     expect(response.status).toBe(200);
     expect(body.cues).toEqual([{ start: 0, end: 0.1, value: 'X' }]);
+    expect(mocks.runRhubarb).toHaveBeenCalledWith(
+      expect.stringMatching(/\.wav$/),
+      { dialogFilePath: expect.stringMatching(/\.txt$/) }
+    );
   });
 });

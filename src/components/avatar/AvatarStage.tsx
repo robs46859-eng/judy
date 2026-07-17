@@ -2,6 +2,7 @@
 
 import { Component, Suspense, type ReactNode } from "react";
 import { Canvas } from "@react-three/fiber";
+import { Bounds } from "@react-three/drei";
 import AvatarMesh from "./AvatarMesh";
 import type { RhubarbCue } from "@/lib/avatar/visemeTimeline";
 
@@ -51,7 +52,7 @@ export default function AvatarStage({ modelUrl, talking, cues, onUnavailable }: 
   return (
     <AvatarErrorBoundary onUnavailable={onUnavailable}>
       <Canvas
-        camera={{ position: [0, 1.55, 0.9], fov: 28 }}
+        camera={{ position: [0, 0, 2.4], fov: 28, near: 0.05, far: 100 }}
         gl={{ alpha: true, antialias: true }}
         onCreated={({ gl }) => {
           // WebGL context creation can silently fail on some devices/CI
@@ -62,7 +63,9 @@ export default function AvatarStage({ modelUrl, talking, cues, onUnavailable }: 
         <ambientLight intensity={0.9} />
         <directionalLight position={[0.5, 1.2, 1]} intensity={1.1} />
         <Suspense fallback={null}>
-          <AvatarMesh modelUrl={modelUrl} talking={talking} cues={cues} onRigError={() => {}} />
+          <Bounds fit clip observe margin={1.12}>
+            <AvatarMesh modelUrl={modelUrl} talking={talking} cues={cues} />
+          </Bounds>
         </Suspense>
       </Canvas>
     </AvatarErrorBoundary>

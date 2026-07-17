@@ -12,6 +12,12 @@ import {
   approximateTalkingJawWeight,
   type RhubarbCue,
 } from "@/lib/avatar/visemeTimeline";
+import {
+  ARKIT_CONTROLLED_MORPH_TARGETS,
+  applyJawOpenRotation,
+  clearMorphTargetInfluences,
+  restoreJawBindRotation,
+} from "@/lib/avatar/rigRuntime";
 
 export interface AvatarMeshProps {
   /** Path under /public to the rigged GLB. */
@@ -37,6 +43,7 @@ type MorphMesh = THREE.Mesh & {
 interface Rig {
   morphMeshes: MorphMesh[];
   jawBone: THREE.Bone | null;
+  jawBindRotation: THREE.Quaternion | null;
   hasVisemeTargets: boolean;
   hasArkitTargets: boolean;
 }
@@ -83,17 +90,13 @@ function buildRig(scene: THREE.Object3D, onRigError?: (message: string) => void)
     Object.keys(m.morphTargetDictionary).some((n) => /jawOpen|mouthClose/i.test(n))
   );
 
-  return { morphMeshes, jawBone, hasVisemeTargets, hasArkitTargets };
-}
-
-/** Resets a mesh's morph influences to 0 for every known target. */
-function resetMorphTargets(meshes: MorphMesh[], names: string[]) {
-  for (const mesh of meshes) {
-    for (const name of names) {
-      const index = mesh.morphTargetDictionary[name];
-      if (index !== undefined) mesh.morphTargetInfluences[index] = 0;
-    }
-  }
+  return {
+    morphMeshes,
+    jawBone,
+    jawBindRotation: jawBone?.quaternion.clone() ?? null,
+    hasVisemeTargets,
+    hasArkitTargets,
+  };
 }
 
 export default function AvatarMesh({ modelUrl, talking, cues, onRigError }: AvatarMeshProps) {
@@ -110,7 +113,14 @@ export default function AvatarMesh({ modelUrl, talking, cues, onRigError }: Avat
     rigRef.current = buildRig(scene, onRigError);
     return () => {
       const rig = rigRef.current;
-      if (rig) resetMorphTargets(rig.morphMeshes, RHUBARB_SHAPES.map(visemeMorphTargetName));
+      if (!rig) return;
+      clearMorphTargetInfluences(rig.morphMeshes, [
+        ...RHUBARB_SHAPES.map(visemeMorphTargetName),
+        ...ARKIT_CONTROLLED_MORPH_TARGETS,
+      ]);
+      if (rig.jawBone && rig.jawBindRotation) {
+        restoreJawBindRotation(rig.jawBone, rig.jawBindRotation);
+      }
     };
   }, [scene, onRigError]);
 
@@ -148,6 +158,14 @@ export default function AvatarMesh({ modelUrl, talking, cues, onRigError }: Avat
       visemeWeights = getVisemeWeights(cues, elapsed);
     } else {
       jawWeight = approximateTalkingJawWeight(clock.getElapsedTime(), talking);
+    }
+
+    // Reset all ARKit targets before choosing this frame's animation path.
+    // Without this, targets that are absent from the next viseme retain their
+    // previous weight, and switching to dedicated visemes can leave an old
+    // ARKit mouth shape stuck on the face.
+    if (rig.hasArkitTargets) {
+      clearMorphTargetInfluences(rig.morphMeshes, ARKIT_CONTROLLED_MORPH_TARGETS);
     }
 
     if (rig.hasVisemeTargets && visemeWeights) {
@@ -188,13 +206,13 @@ export default function AvatarMesh({ modelUrl, talking, cues, onRigError }: Avat
       return;
     }
 
-    if (rig.jawBone) {
+    if (rig.jawBone && rig.jawBindRotation) {
       // Simple bone-rotation fallback for rigs with no facial morph targets
       // at all — open around the local X axis, small enough to stay
-      // believable rather than unhinged.
-      const maxJawOpenRadians = 0.28;
+      // believable rather than unhinged. The delta is relative to the GLB's
+      // imported bind pose, which is also restored during cleanup.
       const weight = visemeWeights ? 1 - (visemeWeights.X ?? 0) : jawWeight;
-      rig.jawBone.rotation.x = weight * maxJawOpenRadians;
+      applyJawOpenRotation(rig.jawBone, rig.jawBindRotation, weight);
     }
   });
   /* eslint-enable react-hooks/immutability */

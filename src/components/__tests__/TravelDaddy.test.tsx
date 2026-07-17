@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
-import { render, screen, waitFor, cleanup, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, cleanup, fireEvent, act } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import TravelDaddy from '../TravelDaddy';
 
@@ -19,11 +19,28 @@ vi.mock('next/image', () => ({
 // real component's error boundary would report it.
 const avatarStageMock = vi.hoisted(() => ({ shouldFail: false }));
 vi.mock('../avatar/AvatarStage', () => ({
-  default: ({ onUnavailable }: { onUnavailable?: () => void }) => {
+  default: ({
+    modelUrl,
+    talking,
+    cues,
+    onUnavailable,
+  }: {
+    modelUrl: string;
+    talking: boolean;
+    cues?: unknown[] | null;
+    onUnavailable?: () => void;
+  }) => {
     if (avatarStageMock.shouldFail) {
       setTimeout(() => onUnavailable?.(), 0);
     }
-    return <div data-testid="avatar-stage-stub" />;
+    return (
+      <div
+        data-testid="avatar-stage-stub"
+        data-model-url={modelUrl}
+        data-talking={String(talking)}
+        data-cue-count={cues?.length ?? 0}
+      />
+    );
   },
 }));
 
@@ -35,7 +52,9 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  window.localStorage.clear();
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 describe('TravelDaddy avatar fallback (Swarm J7)', () => {
@@ -48,6 +67,7 @@ describe('TravelDaddy avatar fallback (Swarm J7)', () => {
     render(<TravelDaddy userName="Robert" />);
 
     expect(await screen.findByTestId('avatar-stage-stub')).toBeInTheDocument();
+    expect(screen.getByTestId('avatar-stage-stub')).toHaveAttribute('data-model-url', '/models/judyrig.glb');
     expect(screen.queryByAltText(AVATAR_ALT)).not.toBeInTheDocument();
 
     // Chat + translation entry points must still be usable regardless of avatar mode.
@@ -161,10 +181,78 @@ describe('TravelDaddy caption overlay (Swarm J6)', () => {
     // mirrored as an on-screen caption — the transcript alone isn't enough
     // once the chat panel is collapsed.
     await waitFor(() =>
-      expect(screen.getByRole('status')).toHaveTextContent('Pack a raincoat, friend!')
+      expect(screen.getByText('Pack a raincoat, friend!', { selector: '.td-caption' })).toBeInTheDocument()
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Close chat' }));
-    expect(screen.getByRole('status')).toHaveTextContent('Pack a raincoat, friend!');
+    expect(screen.getByText('Pack a raincoat, friend!', { selector: '.td-caption' })).toBeInTheDocument();
+  });
+});
+
+describe('TravelDaddy synchronized local speech', () => {
+  it('plays the exact WAV returned with Rhubarb cues and follows its audio events', async () => {
+    window.localStorage.setItem('judy-speech-synthesis-enabled', 'true');
+
+    const audioInstances: MockAudio[] = [];
+    class MockAudio {
+      onplay: (() => void) | null = null;
+      onended: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      pause = vi.fn();
+      play = vi.fn(async () => undefined);
+
+      constructor(readonly src: string) {
+        audioInstances.push(this);
+      }
+    }
+
+    vi.stubGlobal('Audio', MockAudio);
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:judy-voice');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : input.toString();
+      if (url.includes('/api/user/preferences')) {
+        return { ok: true, status: 200, json: async () => ({ onboardingCompletedAt: new Date().toISOString() }) } as Response;
+      }
+      if (url.includes('/api/avatar/chat')) {
+        return { ok: true, status: 200, json: async () => ({ reply: 'Your train leaves at noon.' }) } as Response;
+      }
+      if (url.includes('/api/avatar/lipsync')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            audio: window.btoa('exact wav bytes'),
+            mimeType: 'audio/wav',
+            cues: [{ start: 0, end: 0.2, value: 'A' }],
+          }),
+        } as Response;
+      }
+      return { ok: false, status: 404, json: async () => ({}) } as Response;
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<TravelDaddy userName="Robert" />);
+    fireEvent.click(await screen.findByTitle('Chat with Travel Daddy'));
+    fireEvent.change(await screen.findByPlaceholderText('Ask Travel Daddy anything...'), {
+      target: { value: 'When does my train leave?' },
+    });
+    fireEvent.click(screen.getByTitle('Send message'));
+
+    await waitFor(() => expect(audioInstances).toHaveLength(1));
+    expect(audioInstances[0].src).toBe('blob:judy-voice');
+    expect(audioInstances[0].play).toHaveBeenCalledOnce();
+    expect(screen.getByTestId('avatar-stage-stub')).toHaveAttribute('data-talking', 'false');
+
+    act(() => audioInstances[0].onplay?.());
+    expect(screen.getByTestId('avatar-stage-stub')).toHaveAttribute('data-talking', 'true');
+    expect(screen.getByTestId('avatar-stage-stub')).toHaveAttribute('data-cue-count', '1');
+
+    act(() => audioInstances[0].onended?.());
+    expect(screen.getByTestId('avatar-stage-stub')).toHaveAttribute('data-talking', 'false');
+    expect(screen.getByTestId('avatar-stage-stub')).toHaveAttribute('data-cue-count', '0');
+
+    window.localStorage.removeItem('judy-speech-synthesis-enabled');
   });
 });
