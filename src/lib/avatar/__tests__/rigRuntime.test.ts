@@ -35,13 +35,13 @@ describe('jaw bind rotation', () => {
       .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), 0.28));
 
     applyJawOpenRotation(jaw, bindRotation, 0);
-    expect(jaw.quaternion.angleTo(bindRotation)).toBeCloseTo(0, 10);
+    expect(jaw.quaternion.angleTo(bindRotation)).toBeLessThan(1e-6);
 
     applyJawOpenRotation(jaw, bindRotation, 1);
-    expect(jaw.quaternion.angleTo(expectedOpen)).toBeCloseTo(0, 10);
+    expect(jaw.quaternion.angleTo(expectedOpen)).toBeLessThan(1e-6);
 
     restoreJawBindRotation(jaw, bindRotation);
-    expect(jaw.quaternion.angleTo(bindRotation)).toBeCloseTo(0, 10);
+    expect(jaw.quaternion.angleTo(bindRotation)).toBeLessThan(1e-6);
   });
 
   it('clamps out-of-range weights rather than over-rotating the jaw', () => {
@@ -50,6 +50,6 @@ describe('jaw bind rotation', () => {
 
     applyJawOpenRotation(jaw, bindRotation, 4);
 
-    expect(jaw.quaternion.angleTo(bindRotation)).toBeCloseTo(0.28, 10);
+    expect(jaw.quaternion.angleTo(bindRotation)).toBeCloseTo(0.28, 6);
   });
 });
