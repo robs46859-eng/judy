@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { inspectGlb, REQUIRED_VISEME_TARGETS } from '../glbInspector';
 
 interface GlbNode {
   name?: string;
@@ -38,7 +39,7 @@ function readGlbJson(filePath: string): GlbJson {
 
 describe('Judy production avatar asset', () => {
   it('ships a skinned GLB with the jaw joint expected by the avatar runtime', () => {
-    const glb = readGlbJson(join(process.cwd(), 'public/models/judyrig.glb'));
+    const glb = readGlbJson(join(process.cwd(), 'public/models/judyface.glb'));
     const nodes = glb.nodes ?? [];
     const jointNames = new Set(
       (glb.skins ?? []).flatMap((skin) =>
@@ -54,5 +55,16 @@ describe('Judy production avatar asset', () => {
     expect(jointNames.has('jaw')).toBe(true);
     expect(primitiveAttributes.some((attributes) => 'JOINTS_0' in attributes)).toBe(true);
     expect(primitiveAttributes.some((attributes) => 'WEIGHTS_0' in attributes)).toBe(true);
+  });
+
+  it('ships a lip-sync-compatible bundled fallback with every Rhubarb viseme', () => {
+    const file = readFileSync(join(process.cwd(), 'public/models/judyface.glb'));
+    const report = inspectGlb(file);
+
+    expect(report.valid).toBe(true);
+    expect(report.compatible).toBe(true);
+    expect(report.lipSyncMode).toBe('visemes');
+    expect(report.visemeTargets).toEqual([...REQUIRED_VISEME_TARGETS]);
+    expect(report.missingVisemeTargets).toEqual([]);
   });
 });

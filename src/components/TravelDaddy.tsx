@@ -29,8 +29,8 @@ import AvatarStage from "./avatar/AvatarStage";
 import VoiceInputButton from "./avatar/VoiceInputButton";
 import type { RhubarbCue } from "@/lib/avatar/visemeTimeline";
 
-/** Versioned filename avoids stale CDN/browser caches after replacing the GLB. */
-export const GLB_AVATAR_MODEL_URL = "/models/judyrig.glb";
+/** Bundled fallback used until an administrator activates an uploaded model. */
+export const GLB_AVATAR_MODEL_URL = "/models/judyface.glb";
 
 interface ChatTranslation {
   original: string;
@@ -51,6 +51,7 @@ interface TravelDaddyProps {
   tripContext?: any;
   userName?: string;
   userEmail?: string;
+  avatarModelUrl?: string;
 }
 
 interface LiveAvatarSession {
@@ -80,7 +81,12 @@ function audioBlobFromBase64(audio: string, mimeType: string): Blob {
   return new Blob([bytes], { type: mimeType });
 }
 
-export default function TravelDaddy({ tripContext, userName, userEmail }: TravelDaddyProps) {
+export default function TravelDaddy({
+  tripContext,
+  userName,
+  userEmail,
+  avatarModelUrl = GLB_AVATAR_MODEL_URL,
+}: TravelDaddyProps) {
   const [chatOpen, setChatOpen] = useState(false);
   const [translateOpen, setTranslateOpen] = useState(false);
   const [translateText, setTranslateText] = useState("");
@@ -519,7 +525,7 @@ export default function TravelDaddy({ tripContext, userName, userEmail }: Travel
         {!liveSession && !glbAvatarFailed && (
           <div className="td-glb-avatar" role="img" aria-label="Travel Daddy, Judy's travel translator and guide">
             <AvatarStage
-              modelUrl={GLB_AVATAR_MODEL_URL}
+              modelUrl={avatarModelUrl}
               talking={isTalking}
               cues={visemeCues}
               onUnavailable={() => setGlbAvatarFailed(true)}

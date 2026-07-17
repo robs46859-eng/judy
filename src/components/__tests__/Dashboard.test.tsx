@@ -8,7 +8,11 @@ import Dashboard from '../Dashboard';
 // (covered separately in TravelDaddy.test.tsx). Stub it here so Dashboard
 // tests focus on the shell and home-screen composition.
 vi.mock('../TravelDaddy', () => ({
-  default: () => <div data-testid="travel-daddy-stub">Travel Daddy</div>,
+  default: ({ avatarModelUrl }: { avatarModelUrl?: string }) => (
+    <div data-testid="travel-daddy-stub" data-model-url={avatarModelUrl}>
+      Travel Daddy
+    </div>
+  ),
 }));
 
 vi.mock('next/image', () => ({
@@ -93,6 +97,31 @@ describe('Dashboard', () => {
     for (const label of ['Dashboard', 'Itinerary', 'Trip Viewer', 'Budget', 'Contact', 'Settings']) {
       expect(screen.getByText(label)).toBeInTheDocument();
     }
+  });
+
+  it('shows the Avatar Manager only to admins and forwards the active model URL', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse([])));
+
+    const { rerender } = render(
+      <Dashboard
+        userName="Robert"
+        userEmail="owner@example.com"
+        avatarAdmin
+        avatarModelUrl="/api/avatar/model?v=abc123"
+      />
+    );
+
+    expect(await screen.findByRole('link', { name: 'Open Avatar Manager' })).toHaveAttribute(
+      'href',
+      '/admin/avatar'
+    );
+    expect(screen.getByTestId('travel-daddy-stub')).toHaveAttribute(
+      'data-model-url',
+      '/api/avatar/model?v=abc123'
+    );
+
+    rerender(<Dashboard userName="Robert" userEmail="traveler@example.com" />);
+    expect(screen.queryByRole('link', { name: 'Open Avatar Manager' })).not.toBeInTheDocument();
   });
 
   it('focused home shows only the avatar, countdown, and weather widgets', async () => {

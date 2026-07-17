@@ -168,11 +168,20 @@ export default function AvatarMesh({ modelUrl, talking, cues, onRigError }: Avat
       clearMorphTargetInfluences(rig.morphMeshes, ARKIT_CONTROLLED_MORPH_TARGETS);
     }
 
-    if (rig.hasVisemeTargets && visemeWeights) {
+    if (rig.hasVisemeTargets) {
       for (const mesh of rig.morphMeshes) {
         for (const shape of RHUBARB_SHAPES) {
           const idx = mesh.morphTargetDictionary[visemeMorphTargetName(shape)];
-          if (idx !== undefined) mesh.morphTargetInfluences[idx] = visemeWeights[shape] ?? 0;
+          if (idx !== undefined) {
+            // Accurate Rhubarb cues take priority. If the optional TTS/Rhubarb
+            // path is unavailable, browser speech still gets a simple open-mouth
+            // fallback on viseme_A instead of relying on an unweighted jaw bone.
+            mesh.morphTargetInfluences[idx] = visemeWeights
+              ? (visemeWeights[shape] ?? 0)
+              : shape === "A"
+                ? jawWeight
+                : 0;
+          }
         }
       }
       return;

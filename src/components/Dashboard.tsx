@@ -5,7 +5,7 @@ import {
   CreditCard, Compass, Cloud, ThermometerSun,
   PlaneTakeoff, Shield, Dog, Baby, Car, Banknote,
   ChevronDown, Timer,
-  Eye, Mail, User, Droplets, Wind, LogOut
+  Eye, Mail, User, Droplets, Wind, LogOut, Upload
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import Image from "next/image";
@@ -59,9 +59,16 @@ interface WeatherData {
 interface DashboardProps {
   userName: string;
   userEmail: string;
+  avatarModelUrl?: string;
+  avatarAdmin?: boolean;
 }
 
-export default function Dashboard({ userName, userEmail }: DashboardProps) {
+export default function Dashboard({
+  userName,
+  userEmail,
+  avatarModelUrl,
+  avatarAdmin = false,
+}: DashboardProps) {
   const [theme, setTheme] = useState("light");
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -213,6 +220,17 @@ export default function Dashboard({ userName, userEmail }: DashboardProps) {
         </div>
 
         <div className="top-actions">
+          {avatarAdmin && (
+            <a
+              className="icon-button"
+              href="/admin/avatar"
+              title="Avatar Manager"
+              aria-label="Open Avatar Manager"
+            >
+              <Upload size={20} aria-hidden="true" />
+            </a>
+          )}
+
           {/* User Profile */}
           <button
             className="icon-button"
@@ -296,7 +314,12 @@ export default function Dashboard({ userName, userEmail }: DashboardProps) {
             <>
               {/* Avatar */}
               <div className="avatar-container">
-                <TravelDaddy tripContext={trip} userName={userName} userEmail={userEmail} />
+                <TravelDaddy
+                  tripContext={trip}
+                  userName={userName}
+                  userEmail={userEmail}
+                  avatarModelUrl={avatarModelUrl}
+                />
               </div>
 
               {/* Right Widgets — countdown and weather only. The focused

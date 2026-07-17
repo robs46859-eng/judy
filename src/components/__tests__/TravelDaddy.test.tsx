@@ -67,12 +67,26 @@ describe('TravelDaddy avatar fallback (Swarm J7)', () => {
     render(<TravelDaddy userName="Robert" />);
 
     expect(await screen.findByTestId('avatar-stage-stub')).toBeInTheDocument();
-    expect(screen.getByTestId('avatar-stage-stub')).toHaveAttribute('data-model-url', '/models/judyrig.glb');
+    expect(screen.getByTestId('avatar-stage-stub')).toHaveAttribute('data-model-url', '/models/judyface.glb');
     expect(screen.queryByAltText(AVATAR_ALT)).not.toBeInTheDocument();
 
     // Chat + translation entry points must still be usable regardless of avatar mode.
     expect(screen.getByTitle('Chat with Travel Daddy')).toBeInTheDocument();
     expect(screen.getByTitle('Translate a phrase')).toBeInTheDocument();
+  });
+
+  it('loads an activated Avatar Manager model URL when one is provided', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({ ok: false, status: 501, json: async () => ({}) }) as Response)
+    );
+
+    render(<TravelDaddy userName="Robert" avatarModelUrl="/api/avatar/model?v=abc123" />);
+
+    expect(await screen.findByTestId('avatar-stage-stub')).toHaveAttribute(
+      'data-model-url',
+      '/api/avatar/model?v=abc123'
+    );
   });
 
   it('shows the GLB avatar even when the HeyGen session request errors outright', async () => {

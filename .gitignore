@@ -46,3 +46,6 @@ next-env.d.ts
 # database — never commit SQLite files anywhere in the repo
 *.db
 *.db-journal
+
+# runtime-managed avatar uploads are content-addressed outside source control
+/data/avatar-assets/

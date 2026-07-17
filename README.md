@@ -31,6 +31,8 @@ See `.env.example` for the full annotated list. Summary:
 | `GEMINI_API_KEY` | For AI features | Suggestions + Travel Daddy chat. |
 | `GOOGLE_MAPS_API_KEY` | For places/weather | Places API (New), Geocoding, Weather. |
 | `HEYGEN_API_KEY` | Optional | Live streamed avatar; falls back to the 3D placeholder. |
+| `AVATAR_ADMIN_EMAILS` | Avatar Manager | Comma-separated email allowlist; falls back to `ADMIN_EMAIL` when unset. |
+| `AVATAR_STORAGE_DIR` | Avatar Manager in production | Persistent directory outside the Git checkout for uploaded GLB versions. |
 | `HERMES_EDGE_BRIDGE_ENABLED` | Optional | Set to `true` to enable Hermes; defaults to `false`. |
 | `HERMES_EDGE_BRIDGE_URL` | When Hermes is enabled | HTTPS producer-relay base URL. |
 | `HERMES_EDGE_PRODUCER_SECRET` | When Hermes is enabled | Bearer credential used only by the server. |
@@ -70,6 +72,7 @@ The API returns only Judy's local job UUID. Relay job IDs and the producer crede
 - **Rate limiting**: in-memory per-user/per-IP limiter (`src/lib/rate-limit.ts`) on all Gemini/Google/HeyGen-backed routes. Single-process only — switch to a shared store if the app is ever scaled horizontally.
 - **Hermes**: the producer relay client is server-only, HTTPS-only, redirect-free, timeout-bounded, and disabled by default. Minute quotas are in memory; UTC daily caps and private relay/local ID mappings are persisted in `HermesJob`.
 - **Database**: migrations live in `prisma/migrations`. Schema changes go through `prisma migrate` — the build never touches the database.
+- **Avatar Manager**: `/admin/avatar` is available only to an authenticated email in `AVATAR_ADMIN_EMAILS` (or the existing `ADMIN_EMAIL` fallback). It accepts GLB files up to 25 MiB, validates facial morphs and jaw skin weights, and atomically activates only a compatible lip-sync rig. Uploads are SHA-256-versioned; older versions are retained and no delete endpoint is exposed.
 - **Fonts**: Outfit is loaded via CSS `@import` at runtime with a system-font fallback; the build has no outbound-network dependency.
 
 ## Deployment (Hostinger / Passenger)
@@ -78,11 +81,12 @@ The deployment target is Hostinger with Phusion Passenger; `server.js` is the en
 
 1. Set the env vars from `.env.example` in the hosting panel (at minimum `DATABASE_URL`, `AUTH_SECRET`).
 2. Point `DATABASE_URL` at persistent storage — a hosted libSQL database (e.g. Turso) is recommended over a local file on shared hosting.
-3. Make sure the panel's build command is exactly `npm run build` — the build needs **no database connection**. If a build log ever shows `prisma db push`, the host is using a stale build command from before the 2026-07 repairs.
-4. Apply migrations once per release that includes schema changes:
+3. For the Avatar Manager, set `AVATAR_ADMIN_EMAILS` to the administrator's Judy login email and set `AVATAR_STORAGE_DIR=/home/u876474286/judy-avatar-assets`. Create that persistent directory once with `mkdir -p /home/u876474286/judy-avatar-assets`; do not place it inside the deployment checkout.
+4. Make sure the panel's build command is exactly `npm run build` — the build needs **no database connection**. If a build log ever shows `prisma db push`, the host is using a stale build command from before the 2026-07 repairs.
+5. Apply migrations once per release that includes schema changes:
    - Turso: `./scripts/apply-migrations-turso.sh <db-name>` (Prisma Migrate can't connect to remote `libsql://` URLs — the script applies the SQL via the Turso CLI).
    - Local/file DB: `npm run db:migrate`.
-5. Start/restart the app (Passenger runs `server.js`).
+6. Start/restart the app (Passenger runs `server.js`).
 
 CI (GitHub Actions) runs lint, tests, and a production build on every push/PR to `main`.
 
