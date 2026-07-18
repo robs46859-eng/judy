@@ -48,6 +48,8 @@ interface ChatMessage {
   role: "user" | "daddy";
   text: string;
   translation?: ChatTranslation;
+  /** Language of the displayed reply when known; audio may be localized separately. */
+  replyLanguage?: string | null;
 }
 
 /* ── Component ────────────────────────────────────────────── */
@@ -67,6 +69,8 @@ interface LipSyncResponse {
   audio?: unknown;
   mimeType?: unknown;
   cues?: unknown;
+  spokenText?: unknown;
+  spokenLanguage?: unknown;
 }
 
 type OnboardingStatus = "loading" | "pending" | "complete";
@@ -290,12 +294,24 @@ export default function TravelDaddy({
     releaseLocalAudio();
   }, [releaseLocalAudio]);
 
-  const speakWithBrowser = useCallback((text: string) => {
+  const speakWithBrowser = useCallback((text: string, language?: string) => {
     if (typeof window === "undefined" || !window.speechSynthesis) return;
     stopLocalSpeech();
     const requestId = speechRequestRef.current;
     try {
       const utterance = new SpeechSynthesisUtterance(text);
+      if (language) {
+        utterance.lang = language;
+        const normalized = language.toLowerCase();
+        const baseLanguage = normalized.split("-")[0];
+        const availableVoice = window.speechSynthesis
+          .getVoices()
+          .find((voice) => voice.lang.toLowerCase() === normalized)
+          ?? window.speechSynthesis
+            .getVoices()
+            .find((voice) => voice.lang.toLowerCase().split("-")[0] === baseLanguage);
+        if (availableVoice) utterance.voice = availableVoice;
+      }
       utterance.onstart = () => {
         if (speechRequestRef.current === requestId) setIsTalking(true);
       };
@@ -354,14 +370,16 @@ export default function TravelDaddy({
         setIsTalking(true);
       };
       audio.onended = finish;
+      const spokenText = typeof payload.spokenText === "string" ? payload.spokenText : text;
+      const spokenLanguage = typeof payload.spokenLanguage === "string" ? payload.spokenLanguage : language;
       audio.onerror = () => {
         if (speechRequestRef.current !== requestId || localAudioRef.current !== audio) return;
         releaseLocalAudio();
-        speakWithBrowser(text);
+        speakWithBrowser(spokenText, spokenLanguage);
       };
       await audio.play();
     } catch {
-      if (speechRequestRef.current === requestId) speakWithBrowser(text);
+      if (speechRequestRef.current === requestId) speakWithBrowser(text, language);
     }
   }, [releaseLocalAudio, speakWithBrowser, stopLocalSpeech]);
 
@@ -392,16 +410,21 @@ export default function TravelDaddy({
   const handleReplay = useCallback(() => {
     const lastDaddyMsg = [...messages].reverse().find((m) => m.role === "daddy");
     if (!lastDaddyMsg) return;
-    const textToSpeak = lastDaddyMsg.translation?.translatedText || lastDaddyMsg.text;
+    const textToSpeak = lastDaddyMsg.text;
+    const replyLanguage = lastDaddyMsg.replyLanguage;
     if (liveSession) {
       showEstimatedTalking(textToSpeak);
       fetch("/api/avatar/speak", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId: liveSession.sessionId, text: textToSpeak }),
+        body: JSON.stringify({
+          sessionId: liveSession.sessionId,
+          text: textToSpeak,
+          ...(replyLanguage ? { language: replyLanguage } : {}),
+        }),
       }).catch(() => {});
     } else if (speechEnabled) {
-      void speakWithLipSync(textToSpeak);
+      void speakWithLipSync(textToSpeak, replyLanguage ?? undefined);
     }
   }, [messages, liveSession, speechEnabled, showEstimatedTalking, speakWithLipSync]);
 
@@ -434,26 +457,33 @@ export default function TravelDaddy({
             targetLanguage: data.translation.targetLanguage,
           }
         : undefined;
-      const spokenText = replyTranslation?.translatedText || reply;
+      const replyLanguage = replyTranslation?.targetLanguage ?? null;
 
-      setMessages((prev) => [...prev, { role: "daddy", text: reply, translation: replyTranslation }]);
+      setMessages((prev) => [
+        ...prev,
+        { role: "daddy", text: reply, translation: replyTranslation, replyLanguage },
+      ]);
 
       // Live HeyGen owns its own stream. The local GLB instead plays the
       // exact ElevenLabs WAV that Rhubarb analyzed, with browser TTS as a
       // best-effort fallback when server speech is unavailable.
       if (liveSession) {
-        showEstimatedTalking(spokenText);
+        showEstimatedTalking(reply);
         fetch("/api/avatar/speak", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sessionId: liveSession.sessionId, text: spokenText }),
+          body: JSON.stringify({
+            sessionId: liveSession.sessionId,
+            text: reply,
+            ...(replyLanguage ? { language: replyLanguage } : {}),
+          }),
         }).catch(() => {});
       } else if (speechEnabled) {
-        void speakWithLipSync(spokenText);
+        void speakWithLipSync(reply, replyLanguage ?? undefined);
       } else {
         // Keep the existing visual/caption response when audio is disabled.
         // This is an intentionally approximate animation, not lip sync.
-        showEstimatedTalking(spokenText);
+        showEstimatedTalking(reply);
       }
     } catch {
       setIsTalking(false);

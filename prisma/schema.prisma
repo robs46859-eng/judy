@@ -29,6 +29,7 @@ model User {
   preTravelTasks        String?
   helpPreference        String?
   voiceId               String?
+  spokenLanguage        String?
   onboardingCompletedAt DateTime?
 
   trips              Trip[]

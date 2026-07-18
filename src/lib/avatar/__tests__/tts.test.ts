@@ -12,6 +12,9 @@ function resetEnv() {
   delete process.env.ELEVENLABS_API_KEY;
   delete process.env.ELEVENLABS_VOICE_ID;
   delete process.env.ELEVENLABS_MODEL_ID;
+  for (const key of Object.keys(process.env)) {
+    if (key.startsWith('ELEVENLABS_VOICE_')) delete process.env[key];
+  }
 }
 
 beforeEach(() => {
@@ -95,6 +98,22 @@ describe('synthesizeSpeech', () => {
 
       const [, requestInit] = fetchMock.mock.calls[0];
       expect(JSON.parse(requestInit.body).model_id).toBe('eleven_flash_v2_5');
+    });
+
+    it('uses a configured catalog voice before the global provider fallback', async () => {
+      process.env.ELEVENLABS_API_KEY = 'test-key';
+      process.env.ELEVENLABS_VOICE_ID = 'default-voice';
+      process.env.ELEVENLABS_VOICE_TRAVEL_DADDY_CLASSIC_ES = 'spanish-voice';
+      const fetchMock = vi.fn(async () => ({ ok: true, status: 200, arrayBuffer: async () => new ArrayBuffer(0) }));
+      vi.stubGlobal('fetch', fetchMock);
+
+      await synthesizeSpeech({
+        text: 'Lleva un impermeable.',
+        language: 'es-ES',
+        voiceId: 'travel-daddy-classic-es',
+      });
+
+      expect(String(fetchMock.mock.calls[0][0])).toContain('spanish-voice');
     });
 
     it('throws a plain Error (not TtsNotConfiguredError) when the ElevenLabs request fails', async () => {

@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { wrapPcmAsWav } from './wav';
+import { getElevenLabsVoiceEnvKey, selectVoiceForLanguage } from '@/lib/voice/catalog';
 
 /**
  * Speech synthesis provider interface (Swarm J7/J8).
@@ -22,6 +23,8 @@ export interface SynthesizeSpeechInput {
   text: string;
   /** BCP-47-ish language/voice hint, e.g. "en-US", "es-ES". */
   language: string;
+  /** Server-approved logical voice ID, never an ElevenLabs ID from the client. */
+  voiceId?: string;
 }
 
 export class TtsNotConfiguredError extends Error {
@@ -44,7 +47,8 @@ const ELEVENLABS_DEFAULT_MODEL = 'eleven_multilingual_v2';
  */
 async function synthesizeWithElevenLabs(input: SynthesizeSpeechInput): Promise<SynthesizedSpeech> {
   const apiKey = process.env.ELEVENLABS_API_KEY;
-  const voiceId = process.env.ELEVENLABS_VOICE_ID;
+  const selectedVoice = selectVoiceForLanguage(input.voiceId, input.language);
+  const voiceId = process.env[getElevenLabsVoiceEnvKey(selectedVoice.id)] || process.env.ELEVENLABS_VOICE_ID;
   const modelId = process.env.ELEVENLABS_MODEL_ID || ELEVENLABS_DEFAULT_MODEL;
 
   if (!apiKey || !voiceId) {

@@ -14,9 +14,9 @@ vi.mock('@/lib/prisma', () => ({
 
 import { GET, PATCH } from '../route';
 
-function jsonRequest(body: unknown, ip = '192.0.2.10') {
+function jsonRequest(body: unknown, ip = '192.0.2.10', method = 'PATCH') {
   return new Request('http://localhost/api/user/preferences', {
-    method: 'PATCH',
+    method,
     headers: { 'Content-Type': 'application/json', 'x-forwarded-for': ip },
     body: JSON.stringify(body),
   }) as NextRequest;
@@ -48,6 +48,7 @@ describe('GET /api/user/preferences', () => {
       preTravelTasks: null,
       helpPreference: null,
       voiceId: null,
+      spokenLanguage: 'es-ES',
       onboardingCompletedAt: null,
     });
     const request = new Request('http://localhost/api/user/preferences', {
@@ -58,9 +59,13 @@ describe('GET /api/user/preferences', () => {
     const body = await response.json();
 
     expect(mocks.findUnique).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { id: 'user-a' } })
+      expect.objectContaining({
+        where: { id: 'user-a' },
+        select: expect.objectContaining({ spokenLanguage: true }),
+      })
     );
     expect(body.nativeLanguage).toBe('English');
+    expect(body.spokenLanguage).toBe('es-ES');
     expect(body.onboardingCompletedAt).toBeNull();
   });
 });
@@ -103,6 +108,7 @@ describe('PATCH /api/user/preferences', () => {
       preTravelTasks: null,
       helpPreference: null,
       voiceId: null,
+      spokenLanguage: null,
       onboardingCompletedAt: new Date('2026-07-16T00:00:00.000Z'),
     });
 
@@ -131,6 +137,7 @@ describe('PATCH /api/user/preferences', () => {
       preTravelTasks: null,
       helpPreference: null,
       voiceId: 'travel-daddy-warm-en',
+      spokenLanguage: null,
       onboardingCompletedAt: null,
     });
 
@@ -144,6 +151,47 @@ describe('PATCH /api/user/preferences', () => {
   it('rejects a voiceId that is not in the approved catalog', async () => {
     mocks.getSessionUserId.mockResolvedValue('user-a');
     const response = await PATCH(jsonRequest({ voiceId: 'some-unapproved-provider-id' }));
+
+    expect(response.status).toBe(400);
+    expect(mocks.update).not.toHaveBeenCalled();
+  });
+
+  it('accepts and trims a nullable spokenLanguage preference', async () => {
+    mocks.getSessionUserId.mockResolvedValue('user-a');
+    mocks.update.mockResolvedValue({ spokenLanguage: 'es-ES' });
+
+    const response = await PATCH(jsonRequest({ spokenLanguage: '  es-ES  ' }));
+
+    expect(response.status).toBe(200);
+    const [[callArgs]] = mocks.update.mock.calls;
+    expect(callArgs.where).toEqual({ id: 'user-a' });
+    expect(callArgs.data.spokenLanguage).toBe('es-ES');
+  });
+
+  it('allows spokenLanguage to be cleared', async () => {
+    mocks.getSessionUserId.mockResolvedValue('user-a');
+    mocks.update.mockResolvedValue({ spokenLanguage: null });
+
+    const response = await PATCH(jsonRequest({ spokenLanguage: null }));
+
+    expect(response.status).toBe(200);
+    const [[callArgs]] = mocks.update.mock.calls;
+    expect(callArgs.data.spokenLanguage).toBeNull();
+  });
+
+  it('rejects an empty spokenLanguage value', async () => {
+    mocks.getSessionUserId.mockResolvedValue('user-a');
+
+    const response = await PATCH(jsonRequest({ spokenLanguage: '   ' }));
+
+    expect(response.status).toBe(400);
+    expect(mocks.update).not.toHaveBeenCalled();
+  });
+
+  it('rejects a spoken language outside Judy Pierre\'s supported catalog', async () => {
+    mocks.getSessionUserId.mockResolvedValue('user-a');
+
+    const response = await PATCH(jsonRequest({ spokenLanguage: 'Klingon' }));
 
     expect(response.status).toBe(400);
     expect(mocks.update).not.toHaveBeenCalled();

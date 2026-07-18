@@ -11,6 +11,7 @@ const SELECT = {
   preTravelTasks: true,
   helpPreference: true,
   voiceId: true,
+  spokenLanguage: true,
   onboardingCompletedAt: true,
 } as const;
 

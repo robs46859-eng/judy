@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { isApprovedVoiceId } from '@/lib/voice/catalog';
+import { isApprovedVoiceId, isSupportedSpokenLanguage } from '@/lib/voice/catalog';
 
 /** Shared zod schemas for API request-body validation. */
 
@@ -70,6 +70,8 @@ export const suggestionsSchema = z.object({
 export const avatarSpeakSchema = z.object({
   sessionId: z.string().trim().min(1).max(200),
   text: z.string().trim().min(1).max(2000),
+  /** Optional language of the displayed reply; never a provider voice ID. */
+  language: z.string().trim().min(1).max(60).optional(),
 });
 
 export const avatarStopSchema = z.object({
@@ -96,6 +98,14 @@ export const userPreferencesPatchSchema = z
     travelRoute: z.string().trim().max(300).nullable().optional(),
     preTravelTasks: z.string().trim().max(1000).nullable().optional(),
     helpPreference: z.string().trim().max(1000).nullable().optional(),
+    spokenLanguage: z
+      .string()
+      .trim()
+      .min(1)
+      .max(60)
+      .refine(isSupportedSpokenLanguage, 'Choose a supported spoken language.')
+      .nullable()
+      .optional(),
     // Server-approved catalog only (Swarm J5) — never an arbitrary provider ID.
     voiceId: z
       .string()

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionUserId } from '@/lib/auth';
 import { enforceRateLimit } from '@/lib/rate-limit';
+import { prisma } from '@/lib/prisma';
+import { getHeyGenVoiceEnvKey, selectVoiceForLanguage } from '@/lib/voice/catalog';
 
 const HEYGEN_BASE = 'https://api.heygen.com/v1';
 
@@ -26,11 +28,21 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // 1. Create a new streaming session. avatar_name/voice are only included
-    // when the corresponding env vars are set, so omitting either preserves
-    // the account default behavior exactly as before.
+    // 1. Create a new streaming session. A selected logical voice may map to
+    // a Hostinger HEYGEN_VOICE_<CATALOG_ID> variable; without one, the existing
+    // account default remains untouched.
     const avatarId = process.env.HEYGEN_AVATAR_ID;
-    const voiceId = process.env.HEYGEN_VOICE_ID;
+    let voiceId = process.env.HEYGEN_VOICE_ID;
+    try {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { voiceId: true, spokenLanguage: true },
+      });
+      const selectedVoice = selectVoiceForLanguage(user?.voiceId, user?.spokenLanguage);
+      voiceId = process.env[getHeyGenVoiceEnvKey(selectedVoice.id)] || voiceId;
+    } catch {
+      // The configured account default remains available if preferences cannot load.
+    }
 
     const newRes = await fetch(`${HEYGEN_BASE}/streaming.new`, {
       method: 'POST',

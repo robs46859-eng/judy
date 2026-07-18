@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSessionUserId } from '@/lib/auth';
 import { enforceRateLimit } from '@/lib/rate-limit';
 import { avatarSpeakSchema, formatZodError } from '@/lib/schemas';
+import { prepareSpeechForUser } from '@/lib/avatar/speech-preparation';
 
 /**
  * POST /api/avatar/speak
@@ -33,13 +34,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 });
   }
 
+  const prepared = await prepareSpeechForUser(request.headers, userId, {
+    text: parsed.data.text,
+    replyLanguage: parsed.data.language,
+  });
+
   try {
     const res = await fetch('https://api.heygen.com/v1/streaming.task', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
       body: JSON.stringify({
         session_id: parsed.data.sessionId,
-        text: parsed.data.text,
+        text: prepared.text,
         task_type: 'repeat',
       }),
     });
@@ -50,7 +56,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Avatar speak failed' }, { status: 502 });
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({
+      success: true,
+      spokenText: prepared.text,
+      spokenLanguage: prepared.language,
+      voiceId: prepared.voiceId,
+    });
   } catch (error) {
     console.error('HeyGen speak error:', error);
     return NextResponse.json({ error: 'Avatar speak error' }, { status: 500 });

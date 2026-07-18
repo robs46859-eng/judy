@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Volume2, Loader2 } from "lucide-react";
-import { APPROVED_VOICES } from "@/lib/voice/catalog";
+import { APPROVED_VOICES, SPOKEN_LANGUAGE_OPTIONS } from "@/lib/voice/catalog";
 
 export const SPEECH_SYNTHESIS_STORAGE_KEY = "judy-speech-synthesis-enabled";
 
@@ -15,6 +15,7 @@ export const SPEECH_SYNTHESIS_STORAGE_KEY = "judy-speech-synthesis-enabled";
  */
 export default function VoiceSettings() {
   const [voiceId, setVoiceId] = useState<string>("");
+  const [spokenLanguage, setSpokenLanguage] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +31,10 @@ export default function VoiceSettings() {
         const res = await fetch("/api/user/preferences");
         if (!res.ok) return;
         const data = await res.json();
-        if (!cancelled) setVoiceId(data?.voiceId ?? "");
+        if (!cancelled) {
+          setVoiceId(data?.voiceId ?? "");
+          setSpokenLanguage(data?.spokenLanguage ?? "");
+        }
       } catch {
         /* leave the default — this is a nice-to-have control */
       } finally {
@@ -42,15 +46,17 @@ export default function VoiceSettings() {
     };
   }, []);
 
-  const handleVoiceChange = async (next: string) => {
-    setVoiceId(next);
+  const savePreferences = async (nextVoiceId: string, nextSpokenLanguage: string) => {
     setSaving(true);
     setError(null);
     try {
       const res = await fetch("/api/user/preferences", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ voiceId: next || null }),
+        body: JSON.stringify({
+          voiceId: nextVoiceId || null,
+          spokenLanguage: nextSpokenLanguage || null,
+        }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -61,6 +67,16 @@ export default function VoiceSettings() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleVoiceChange = (next: string) => {
+    setVoiceId(next);
+    void savePreferences(next, spokenLanguage);
+  };
+
+  const handleSpokenLanguageChange = (next: string) => {
+    setSpokenLanguage(next);
+    void savePreferences(voiceId, next);
   };
 
   const handleSpeechToggle = (checked: boolean) => {
@@ -86,12 +102,30 @@ export default function VoiceSettings() {
             <option value="">Default</option>
             {APPROVED_VOICES.map((voice) => (
               <option key={voice.id} value={voice.id}>
-                {voice.label}
+                {voice.label} — {voice.personality}
               </option>
             ))}
           </select>
           {saving && <Loader2 size={14} className="spinner" aria-hidden="true" />}
         </span>
+      </div>
+      <div className="settings-group">
+        <label htmlFor="spoken-language-select">
+          <Volume2 size={14} aria-hidden="true" /> Spoken language
+        </label>
+        <select
+          id="spoken-language-select"
+          value={spokenLanguage}
+          onChange={(e) => handleSpokenLanguageChange(e.target.value)}
+          disabled={loading || saving}
+        >
+          <option value="">Match reply language</option>
+          {SPOKEN_LANGUAGE_OPTIONS.map((language) => (
+            <option key={language.locale} value={language.locale}>
+              {language.label}
+            </option>
+          ))}
+        </select>
       </div>
       {error && (
         <div className="onboarding-error" role="alert">

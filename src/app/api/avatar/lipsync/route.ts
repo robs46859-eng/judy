@@ -8,6 +8,7 @@ import { enforceRateLimit } from '@/lib/rate-limit';
 import { avatarLipsyncSchema, formatZodError } from '@/lib/schemas';
 import { synthesizeSpeech, TtsNotConfiguredError } from '@/lib/avatar/tts';
 import { runRhubarb, RhubarbUnavailableError } from '@/lib/avatar/rhubarb';
+import { prepareSpeechForUser } from '@/lib/avatar/speech-preparation';
 
 export const runtime = 'nodejs';
 
@@ -43,11 +44,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 });
   }
 
+  const prepared = await prepareSpeechForUser(request.headers, userId, {
+    text: parsed.data.text,
+    replyLanguage: parsed.data.language,
+  });
+
   let speech;
   try {
     speech = await synthesizeSpeech({
-      text: parsed.data.text,
-      language: parsed.data.language ?? 'en-US',
+      text: prepared.text,
+      language: prepared.language,
+      voiceId: prepared.voiceId,
     });
   } catch (error) {
     if (error instanceof TtsNotConfiguredError) {
@@ -68,17 +75,38 @@ export async function POST(request: NextRequest) {
     const wavPath = join(tempDir, `${requestId}.wav`);
     const dialogFilePath = join(tempDir, `${requestId}.txt`);
     await writeFile(wavPath, speech.audio);
-    await writeFile(dialogFilePath, parsed.data.text, { encoding: 'utf8', mode: 0o600 });
+    await writeFile(dialogFilePath, prepared.text, { encoding: 'utf8', mode: 0o600 });
 
     const cues = await runRhubarb(wavPath, { dialogFilePath });
-    return NextResponse.json({ audio: audioBase64, mimeType: speech.mimeType, cues });
+    return NextResponse.json({
+      audio: audioBase64,
+      mimeType: speech.mimeType,
+      cues,
+      spokenText: prepared.text,
+      spokenLanguage: prepared.language,
+      voiceId: prepared.voiceId,
+    });
   } catch (error) {
     if (error instanceof RhubarbUnavailableError) {
       console.warn('[avatar-lipsync] Rhubarb unavailable, returning audio without cues:', error.message);
-      return NextResponse.json({ audio: audioBase64, mimeType: speech.mimeType, cues: [] });
+      return NextResponse.json({
+        audio: audioBase64,
+        mimeType: speech.mimeType,
+        cues: [],
+        spokenText: prepared.text,
+        spokenLanguage: prepared.language,
+        voiceId: prepared.voiceId,
+      });
     }
     console.error('[avatar-lipsync] unexpected error:', error);
-    return NextResponse.json({ audio: audioBase64, mimeType: speech.mimeType, cues: [] });
+    return NextResponse.json({
+      audio: audioBase64,
+      mimeType: speech.mimeType,
+      cues: [],
+      spokenText: prepared.text,
+      spokenLanguage: prepared.language,
+      voiceId: prepared.voiceId,
+    });
   } finally {
     if (tempDir) {
       await rm(tempDir, { recursive: true, force: true }).catch(() => {});

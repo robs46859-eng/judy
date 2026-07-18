@@ -1,8 +1,9 @@
 import type { NextRequest } from 'next/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ getSessionUserId: vi.fn() }));
+const mocks = vi.hoisted(() => ({ getSessionUserId: vi.fn(), findUnique: vi.fn() }));
 vi.mock('@/lib/auth', () => ({ getSessionUserId: mocks.getSessionUserId }));
+vi.mock('@/lib/prisma', () => ({ prisma: { user: { findUnique: mocks.findUnique } } }));
 
 import { POST } from '../route';
 
@@ -16,6 +17,9 @@ function resetEnv() {
   delete process.env.HEYGEN_API_KEY;
   delete process.env.HEYGEN_AVATAR_ID;
   delete process.env.HEYGEN_VOICE_ID;
+  for (const key of Object.keys(process.env)) {
+    if (key.startsWith('HEYGEN_VOICE_')) delete process.env[key];
+  }
 }
 
 function request(ip = '192.0.2.10') {
@@ -39,6 +43,8 @@ function heygenOk() {
 beforeEach(() => {
   resetEnv();
   mocks.getSessionUserId.mockReset();
+  mocks.findUnique.mockReset();
+  mocks.findUnique.mockResolvedValue(null);
 });
 
 afterEach(() => {
@@ -89,5 +95,23 @@ describe('POST /api/avatar/session', () => {
     const body = JSON.parse(requestInit.body);
     expect(body.avatar_name).toBe('avatar-42');
     expect(body.voice).toEqual({ voice_id: 'voice-99' });
+  });
+
+  it('uses a configured selected voice for a new live session when available', async () => {
+    mocks.getSessionUserId.mockResolvedValue('user-a');
+    mocks.findUnique.mockResolvedValue({
+      voiceId: 'travel-daddy-classic-es',
+      spokenLanguage: 'es-ES',
+    });
+    process.env.HEYGEN_API_KEY = 'test-key';
+    process.env.HEYGEN_VOICE_ID = 'default-voice';
+    process.env.HEYGEN_VOICE_TRAVEL_DADDY_CLASSIC_ES = 'spanish-voice';
+    const fetchMock = vi.fn(async () => heygenOk());
+    vi.stubGlobal('fetch', fetchMock);
+
+    const response = await POST(request());
+
+    expect(response.status).toBe(200);
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).voice).toEqual({ voice_id: 'spanish-voice' });
   });
 });
