@@ -9,7 +9,8 @@
     "start": "node server.js",
     "lint": "eslint",
     "test": "vitest run",
-    "rag:ingest": "npx --yes tsx src/lib/rag/ingest.ts"
+    "rag:ingest": "npx --yes tsx src/lib/rag/ingest.ts",
+    "rag:feeds": "npx --yes tsx src/lib/rag/feeds.ts"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

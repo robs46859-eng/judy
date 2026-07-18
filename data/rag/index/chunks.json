@@ -1,5 +1,54 @@
 [
   {
+    "id": "beach-mykonos#0",
+    "text": "Mykonos, Greece, is a premier gay summer destination known for stunning beaches like Elia and Super Paradise. The island boasts upscale gay-friendly resorts, beach clubs, and an intense nightlife scene.",
+    "source": "beaches-resorts.json",
+    "metadata": {
+      "region": "Europe",
+      "tags": [
+        "beach",
+        "resort",
+        "luxury"
+      ]
+    }
+  },
+  {
+    "id": "beach-puerto-vallarta#0",
+    "text": "Puerto Vallarta, Mexico, features the famous Los Muertos beach with its explicitly gay section, often referred to as 'Blue Chairs'. The Zona Romántica is packed with gay-owned hotels, clubs, and restaurants.",
+    "source": "beaches-resorts.json",
+    "metadata": {
+      "region": "Latin America",
+      "tags": [
+        "beach",
+        "resort",
+        "affordable"
+      ]
+    }
+  },
+  {
+    "id": "beach-fire-island#0",
+    "text": "Fire Island Pines and Cherry Grove in New York, USA, are legendary car-free beach communities. They serve as a massive summer playground for the LGBTQ+ community, featuring boardwalks, pool parties, and beautiful beaches.",
+    "source": "beaches-resorts.json",
+    "metadata": {
+      "region": "North America",
+      "tags": [
+        "beach",
+        "resort",
+        "seasonal"
+      ]
+    }
+  },
+  {
+    "id": "budgeting-norms#0",
+    "text": "# Budgeting Norms by Region for LGBTQ+ Travel\n\nPlanning your budget carefully allows you to maximize your experience while keeping costs under control.\n\n## Europe and North America\nIn top destinations like Mykonos, Ibiza, Palm Springs, and Provincetown, costs can be quite high, especially during peak summer months or major events like Pride and circuit festivals. Expect premium pricing for accommodation and nightlife. To save money, consider traveling during the shoulder season (spring or early autumn) when the weather is still pleasant but prices are lower.\n\n## Latin America and Southeast Asia\nDestinations such as Puerto Vallarta, Mexico City, Bangkok, and Phuket often offer more budget-friendly options. Your money can go further here regarding dining, accommodation, and nightlife. Gay-owned guesthouses are a fantastic option across these regions—they often provide excellent value and serve as great social hubs for meeting other travelers.\n\n## Daily Spending Strategy\nRegardless of the destination, it is wise to separate your daily spending budget into categories: lodging, dining, nightlife, and excursions. This ensures that an unexpected splurge on a big party night or a special d",
+    "source": "budgeting-norms.md"
+  },
+  {
+    "id": "budgeting-norms#1",
+    "text": "destination, it is wise to separate your daily spending budget into categories: lodging, dining, nightlife, and excursions. This ensures that an unexpected splurge on a big party night or a special dinner does not derail your budget for the rest of the trip.",
+    "source": "budgeting-norms.md"
+  },
+  {
     "id": "gay-travel-seed#0",
     "text": "# Gay Travel Knowledge — Seed\n\nThis is a starter knowledge source for Judy's local RAG index. Replace or extend\nit with your own gay-travel datasets and feeds (one topic per paragraph works\nbest), then re-run `npm run rag:ingest`.\n\n## Safety and local laws\n\nLGBTQ+ legal protections vary widely by country and even by region within a\ncountry. Before booking, check the destination's current laws on same-sex\nrelationships, anti-discrimination protections, and public displays of\naffection. Big cities and established gay districts are generally more welcoming\nthan rural areas. When in doubt, favor destinations with active Pride scenes and\nvisible LGBTQ+ nightlife.\n\n## Gay-friendly neighborhoods\n\nMany cities have historic gayborhoods that concentrate bars, cafes, and\nLGBTQ+-owned businesses: the Castro in San Francisco, Chueca in Madrid, Le Marais\nin Paris, Boystown in Chicago, Soho in London, Zona Rosa in Mexico City, and\nSilom Soi 4 in Bangkok. Staying in or near these areas puts nightlife, community,\nand safety in walking distance.\n\n## Nightlife and events\n\nCircuit parties, Pride weeks, and local drag scenes are cornerstones of gay\ntravel. Plan trips around major events — Pride season",
     "source": "gay-travel-seed.md"
@@ -8,5 +57,93 @@
     "id": "gay-travel-seed#1",
     "text": "community,\nand safety in walking distance.\n\n## Nightlife and events\n\nCircuit parties, Pride weeks, and local drag scenes are cornerstones of gay\ntravel. Plan trips around major events — Pride season (typically June in the\nNorthern Hemisphere), Sitges Pride, Madrid Pride (MADO), Amsterdam Pride canal\nparade, and Folsom Street Fair — but book lodging early, as prices spike.\n\n## Beaches and resorts\n\nPopular gay beach destinations include Sitges (Spain), Mykonos (Greece), Puerto\nVallarta (Mexico), Fire Island (USA), and Gran Canaria (Spain). Many have\nclothing-optional or explicitly gay sections and a cluster of gay-owned hotels\nand beach clubs.\n\n## Budgeting tips\n\nShoulder season (just before or after peak) offers lower prices with much of the\nscene still active. Gay-owned guesthouses are often cheaper and more social than\nbig chains. Build a daily spending budget that separates lodging, dining,\nnightlife, and excursions so a big party night doesn't blow the trip.",
     "source": "gay-travel-seed.md"
+  },
+  {
+    "id": "gayborhood-castro-sf#0",
+    "text": "The Castro in San Francisco, USA, is one of the most historically significant gayborhoods in the world. It features a dense concentration of LGBTQ+-owned bars, cafes, and businesses, making it a vibrant cultural hub.",
+    "source": "gayborhoods.json",
+    "metadata": {
+      "region": "North America",
+      "tags": [
+        "gayborhood",
+        "history",
+        "urban"
+      ]
+    }
+  },
+  {
+    "id": "gayborhood-chueca-madrid#0",
+    "text": "Chueca in Madrid, Spain, is the epicenter of the city's LGBTQ+ community. Known for its lively plazas, stylish boutiques, and incredible nightlife, it places community and safety within walking distance.",
+    "source": "gayborhoods.json",
+    "metadata": {
+      "region": "Europe",
+      "tags": [
+        "gayborhood",
+        "nightlife",
+        "urban"
+      ]
+    }
+  },
+  {
+    "id": "gayborhood-silom-bangkok#0",
+    "text": "Silom Soi 4 and Soi 2 in Bangkok, Thailand, offer a dynamic and energetic gay nightlife scene. It is a welcoming area that draws both locals and international travelers with its clubs, cabarets, and street life.",
+    "source": "gayborhoods.json",
+    "metadata": {
+      "region": "Asia",
+      "tags": [
+        "gayborhood",
+        "nightlife",
+        "urban"
+      ]
+    }
+  },
+  {
+    "id": "health-tips#0",
+    "text": "# Health and Travel Tips for LGBTQ+ Travelers\n\nStaying healthy and prepared while traveling ensures you can fully enjoy your trip without unnecessary interruptions.\n\n## Medication and Prescriptions\nAlways carry enough medication (such as PrEP, ARVs, or hormones) for your entire trip, plus a few days' extra. Keep medications in their original, clearly labeled prescription bottles in your carry-on luggage. Some countries have restrictions on importing certain medications, even for personal use, so verify with the destination's embassy or official health resources before you fly.\n\n## Vaccinations and Clinics\nFamiliarize yourself with local LGBTQ+-friendly health clinics in your destination. In major gay travel hubs, you can often find clinics that cater specifically to the community. Additionally, check if any specific vaccinations (like Hepatitis A and B, or mpox) are recommended for your travel activities or destination.",
+    "source": "health-tips.md"
+  },
+  {
+    "id": "event-sitges-pride#0",
+    "text": "Sitges Pride takes place in June in the picturesque coastal town of Sitges, Spain. It is renowned for its open-air beach parties, parades, and inclusive atmosphere, drawing visitors from all over Europe.",
+    "source": "nightlife-events.json",
+    "metadata": {
+      "region": "Europe",
+      "tags": [
+        "pride",
+        "event",
+        "beach"
+      ]
+    }
+  },
+  {
+    "id": "event-madrid-mado#0",
+    "text": "Madrid Pride, known as MADO (Madrid Orgullo), is one of the largest Pride festivals in Europe. Taking place in early July, the entire city, especially the Chueca neighborhood, turns into a massive, multi-day celebration.",
+    "source": "nightlife-events.json",
+    "metadata": {
+      "region": "Europe",
+      "tags": [
+        "pride",
+        "event",
+        "urban"
+      ]
+    }
+  },
+  {
+    "id": "event-folsom-sf#0",
+    "text": "The Folsom Street Fair in San Francisco takes place every September and is the world's largest leather and fetish event. It is a cornerstone of alternative gay travel and celebrates body positivity and kink.",
+    "source": "nightlife-events.json",
+    "metadata": {
+      "region": "North America",
+      "tags": [
+        "event",
+        "fetish",
+        "urban"
+      ]
+    }
+  },
+  {
+    "id": "safety-guidance#0",
+    "text": "# LGBTQ+ Safety and Local Laws Guidance\n\nWhen planning international travel, always remember that LGBTQ+ legal protections and social acceptance vary significantly around the world. What is considered standard in one country may be completely different across a border. \n\n## Legal Protections and Reality\nAlways verify current laws on same-sex relationships, anti-discrimination protections, and public displays of affection with official government travel advisories or established LGBTQ+ organizations (like ILGA). While many destinations offer full legal equality, others may have outdated laws or lack specific anti-discrimination protections. Note that this information should serve as guidance, not as absolute legal fact—laws can change and local enforcement varies.\n\n## Regional Differences\nWithin a single country, attitudes can differ between major cities and rural areas. Established gayborhoods and major metropolitan centers tend to be more welcoming and offer a strong sense of community. If you are unsure about a destination, favor places with an active Pride scene and visible LGBTQ+ nightlife, as these are strong indicators of a welcoming environment.",
+    "source": "safety-guidance.md"
   }
 ]

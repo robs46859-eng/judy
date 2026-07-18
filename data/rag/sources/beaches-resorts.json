@@ -1,0 +1,26 @@
+[
+  {
+    "id": "beach-mykonos",
+    "text": "Mykonos, Greece, is a premier gay summer destination known for stunning beaches like Elia and Super Paradise. The island boasts upscale gay-friendly resorts, beach clubs, and an intense nightlife scene.",
+    "metadata": {
+      "region": "Europe",
+      "tags": ["beach", "resort", "luxury"]
+    }
+  },
+  {
+    "id": "beach-puerto-vallarta",
+    "text": "Puerto Vallarta, Mexico, features the famous Los Muertos beach with its explicitly gay section, often referred to as 'Blue Chairs'. The Zona Romántica is packed with gay-owned hotels, clubs, and restaurants.",
+    "metadata": {
+      "region": "Latin America",
+      "tags": ["beach", "resort", "affordable"]
+    }
+  },
+  {
+    "id": "beach-fire-island",
+    "text": "Fire Island Pines and Cherry Grove in New York, USA, are legendary car-free beach communities. They serve as a massive summer playground for the LGBTQ+ community, featuring boardwalks, pool parties, and beautiful beaches.",
+    "metadata": {
+      "region": "North America",
+      "tags": ["beach", "resort", "seasonal"]
+    }
+  }
+]

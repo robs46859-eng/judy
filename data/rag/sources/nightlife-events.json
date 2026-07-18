@@ -1,0 +1,26 @@
+[
+  {
+    "id": "event-sitges-pride",
+    "text": "Sitges Pride takes place in June in the picturesque coastal town of Sitges, Spain. It is renowned for its open-air beach parties, parades, and inclusive atmosphere, drawing visitors from all over Europe.",
+    "metadata": {
+      "region": "Europe",
+      "tags": ["pride", "event", "beach"]
+    }
+  },
+  {
+    "id": "event-madrid-mado",
+    "text": "Madrid Pride, known as MADO (Madrid Orgullo), is one of the largest Pride festivals in Europe. Taking place in early July, the entire city, especially the Chueca neighborhood, turns into a massive, multi-day celebration.",
+    "metadata": {
+      "region": "Europe",
+      "tags": ["pride", "event", "urban"]
+    }
+  },
+  {
+    "id": "event-folsom-sf",
+    "text": "The Folsom Street Fair in San Francisco takes place every September and is the world's largest leather and fetish event. It is a cornerstone of alternative gay travel and celebrates body positivity and kink.",
+    "metadata": {
+      "region": "North America",
+      "tags": ["event", "fetish", "urban"]
+    }
+  }
+]
