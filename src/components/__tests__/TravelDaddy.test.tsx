@@ -44,7 +44,7 @@ vi.mock('../avatar/AvatarStage', () => ({
   },
 }));
 
-const AVATAR_ALT = "Travel Daddy, Judy's travel translator and guide";
+const AVATAR_ALT = "Judy Pierre, Judy's travel translator and guide";
 
 beforeEach(() => {
   avatarStageMock.shouldFail = false;
@@ -71,7 +71,7 @@ describe('TravelDaddy avatar fallback (Swarm J7)', () => {
     expect(screen.queryByAltText(AVATAR_ALT)).not.toBeInTheDocument();
 
     // Chat + translation entry points must still be usable regardless of avatar mode.
-    expect(screen.getByTitle('Chat with Travel Daddy')).toBeInTheDocument();
+    expect(screen.getByTitle('Chat with Judy Pierre')).toBeInTheDocument();
     expect(screen.getByTitle('Translate a phrase')).toBeInTheDocument();
   });
 
@@ -186,8 +186,8 @@ describe('TravelDaddy caption overlay (Swarm J6)', () => {
 
     render(<TravelDaddy userName="Robert" />);
 
-    fireEvent.click(await screen.findByTitle('Chat with Travel Daddy'));
-    const input = await screen.findByPlaceholderText('Ask Travel Daddy anything...');
+    fireEvent.click(await screen.findByTitle('Chat with Judy Pierre'));
+    const input = await screen.findByPlaceholderText('Ask Judy Pierre anything...');
     fireEvent.change(input, { target: { value: 'What should I pack?' } });
     fireEvent.click(screen.getByTitle('Send message'));
 
@@ -248,8 +248,8 @@ describe('TravelDaddy synchronized local speech', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     render(<TravelDaddy userName="Robert" />);
-    fireEvent.click(await screen.findByTitle('Chat with Travel Daddy'));
-    fireEvent.change(await screen.findByPlaceholderText('Ask Travel Daddy anything...'), {
+    fireEvent.click(await screen.findByTitle('Chat with Judy Pierre'));
+    fireEvent.change(await screen.findByPlaceholderText('Ask Judy Pierre anything...'), {
       target: { value: 'When does my train leave?' },
     });
     fireEvent.click(screen.getByTitle('Send message'));

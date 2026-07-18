@@ -452,7 +452,7 @@ export default function ItineraryBuilder({
 
           {suggestionsLoading && (
             <div className="suggestions-loading">
-              <Loader2 size={24} className="spinner" /> Asking Travel Daddy for suggestions...
+              <Loader2 size={24} className="spinner" /> Asking Judy Pierre for suggestions...
             </div>
           )}
 

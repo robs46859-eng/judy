@@ -6,6 +6,7 @@ import { chatSchema, formatZodError } from '@/lib/schemas';
 import { runTravelKnowledge } from '@/lib/hermes/knowledge-runner';
 import { runTravelTranslation } from '@/lib/hermes/translation-runner';
 import { retrieveContext } from '@/lib/rag/retriever';
+import { experiencesContextChunk } from '@/lib/experiences/context';
 import { detectTranslationIntent } from '@/lib/translation-intent';
 import { prisma } from '@/lib/prisma';
 
@@ -13,7 +14,7 @@ export const runtime = 'nodejs';
 
 /**
  * POST /api/avatar/chat
- * Sends user messages to Gemini with the Travel Daddy persona.
+ * Sends user messages to Gemini with the Judy Pierre persona.
  * Returns AI response text (for HeyGen to vocalize or for text display).
  */
 export async function POST(request: NextRequest) {
@@ -103,19 +104,18 @@ ${tripContext.itineraryItems?.length ? `- Itinerary: ${tripContext.itineraryItem
       }
     }
 
-    const systemPrompt = `You are "Travel Daddy," a hearty woodsman and lumberjack travel companion for the Judy travel app. Your personality:
+    const systemPrompt = `You are "Judy Pierre," the purple rhino mascot and personal travel guide for the Judy gay-travel app ("be gay while away"). Your personality:
 
-- You are warm, friendly, and protective — like a big bear of a travel buddy
-- You are 5'8", 140lbs, bald with a salted red beard, wearing lumberjack flannel
+- You are warm, fabulous, and protective — a big-hearted purple rhino who looks out for your travelers
+- You are proudly part of the LGBTQ+ community and speak to gay travelers as a trusted friend
 - You speak fluent English and Spanish — respond in whichever language the user uses
-- You occasionally punctuate your advice with a hearty laugh (written as "HAH!" or "¡JAH!")
 - You give practical, specific travel advice grounded in real knowledge
-- You know about LGBTQ+-friendly destinations, safety tips, local culture, and food
+- You know LGBTQ+-friendly destinations, safety, nightlife, culture, dining, and experiences
 - Keep responses concise (2-4 sentences) unless the user asks for detailed information
-- You care deeply about the user's safety and enjoyment
-- You address the user affectionately as "traveler," "friend," or "amigo/amiga"
+- You care deeply about the user's safety and joy
+- You address the user warmly as "darling," "traveler," or "friend"
 ${tripInfo}${preferencesInfo}
-Respond naturally as Travel Daddy. Do NOT use markdown formatting — speak plainly as if talking out loud.`;
+Respond naturally as Judy Pierre. Do NOT use markdown formatting — speak plainly as if talking out loud.`;
 
     // Implicit translation routing (Swarm J4): an explicit request, or the
     // message's script not matching the user's stored native language. Runs
@@ -154,9 +154,19 @@ Respond naturally as Travel Daddy. Do NOT use markdown formatting — speak plai
     // to Gemini. Returns null — and we fall through — whenever Hermes is
     // disabled or its low daily quota is spent, so chat never breaks.
     const retrieved = await retrieveContext(message, { k: 3, maxChars: 2_000 });
+    // Surface curated experiences conversationally when the message is asking
+    // about things to do (null otherwise, so it doesn't bias every answer).
+    const experiencesChunk = experiencesContextChunk(
+      message,
+      tripContext?.destinationName ?? null
+    );
+    const groundingChunks = [
+      ...retrieved,
+      ...(experiencesChunk ? [experiencesChunk] : []),
+    ];
     const gemmaReply = await runTravelKnowledge(request.headers, userId, {
       prompt: message,
-      contextChunks: [systemPrompt, ...retrieved],
+      contextChunks: [systemPrompt, ...groundingChunks],
     });
     if (gemmaReply) {
       console.info('[avatar-chat] routed', { userId, route: 'gemma' });
@@ -171,21 +181,24 @@ Respond naturally as Travel Daddy. Do NOT use markdown formatting — speak plai
     const genAI = new GoogleGenerativeAI(geminiKey);
     const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
+    const geminiPrompt =
+      systemPrompt +
+      (groundingChunks.length > 0 ? '\n\n' + groundingChunks.join('\n\n') : '') +
+      '\n\nUser says: ' +
+      message;
     const result = await model.generateContent({
-      contents: [
-        { role: 'user', parts: [{ text: systemPrompt + '\n\nUser says: ' + message }] },
-      ],
+      contents: [{ role: 'user', parts: [{ text: geminiPrompt }] }],
     });
 
     const response = result.response;
-    const text = response.text() || "HAH! Sorry traveler, my brain froze for a second there. Ask me again!";
+    const text = response.text() || "Sorry darling, my mind wandered off for a second there — ask me again!";
 
     console.info('[avatar-chat] routed', { userId, route: 'gemini' });
     return NextResponse.json({ reply: text });
   } catch (error: any) {
     console.error('Avatar chat error:', error);
     return NextResponse.json(
-      { reply: "Hmm, seems like the trail got a little rough there, friend. Try asking me again!" },
+      { reply: "Hmm, my signal got a little fuzzy there, darling. Try asking me again!" },
       { status: 200 } // Return 200 with fallback text so the UI doesn't break
     );
   }

@@ -11,6 +11,7 @@ import { signOut } from "next-auth/react";
 import Image from "next/image";
 import TravelDaddy from "./TravelDaddy";
 import ItineraryBuilder from "./ItineraryBuilder";
+import BudgetAutoAllocate from "./BudgetAutoAllocate";
 import UserProfileModal from "./UserProfileModal";
 import ContactFormModal from "./ContactFormModal";
 import VoiceSettings from "./VoiceSettings";
@@ -537,6 +538,9 @@ export default function Dashboard({
                     <strong>${trip.spendingBudget?.toFixed(2)}</strong>
                   </div>
                 </div>
+
+                <BudgetAutoAllocate tripId={trip.id} onApplied={loadTrip} />
+
                 {trip.budgetItems?.length > 0 && (
                   <div className="budget-allocations">
                     <h3>Allocations</h3>

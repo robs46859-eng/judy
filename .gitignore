@@ -47,5 +47,8 @@ next-env.d.ts
 *.db
 *.db-journal
 
+# user-uploaded memory photos (runtime, not source)
+/public/uploads/
+
 # runtime-managed avatar uploads are content-addressed outside source control
 /data/avatar-assets/

@@ -20,10 +20,15 @@ import {
   RotateCcw,
   Square,
   ArrowLeftRight,
+  Image as ImageIcon,
+  Bell,
 } from "lucide-react";
 import { useHermesJob } from "@/lib/hermes/useHermesJob";
 import { extractHermesText } from "@/lib/hermes/result";
 import OnboardingIntake from "./OnboardingIntake";
+import ExperiencesPanel from "./ExperiencesPanel";
+import MemoriesPanel from "./MemoriesPanel";
+import AlertsPanel from "./AlertsPanel";
 import { SPEECH_SYNTHESIS_STORAGE_KEY } from "./VoiceSettings";
 import AvatarStage from "./avatar/AvatarStage";
 import VoiceInputButton from "./avatar/VoiceInputButton";
@@ -89,6 +94,9 @@ export default function TravelDaddy({
 }: TravelDaddyProps) {
   const [chatOpen, setChatOpen] = useState(false);
   const [translateOpen, setTranslateOpen] = useState(false);
+  const [experiencesOpen, setExperiencesOpen] = useState(false);
+  const [memoriesOpen, setMemoriesOpen] = useState(false);
+  const [alertsOpen, setAlertsOpen] = useState(false);
   const [translateText, setTranslateText] = useState("");
   const [sourceLang, setSourceLang] = useState("Auto-detect");
   const [targetLang, setTargetLang] = useState("Spanish");
@@ -129,7 +137,7 @@ export default function TravelDaddy({
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: "daddy",
-      text: "Hey there, traveler! I'm Travel Daddy — your trusty woodsman guide. Ask me anything about your trip and I'll steer you right! HAH!",
+      text: "Hey darling! I'm Judy Pierre, your purple rhino travel guide. Ask me anything about your trip — where to go, what to do, how to say it — and I'll steer you right!",
     },
   ]);
   const [input, setInput] = useState("");
@@ -523,7 +531,7 @@ export default function TravelDaddy({
             "talking" motion); the flat portrait is only the last-resort
             fallback if the 3D model can't load or render at all. */}
         {!liveSession && !glbAvatarFailed && (
-          <div className="td-glb-avatar" role="img" aria-label="Travel Daddy, Judy's travel translator and guide">
+          <div className="td-glb-avatar" role="img" aria-label="Judy Pierre, Judy's travel translator and guide">
             <AvatarStage
               modelUrl={avatarModelUrl}
               talking={isTalking}
@@ -535,7 +543,7 @@ export default function TravelDaddy({
         {!liveSession && glbAvatarFailed && (
           <Image
             src="/avatars/robjudy.jpg"
-            alt="Travel Daddy, Judy's travel translator and guide"
+            alt="Judy Pierre, Judy's travel translator and guide"
             fill
             sizes="(max-width: 768px) 100vw, 65vw"
             priority
@@ -609,6 +617,60 @@ export default function TravelDaddy({
       >
         <Languages size={18} aria-hidden="true" />
       </button>
+
+      {/* Experiences quick-action — curated gay-tailored experiences */}
+      <button
+        className={`td-experiences-toggle${experiencesOpen ? " active" : ""}`}
+        onClick={() => setExperiencesOpen((v) => !v)}
+        title="Browse experiences"
+        aria-label="Browse experiences"
+        aria-pressed={experiencesOpen}
+      >
+        <Compass size={18} aria-hidden="true" />
+      </button>
+      <ExperiencesPanel
+        open={experiencesOpen}
+        onClose={() => setExperiencesOpen(false)}
+        destinationName={
+          (tripContext as { destinationName?: string } | null | undefined)?.destinationName ?? null
+        }
+      />
+
+      {/* Memories quick-action — AI-captioned travel albums */}
+      <button
+        className={`td-memories-toggle${memoriesOpen ? " active" : ""}`}
+        onClick={() => setMemoriesOpen((v) => !v)}
+        title="Travel memories"
+        aria-label="Travel memories"
+        aria-pressed={memoriesOpen}
+      >
+        <ImageIcon size={18} aria-hidden="true" />
+      </button>
+      <MemoriesPanel
+        open={memoriesOpen}
+        onClose={() => setMemoriesOpen(false)}
+        destinationName={
+          (tripContext as { destinationName?: string } | null | undefined)?.destinationName ?? null
+        }
+      />
+
+      {/* Travel alerts quick-action */}
+      <button
+        className={`td-alerts-toggle${alertsOpen ? " active" : ""}`}
+        onClick={() => setAlertsOpen((v) => !v)}
+        title="Travel alerts"
+        aria-label="Travel alerts"
+        aria-pressed={alertsOpen}
+      >
+        <Bell size={18} aria-hidden="true" />
+      </button>
+      <AlertsPanel
+        open={alertsOpen}
+        onClose={() => setAlertsOpen(false)}
+        destinationName={
+          (tripContext as { destinationName?: string } | null | undefined)?.destinationName ?? null
+        }
+      />
 
       {/* Translate panel — powered by Gemma via Hermes */}
       {translateOpen && (
@@ -713,10 +775,10 @@ export default function TravelDaddy({
             setChatOpen(true);
             setTimeout(() => inputRef.current?.focus(), 100);
           }}
-          title="Chat with Travel Daddy"
+          title="Chat with Judy Pierre"
         >
           <MessageCircle size={20} aria-hidden="true" />
-          <span>Ask Travel Daddy</span>
+          <span>Ask Judy Pierre</span>
         </button>
       )}
 
@@ -728,7 +790,7 @@ export default function TravelDaddy({
           <div className="td-chat-header">
             <div className="td-chat-title">
               <div className="td-avatar-dot" aria-hidden="true" />
-              <span>{onboardingStatus === "pending" ? "Getting to know you" : "Travel Daddy"}</span>
+              <span>{onboardingStatus === "pending" ? "Getting to know you" : "Judy Pierre"}</span>
             </div>
             <button
               className="td-chat-close"
@@ -771,7 +833,7 @@ export default function TravelDaddy({
                     <span className="td-msg-avatar" aria-hidden="true"><Compass size={14} /></span>
                     <div className="td-msg-bubble td-typing">
                       <span aria-hidden="true" /><span aria-hidden="true" /><span aria-hidden="true" />
-                      <span className="sr-only">Travel Daddy is typing…</span>
+                      <span className="sr-only">Judy Pierre is typing…</span>
                     </div>
                   </div>
                 )}
@@ -785,10 +847,10 @@ export default function TravelDaddy({
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="Ask Travel Daddy anything..."
+                  placeholder="Ask Judy Pierre anything..."
                   className="td-chat-input"
                   disabled={isLoading}
-                  aria-label="Message to Travel Daddy"
+                  aria-label="Message to Judy Pierre"
                 />
                 <VoiceInputButton
                   disabled={isLoading}

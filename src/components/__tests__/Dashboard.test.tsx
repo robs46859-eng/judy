@@ -10,7 +10,7 @@ import Dashboard from '../Dashboard';
 vi.mock('../TravelDaddy', () => ({
   default: ({ avatarModelUrl }: { avatarModelUrl?: string }) => (
     <div data-testid="travel-daddy-stub" data-model-url={avatarModelUrl}>
-      Travel Daddy
+      Judy Pierre
     </div>
   ),
 }));
@@ -202,7 +202,7 @@ describe('Dashboard', () => {
 
     fireEvent.click(settingsNavBtn);
 
-    expect(await screen.findByText('Travel Daddy voice')).toBeInTheDocument();
+    expect(await screen.findByText('Judy Pierre voice')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Settings' })).toHaveAttribute('aria-current', 'page');
   });
 });

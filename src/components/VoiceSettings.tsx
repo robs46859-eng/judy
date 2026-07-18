@@ -74,7 +74,7 @@ export default function VoiceSettings() {
     <>
       <div className="settings-group">
         <label htmlFor="voice-catalog-select">
-          <Volume2 size={14} aria-hidden="true" /> Travel Daddy voice
+          <Volume2 size={14} aria-hidden="true" /> Judy Pierre voice
         </label>
         <span className="voice-select-wrap">
           <select

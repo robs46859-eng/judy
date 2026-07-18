@@ -34,6 +34,26 @@ model User {
   trips              Trip[]
   entertainmentPrefs EntertainmentPreference[]
   hermesJobs         HermesJob[]
+  memories           Memory[]
+}
+
+model Memory {
+  id                  String   @id @default(uuid())
+  userId              String
+  tripId              String?
+  imageUrl            String
+  caption             String
+  altText             String?
+  tags                String?  // comma-separated
+  location            String?
+  sourceLanguage      String?
+  translatedCaption   String?
+  translationLanguage String?
+  createdAt           DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }
 
 model HermesJob {
