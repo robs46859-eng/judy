@@ -1,0 +1,7 @@
+User-Agent: *
+Allow: /
+Allow: /destinations
+Allow: /destinations/
+Disallow: /api/
+Disallow: /admin/
+Disallow: /login/
