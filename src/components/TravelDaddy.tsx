@@ -594,6 +594,7 @@ export default function TravelDaddy({
             <AvatarStage
               modelUrl={avatarModelUrl}
               talking={isTalking}
+              phase={conversation.phase}
               cues={visemeCues}
               onUnavailable={() => setGlbAvatarFailed(true)}
             />

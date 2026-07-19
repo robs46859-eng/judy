@@ -414,6 +414,7 @@ export default function AvatarManager() {
                   key={activeModelUrl}
                   modelUrl={activeModelUrl}
                   talking={false}
+                  phase="idle"
                   onUnavailable={() => setFailedPreviewUrl(activeModelUrl)}
                 />
               </div>

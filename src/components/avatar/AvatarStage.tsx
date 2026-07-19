@@ -5,10 +5,13 @@ import { Canvas } from "@react-three/fiber";
 import { Bounds } from "@react-three/drei";
 import AvatarMesh from "./AvatarMesh";
 import type { RhubarbCue } from "@/lib/avatar/visemeTimeline";
+import { getAvatarFacingRotation } from "@/lib/avatar/motion";
+import type { ConversationPhase } from "./conversationMachine";
 
 export interface AvatarStageProps {
   modelUrl: string;
   talking: boolean;
+  phase: ConversationPhase;
   cues?: RhubarbCue[] | null;
   /**
    * Called at most once if the GLB fails to load or render (missing file,
@@ -48,7 +51,13 @@ class AvatarErrorBoundary extends Component<
   }
 }
 
-export default function AvatarStage({ modelUrl, talking, cues, onUnavailable }: AvatarStageProps) {
+export default function AvatarStage({
+  modelUrl,
+  talking,
+  phase,
+  cues,
+  onUnavailable,
+}: AvatarStageProps) {
   return (
     <AvatarErrorBoundary onUnavailable={onUnavailable}>
       <Canvas
@@ -64,7 +73,13 @@ export default function AvatarStage({ modelUrl, talking, cues, onUnavailable }: 
         <directionalLight position={[0.5, 1.2, 1]} intensity={1.1} />
         <Suspense fallback={null}>
           <Bounds fit clip observe margin={1.12}>
-            <AvatarMesh modelUrl={modelUrl} talking={talking} cues={cues} />
+            <AvatarMesh
+              modelUrl={modelUrl}
+              talking={talking}
+              phase={phase}
+              cues={cues}
+              facingRotationY={getAvatarFacingRotation(modelUrl)}
+            />
           </Bounds>
         </Suspense>
       </Canvas>

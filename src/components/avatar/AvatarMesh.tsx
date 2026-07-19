@@ -18,6 +18,8 @@ import {
   clearMorphTargetInfluences,
   restoreJawBindRotation,
 } from "@/lib/avatar/rigRuntime";
+import { sampleAvatarMotion } from "@/lib/avatar/motion";
+import type { ConversationPhase } from "./conversationMachine";
 
 export interface AvatarMeshProps {
   /** Path under /public to the rigged GLB. */
@@ -31,6 +33,8 @@ export interface AvatarMeshProps {
    * reference is treated as a new utterance and resets playback time to 0.
    */
   cues?: RhubarbCue[] | null;
+  phase: ConversationPhase;
+  facingRotationY?: number;
   /** Reported once, if the GLTF fails to parse after loading. */
   onRigError?: (message: string) => void;
 }
@@ -46,6 +50,21 @@ interface Rig {
   jawBindRotation: THREE.Quaternion | null;
   hasVisemeTargets: boolean;
   hasArkitTargets: boolean;
+  rootBindY: number;
+  rootBindScale: THREE.Vector3;
+  motionBones: {
+    head: MotionBone | null;
+    neck: MotionBone | null;
+    leftEar: MotionBone | null;
+    rightEar: MotionBone | null;
+    chest: MotionBone | null;
+    spine: MotionBone | null;
+  };
+}
+
+interface MotionBone {
+  bone: THREE.Bone;
+  bindRotation: THREE.Quaternion;
 }
 
 function isMorphMesh(obj: THREE.Object3D): obj is MorphMesh {
@@ -67,6 +86,17 @@ function findJawBone(root: THREE.Object3D): THREE.Bone | null {
     }
   });
   return found;
+}
+
+function findMotionBone(root: THREE.Object3D, pattern: RegExp): MotionBone | null {
+  let found: THREE.Bone | null = null;
+  root.traverse((object) => {
+    if (found || !(object as THREE.Bone).isBone) return;
+    if (pattern.test(object.name)) found = object as THREE.Bone;
+  });
+  if (!found) return null;
+  const bone = found as THREE.Bone;
+  return { bone, bindRotation: bone.quaternion.clone() };
 }
 
 function buildRig(scene: THREE.Object3D, onRigError?: (message: string) => void): Rig {
@@ -96,10 +126,50 @@ function buildRig(scene: THREE.Object3D, onRigError?: (message: string) => void)
     jawBindRotation: jawBone?.quaternion.clone() ?? null,
     hasVisemeTargets,
     hasArkitTargets,
+    rootBindY: scene.position.y,
+    rootBindScale: scene.scale.clone(),
+    motionBones: {
+      head: findMotionBone(scene, /^head$/i),
+      neck: findMotionBone(scene, /^neck$/i),
+      leftEar: findMotionBone(scene, /^ear[._-]?l$/i),
+      rightEar: findMotionBone(scene, /^ear[._-]?r$/i),
+      chest: findMotionBone(scene, /^chest$/i),
+      spine: findMotionBone(scene, /^spine$/i),
+    },
   };
 }
 
-export default function AvatarMesh({ modelUrl, talking, cues, onRigError }: AvatarMeshProps) {
+const motionEuler = new THREE.Euler();
+const motionDelta = new THREE.Quaternion();
+
+function applyMotionBone(
+  target: MotionBone | null,
+  pitch: number,
+  yaw: number,
+  roll: number
+) {
+  if (!target) return;
+  motionEuler.set(pitch, yaw, roll, "XYZ");
+  motionDelta.setFromEuler(motionEuler);
+  target.bone.quaternion.copy(target.bindRotation).multiply(motionDelta);
+}
+
+function restoreMotionRig(scene: THREE.Object3D, rig: Rig) {
+  scene.position.y = rig.rootBindY;
+  scene.scale.copy(rig.rootBindScale);
+  for (const target of Object.values(rig.motionBones)) {
+    if (target) target.bone.quaternion.copy(target.bindRotation);
+  }
+}
+
+export default function AvatarMesh({
+  modelUrl,
+  talking,
+  cues,
+  phase,
+  facingRotationY = 0,
+  onRigError,
+}: AvatarMeshProps) {
   const { scene } = useGLTF(modelUrl);
   const startedAtRef = useRef<number | null>(null);
   const cuesRef = useRef<RhubarbCue[] | null | undefined>(cues);
@@ -108,6 +178,7 @@ export default function AvatarMesh({ modelUrl, talking, cues, onRigError }: Avat
   // (imperative per-frame updates via refs, not React state/useMemo), so it
   // lives in a ref rather than memoized state.
   const rigRef = useRef<Rig | null>(null);
+  const reducedMotionRef = useRef(false);
 
   useEffect(() => {
     rigRef.current = buildRig(scene, onRigError);
@@ -121,8 +192,20 @@ export default function AvatarMesh({ modelUrl, talking, cues, onRigError }: Avat
       if (rig.jawBone && rig.jawBindRotation) {
         restoreJawBindRotation(rig.jawBone, rig.jawBindRotation);
       }
+      restoreMotionRig(scene, rig);
     };
   }, [scene, onRigError]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const update = () => {
+      reducedMotionRef.current = media.matches;
+    };
+    update();
+    media.addEventListener?.("change", update);
+    return () => media.removeEventListener?.("change", update);
+  }, []);
 
   // A new cues array (new utterance) or a fresh talking=true both restart
   // the local playback clock so the timeline/approximation starts at t=0.
@@ -147,6 +230,30 @@ export default function AvatarMesh({ modelUrl, talking, cues, onRigError }: Avat
   useFrame(({ clock }) => {
     const rig = rigRef.current;
     if (!rig) return;
+
+    const motion = sampleAvatarMotion(
+      phase,
+      clock.getElapsedTime(),
+      reducedMotionRef.current
+    );
+    scene.position.y = rig.rootBindY + motion.rootY;
+    scene.scale.copy(rig.rootBindScale).multiplyScalar(motion.rootScale);
+    applyMotionBone(
+      rig.motionBones.head,
+      motion.headPitch,
+      motion.headYaw,
+      motion.headRoll
+    );
+    applyMotionBone(
+      rig.motionBones.neck,
+      motion.headPitch * 0.35,
+      motion.headYaw * 0.35,
+      motion.headRoll * 0.25
+    );
+    applyMotionBone(rig.motionBones.leftEar, 0, 0, motion.earRoll);
+    applyMotionBone(rig.motionBones.rightEar, 0, 0, -motion.earRoll);
+    applyMotionBone(rig.motionBones.chest, motion.chestPitch, 0, 0);
+    applyMotionBone(rig.motionBones.spine, motion.chestPitch * 0.45, 0, 0);
 
     const started = startedAtRef.current;
     const elapsed = started === null ? 0 : (performance.now() - started) / 1000;
@@ -226,5 +333,9 @@ export default function AvatarMesh({ modelUrl, talking, cues, onRigError }: Avat
   });
   /* eslint-enable react-hooks/immutability */
 
-  return <primitive object={scene} />;
+  return (
+    <group rotation={[0, facingRotationY, 0]}>
+      <primitive object={scene} />
+    </group>
+  );
 }
