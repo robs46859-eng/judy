@@ -26,6 +26,7 @@ export type ConversationEvent =
   | { type: 'SUBMIT' }
   | { type: 'REPLY_READY' }
   | { type: 'SPEECH_FINISHED' }
+  | { type: 'PAUSE' }
   | { type: 'RESUME' }
   | { type: 'END' }
   | { type: 'FAIL'; message: string };
@@ -92,6 +93,15 @@ export function conversationReducer(
             interimTranscript: '',
             finalTranscript: '',
             error: null,
+          }
+        : state;
+    case 'PAUSE':
+      return state.sessionActive && state.phase === 'listening'
+        ? {
+            ...state,
+            phase: 'paused',
+            interimTranscript: '',
+            finalTranscript: state.interimTranscript || state.finalTranscript,
           }
         : state;
     case 'RESUME':

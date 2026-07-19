@@ -87,6 +87,23 @@ describe('conversationReducer', () => {
     });
   });
 
+  it('pauses an active listening session while the page is hidden and resumes cleanly', () => {
+    const listening = {
+      ...INITIAL_CONVERSATION_STATE,
+      phase: 'listening' as const,
+      sessionActive: true,
+      interimTranscript: 'partially heard',
+    };
+
+    const paused = conversationReducer(listening, { type: 'PAUSE' });
+    expect(paused).toMatchObject({
+      phase: 'paused',
+      interimTranscript: '',
+      finalTranscript: 'partially heard',
+    });
+    expect(conversationReducer(paused, { type: 'RESUME' }).phase).toBe('listening');
+  });
+
   it('ends from any phase and clears transcripts and errors', () => {
     const failed = {
       phase: 'error' as const,

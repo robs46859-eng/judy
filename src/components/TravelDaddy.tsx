@@ -27,13 +27,14 @@ import MemoriesPanel from "./MemoriesPanel";
 import AlertsPanel from "./AlertsPanel";
 import { SPEECH_SYNTHESIS_STORAGE_KEY } from "./VoiceSettings";
 import AvatarStage from "./avatar/AvatarStage";
-import VoiceInputButton from "./avatar/VoiceInputButton";
 import ConversationDock from "./avatar/ConversationDock";
+import { useBrowserRecognition } from "./avatar/useBrowserRecognition";
 import {
   conversationReducer,
   INITIAL_CONVERSATION_STATE,
 } from "./avatar/conversationMachine";
 import type { RhubarbCue } from "@/lib/avatar/visemeTimeline";
+import { normalizeVoiceLocale } from "@/lib/voice/catalog";
 
 /** Bundled fallback used until an administrator activates an uploaded model. */
 export const GLB_AVATAR_MODEL_URL = "/models/judyface.glb";
@@ -106,6 +107,7 @@ export default function TravelDaddy({
     conversationReducer,
     INITIAL_CONVERSATION_STATE
   );
+  const [spokenLanguage, setSpokenLanguage] = useState("en-US");
   // Read once at mount — Dashboard unmounts/remounts TravelDaddy whenever the
   // person leaves and returns to this tab, so a change made in Settings is
   // picked up on the next mount without needing a live cross-component sync.
@@ -127,6 +129,7 @@ export default function TravelDaddy({
   const localAudioUrlRef = useRef<string | null>(null);
   const speechRequestRef = useRef(0);
   const talkingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const speechFinishedRef = useRef<(() => void) | null>(null);
 
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -157,6 +160,10 @@ export default function TravelDaddy({
         }
         const data = await res.json();
         if (cancelled) return;
+        const savedSpokenLanguage = normalizeVoiceLocale(
+          data?.spokenLanguage ?? data?.nativeLanguage
+        );
+        if (savedSpokenLanguage) setSpokenLanguage(savedSpokenLanguage);
         if (!data?.onboardingCompletedAt) {
           setOnboardingStatus("pending");
           setChatOpen(true);
@@ -191,6 +198,12 @@ export default function TravelDaddy({
     }
   }, []);
 
+  const finishSpeechLifecycle = useCallback(() => {
+    const onFinished = speechFinishedRef.current;
+    speechFinishedRef.current = null;
+    onFinished?.();
+  }, []);
+
   const stopLocalSpeech = useCallback(() => {
     speechRequestRef.current += 1;
     if (talkingTimerRef.current) {
@@ -201,11 +214,20 @@ export default function TravelDaddy({
       window.speechSynthesis?.cancel();
     }
     releaseLocalAudio();
-  }, [releaseLocalAudio]);
+    finishSpeechLifecycle();
+  }, [finishSpeechLifecycle, releaseLocalAudio]);
 
-  const speakWithBrowser = useCallback((text: string, language?: string) => {
-    if (typeof window === "undefined" || !window.speechSynthesis) return;
+  const speakWithBrowser = useCallback((
+    text: string,
+    language?: string,
+    onFinished?: () => void
+  ) => {
     stopLocalSpeech();
+    speechFinishedRef.current = onFinished ?? null;
+    if (typeof window === "undefined" || !window.speechSynthesis) {
+      finishSpeechLifecycle();
+      return;
+    }
     const requestId = speechRequestRef.current;
     try {
       const utterance = new SpeechSynthesisUtterance(text);
@@ -228,22 +250,29 @@ export default function TravelDaddy({
         if (speechRequestRef.current !== requestId) return;
         setIsTalking(false);
         setVisemeCues(null);
+        finishSpeechLifecycle();
       };
       utterance.onend = finish;
       utterance.onerror = finish;
       window.speechSynthesis.speak(utterance);
     } catch {
       setIsTalking(false);
+      finishSpeechLifecycle();
     }
-  }, [stopLocalSpeech]);
+  }, [finishSpeechLifecycle, stopLocalSpeech]);
 
   /**
    * Play the exact WAV Rhubarb analyzed. Starting the cue clock from the
    * audio element's `play` event keeps the visible mouth and audible voice
    * on the same timeline. Browser speech remains the fail-open fallback.
    */
-  const speakWithLipSync = useCallback(async (text: string, language?: string) => {
+  const speakWithLipSync = useCallback(async (
+    text: string,
+    language?: string,
+    onFinished?: () => void
+  ) => {
     stopLocalSpeech();
+    speechFinishedRef.current = onFinished ?? null;
     const requestId = speechRequestRef.current;
     try {
       const response = await fetch("/api/avatar/lipsync", {
@@ -272,6 +301,7 @@ export default function TravelDaddy({
       const finish = () => {
         if (localAudioRef.current !== audio) return;
         releaseLocalAudio();
+        finishSpeechLifecycle();
       };
       audio.onplay = () => {
         if (speechRequestRef.current !== requestId || localAudioRef.current !== audio) return;
@@ -284,23 +314,30 @@ export default function TravelDaddy({
       audio.onerror = () => {
         if (speechRequestRef.current !== requestId || localAudioRef.current !== audio) return;
         releaseLocalAudio();
-        speakWithBrowser(spokenText, spokenLanguage);
+        speechFinishedRef.current = null;
+        speakWithBrowser(spokenText, spokenLanguage, onFinished);
       };
       await audio.play();
     } catch {
-      if (speechRequestRef.current === requestId) speakWithBrowser(text, language);
+      if (speechRequestRef.current === requestId) {
+        speechFinishedRef.current = null;
+        speakWithBrowser(text, language, onFinished);
+      }
     }
-  }, [releaseLocalAudio, speakWithBrowser, stopLocalSpeech]);
+  }, [finishSpeechLifecycle, releaseLocalAudio, speakWithBrowser, stopLocalSpeech]);
 
-  const showEstimatedTalking = useCallback((text: string) => {
+  const showEstimatedTalking = useCallback((text: string, onFinished?: () => void) => {
+    stopLocalSpeech();
+    speechFinishedRef.current = onFinished ?? null;
     if (talkingTimerRef.current) clearTimeout(talkingTimerRef.current);
     setIsTalking(true);
     const duration = Math.min(Math.max(text.length * 55, 1200), 8000);
     talkingTimerRef.current = setTimeout(() => {
       talkingTimerRef.current = null;
       setIsTalking(false);
+      finishSpeechLifecycle();
     }, duration);
-  }, []);
+  }, [finishSpeechLifecycle, stopLocalSpeech]);
 
   useEffect(() => {
     return () => {
@@ -316,8 +353,8 @@ export default function TravelDaddy({
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const sendMessage = useCallback(async () => {
-    const trimmed = input.trim();
+  const sendMessage = useCallback(async (messageText?: string) => {
+    const trimmed = (messageText ?? input).trim();
     if (!trimmed || isLoading) return;
 
     const userMsg: ChatMessage = { role: "user", text: trimmed };
@@ -351,15 +388,25 @@ export default function TravelDaddy({
         ...prev,
         { role: "daddy", text: reply, translation: replyTranslation, replyLanguage },
       ]);
+      if (conversation.sessionActive) {
+        dispatchConversation({ type: "REPLY_READY" });
+      }
+      const finishConversationSpeech = conversation.sessionActive
+        ? () => dispatchConversation({ type: "SPEECH_FINISHED" })
+        : undefined;
 
       // The local GLB plays the exact ElevenLabs WAV that Rhubarb analyzed,
       // with browser TTS as a best-effort fallback when server speech is unavailable.
       if (speechEnabled) {
-        void speakWithLipSync(reply, replyLanguage ?? undefined);
+        void speakWithLipSync(
+          reply,
+          replyLanguage ?? undefined,
+          finishConversationSpeech
+        );
       } else {
         // Keep the existing visual/caption response when audio is disabled.
         // This is an intentionally approximate animation, not lip sync.
-        showEstimatedTalking(reply);
+        showEstimatedTalking(reply, finishConversationSpeech);
       }
     } catch {
       setIsTalking(false);
@@ -367,6 +414,12 @@ export default function TravelDaddy({
         ...prev,
         { role: "daddy", text: "HAH! Looks like the signal's a bit fuzzy out here in the woods. Try again!" },
       ]);
+      if (conversation.sessionActive) {
+        dispatchConversation({
+          type: "FAIL",
+          message: "Judy could not answer just now. You can resume listening or type instead.",
+        });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -374,16 +427,59 @@ export default function TravelDaddy({
     input,
     isLoading,
     tripContext,
+    conversation.sessionActive,
     speechEnabled,
     showEstimatedTalking,
     speakWithLipSync,
     stopLocalSpeech,
   ]);
 
+  const browserRecognition = useBrowserRecognition({
+    language: spokenLanguage,
+    onInterim: (text) => dispatchConversation({ type: "INTERIM", text }),
+    onFinal: (text) => {
+      dispatchConversation({ type: "COMMIT", text });
+      void sendMessage(text);
+    },
+    onFailure: (_reason, message) => {
+      dispatchConversation({ type: "FAIL", message });
+    },
+    onEnd: () => {
+      // The reducer phase controls whether another turn starts. A final result
+      // moves to thinking; Stop moves to editing; neither should auto-restart here.
+    },
+  });
+  const {
+    start: startBrowserRecognition,
+    stop: stopBrowserRecognition,
+    abort: abortBrowserRecognition,
+  } = browserRecognition;
+
+  useEffect(() => {
+    if (conversation.phase === "listening" && document.visibilityState !== "hidden") {
+      startBrowserRecognition();
+    } else {
+      abortBrowserRecognition();
+    }
+  }, [conversation.phase, startBrowserRecognition, abortBrowserRecognition]);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden" && conversation.phase === "listening") {
+        abortBrowserRecognition();
+        dispatchConversation({ type: "PAUSE" });
+      } else if (document.visibilityState === "visible" && conversation.phase === "paused") {
+        dispatchConversation({ type: "RESUME" });
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [conversation.phase, abortBrowserRecognition]);
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      sendMessage();
+      void sendMessage();
     }
   };
 
@@ -458,12 +554,28 @@ export default function TravelDaddy({
 
         <ConversationDock
           state={conversation}
-          onStart={() => dispatchConversation({ type: "START" })}
-          onStopListening={() => dispatchConversation({ type: "STOP_LISTENING" })}
+          onStart={() => {
+            dispatchConversation({ type: "START" });
+            startBrowserRecognition();
+            dispatchConversation({ type: "WELCOME_FINISHED" });
+          }}
+          onStopListening={() => {
+            stopBrowserRecognition();
+            dispatchConversation({ type: "STOP_LISTENING" });
+          }}
           onTranscriptChange={(text) => dispatchConversation({ type: "EDIT", text })}
-          onSubmit={() => dispatchConversation({ type: "SUBMIT" })}
-          onResume={() => dispatchConversation({ type: "RESUME" })}
+          onSubmit={() => {
+            const correctedTranscript = conversation.finalTranscript.trim();
+            if (!correctedTranscript) return;
+            dispatchConversation({ type: "SUBMIT" });
+            void sendMessage(correctedTranscript);
+          }}
+          onResume={() => {
+            startBrowserRecognition();
+            dispatchConversation({ type: "RESUME" });
+          }}
           onEnd={() => {
+            abortBrowserRecognition();
             stopLocalSpeech();
             dispatchConversation({ type: "END" });
           }}
@@ -719,16 +831,9 @@ export default function TravelDaddy({
                   disabled={isLoading}
                   aria-label="Message to Judy Pierre"
                 />
-                <VoiceInputButton
-                  disabled={isLoading}
-                  onTranscript={(transcript) => {
-                    setInput((current) => `${current}${current.trim() ? " " : ""}${transcript}`);
-                    inputRef.current?.focus();
-                  }}
-                />
                 <button
                   className="td-send-btn"
-                  onClick={sendMessage}
+                  onClick={() => void sendMessage()}
                   disabled={isLoading || !input.trim()}
                   title="Send message"
                   aria-label="Send message"

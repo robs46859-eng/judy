@@ -44,10 +44,40 @@ vi.mock('../avatar/AvatarStage', () => ({
   },
 }));
 
+const recognitionMock = vi.hoisted(() => ({
+  options: null as null | {
+    language: string;
+    onInterim(text: string): void;
+    onFinal(text: string): void;
+    onFailure(reason: string, message: string): void;
+    onEnd(): void;
+  },
+  start: vi.fn(),
+  stop: vi.fn(),
+  abort: vi.fn(),
+}));
+
+vi.mock('../avatar/useBrowserRecognition', () => ({
+  useBrowserRecognition: (options: NonNullable<typeof recognitionMock.options>) => {
+    recognitionMock.options = options;
+    return {
+      supported: true,
+      listening: false,
+      start: recognitionMock.start,
+      stop: recognitionMock.stop,
+      abort: recognitionMock.abort,
+    };
+  },
+}));
+
 const AVATAR_ALT = "Judy Pierre, Judy's travel translator and guide";
 
 beforeEach(() => {
   avatarStageMock.shouldFail = false;
+  recognitionMock.options = null;
+  recognitionMock.start.mockClear();
+  recognitionMock.stop.mockClear();
+  recognitionMock.abort.mockClear();
 });
 
 afterEach(() => {
@@ -142,14 +172,81 @@ describe('TravelDaddy local conversation controls', () => {
     );
     fireEvent.click(talkButton);
 
-    expect(await screen.findByRole('status')).toHaveTextContent(
-      'Judy is getting ready'
-    );
+    expect(await screen.findByRole('status')).toHaveTextContent('Listening');
     expect(screen.getByRole('button', { name: 'End conversation' })).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalledWith(
       expect.stringContaining('/api/avatar/session'),
       expect.anything()
     );
+  });
+
+  it('shows interim browser recognition and Stop preserves editable text', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          onboardingCompletedAt: new Date().toISOString(),
+          spokenLanguage: 'es-MX',
+        }),
+      }) as Response)
+    );
+
+    render(<TravelDaddy userName="Robert" />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Talk with Judy' }));
+
+    await waitFor(() => expect(recognitionMock.start).toHaveBeenCalled());
+    expect(recognitionMock.options?.language).toBe('es-MX');
+    act(() => recognitionMock.options?.onInterim('Necesito un hotel'));
+    expect(screen.getByText('Necesito un hotel')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Stop listening' }));
+    expect(recognitionMock.stop).toHaveBeenCalledOnce();
+    expect(screen.getByLabelText('Correct what Judy heard')).toHaveValue(
+      'Necesito un hotel'
+    );
+  });
+
+  it('submits finalized speech immediately without an approval gate', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : input.toString();
+      if (url.includes('/api/user/preferences')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            onboardingCompletedAt: new Date().toISOString(),
+            spokenLanguage: 'en-US',
+          }),
+        } as Response;
+      }
+      if (url.includes('/api/avatar/chat')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ reply: 'I can help with that.' }),
+        } as Response;
+      }
+      return { ok: false, status: 404, json: async () => ({}) } as Response;
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<TravelDaddy userName="Robert" />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Talk with Judy' }));
+    await waitFor(() => expect(recognitionMock.start).toHaveBeenCalled());
+    act(() => recognitionMock.options?.onFinal('Help me plan Madrid'));
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/avatar/chat',
+        expect.objectContaining({
+          method: 'POST',
+          body: expect.stringContaining('Help me plan Madrid'),
+        })
+      )
+    );
+    expect(screen.queryByLabelText('Correct what Judy heard')).not.toBeInTheDocument();
   });
 });
 
@@ -251,5 +348,75 @@ describe('TravelDaddy synchronized local speech', () => {
     expect(screen.getByTestId('avatar-stage-stub')).toHaveAttribute('data-cue-count', '0');
 
     window.localStorage.removeItem('judy-speech-synthesis-enabled');
+  });
+
+  it('automatically listens again only after synchronized reply audio ends', async () => {
+    window.localStorage.setItem('judy-speech-synthesis-enabled', 'true');
+
+    const audioInstances: MockAudio[] = [];
+    class MockAudio {
+      onplay: (() => void) | null = null;
+      onended: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      pause = vi.fn();
+      play = vi.fn(async () => undefined);
+
+      constructor(readonly src: string) {
+        audioInstances.push(this);
+      }
+    }
+
+    vi.stubGlobal('Audio', MockAudio);
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:judy-conversation');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = typeof input === 'string' ? input : input.toString();
+        if (url.includes('/api/user/preferences')) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              onboardingCompletedAt: new Date().toISOString(),
+              spokenLanguage: 'en-US',
+            }),
+          } as Response;
+        }
+        if (url.includes('/api/avatar/chat')) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ reply: 'Take the morning train.' }),
+          } as Response;
+        }
+        if (url.includes('/api/avatar/lipsync')) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              audio: window.btoa('conversation wav'),
+              mimeType: 'audio/wav',
+              cues: [{ start: 0, end: 0.2, value: 'B' }],
+            }),
+          } as Response;
+        }
+        return { ok: false, status: 404, json: async () => ({}) } as Response;
+      })
+    );
+
+    render(<TravelDaddy userName="Robert" />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Talk with Judy' }));
+    await waitFor(() => expect(recognitionMock.start).toHaveBeenCalled());
+    const startsBeforeReply = recognitionMock.start.mock.calls.length;
+
+    act(() => recognitionMock.options?.onFinal('Which train should I take?'));
+    await waitFor(() => expect(audioInstances).toHaveLength(1));
+    expect(screen.getByRole('status')).toHaveTextContent('Judy is speaking');
+    expect(recognitionMock.start).toHaveBeenCalledTimes(startsBeforeReply);
+
+    act(() => audioInstances[0].onended?.());
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Listening'));
+    expect(recognitionMock.start.mock.calls.length).toBeGreaterThan(startsBeforeReply);
   });
 });
