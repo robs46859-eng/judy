@@ -3321,6 +3321,88 @@ h1, h2, h3, h4,
   z-index: 15;
 }
 
+.judy-reply-actions {
+  display: grid;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.judy-reply-original,
+.judy-reply-translation,
+.judy-reply-error {
+  margin: 0;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.judy-reply-translation {
+  padding: 0.55rem 0.65rem;
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--lilac) 10%, var(--bg-surface));
+  border-left: 3px solid var(--lilac);
+  border-radius: var(--radius-sm);
+}
+
+.judy-reply-error {
+  color: #c9485b;
+  font-size: 0.76rem;
+}
+
+.judy-reply-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.judy-reply-action-row button,
+.judy-reply-language {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-height: 1.9rem;
+  padding: 0.3rem 0.5rem;
+  color: inherit;
+  background: color-mix(in srgb, var(--bg-surface) 88%, transparent);
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  font: 700 0.7rem/1 var(--font-sans);
+}
+
+.judy-reply-action-row button {
+  cursor: pointer;
+}
+
+.judy-reply-action-row button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.judy-reply-language select {
+  min-width: 7rem;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  font: inherit;
+}
+
+.judy-reply-status {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+}
+
+.td-caption .judy-reply-original,
+.td-caption .judy-reply-status {
+  color: #fff;
+}
+
+.td-caption .judy-reply-action-row button,
+.td-caption .judy-reply-language {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .film-grain { animation: none; }
   .bg-skyline { animation: none; }

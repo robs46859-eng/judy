@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
-import { render, screen, waitFor, cleanup, fireEvent, act } from '@testing-library/react';
+import { render, screen, waitFor, cleanup, fireEvent, act, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import TravelDaddy from '../TravelDaddy';
 
@@ -331,12 +331,16 @@ describe('TravelDaddy caption overlay (Swarm J6)', () => {
     // The reply is now in transcript AND, while the avatar is "talking",
     // mirrored as an on-screen caption — the transcript alone isn't enough
     // once the chat panel is collapsed.
-    await waitFor(() =>
-      expect(screen.getByText('Pack a raincoat, friend!', { selector: '.td-caption' })).toBeInTheDocument()
-    );
+    await waitFor(() => {
+      const caption = document.querySelector('.td-caption');
+      expect(caption).not.toBeNull();
+      expect(within(caption as HTMLElement).getByText('Pack a raincoat, friend!')).toBeInTheDocument();
+    });
 
     fireEvent.click(screen.getByRole('button', { name: 'Close chat' }));
-    expect(screen.getByText('Pack a raincoat, friend!', { selector: '.td-caption' })).toBeInTheDocument();
+    const caption = document.querySelector('.td-caption');
+    expect(caption).not.toBeNull();
+    expect(within(caption as HTMLElement).getByText('Pack a raincoat, friend!')).toBeInTheDocument();
   });
 });
 
@@ -468,6 +472,83 @@ describe('TravelDaddy synchronized local speech', () => {
 
     act(() => recognitionMock.options?.onFinal('What should I wear?'));
     await waitFor(() => expect(audioInstances).toHaveLength(2));
+  });
+
+  it('pauses listening while an explicitly requested translation speaks, then resumes', async () => {
+    const audioInstances: MockAudio[] = [];
+    class MockAudio {
+      onplay: (() => void) | null = null;
+      onended: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      pause = vi.fn();
+      play = vi.fn(async () => undefined);
+
+      constructor(readonly src: string) {
+        audioInstances.push(this);
+      }
+    }
+
+    vi.stubGlobal('Audio', MockAudio);
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:judy-translation');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = typeof input === 'string' ? input : input.toString();
+        if (url.includes('/api/user/preferences')) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ onboardingCompletedAt: new Date().toISOString() }),
+          } as Response;
+        }
+        if (url.includes('/api/hermes/translate')) {
+          return {
+            ok: true,
+            status: 202,
+            json: async () => ({
+              job_id: 'translate-now',
+              status: 'succeeded',
+              result: { translated_text: 'Hola, puedo ayudarte con tu viaje.' },
+            }),
+          } as Response;
+        }
+        if (url.includes('/api/avatar/lipsync')) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              audio: window.btoa('translated wav'),
+              mimeType: 'audio/wav',
+              cues: [],
+            }),
+          } as Response;
+        }
+        return { ok: false, status: 404, json: async () => ({}) } as Response;
+      })
+    );
+
+    render(<TravelDaddy userName="Robert" />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Talk with Judy' }));
+    await waitFor(() => expect(audioInstances).toHaveLength(1));
+    act(() => audioInstances[0].onended?.());
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Listening'));
+    const startsBeforeTranslation = recognitionMock.start.mock.calls.length;
+
+    fireEvent.click(screen.getByTitle('Chat with Judy Pierre'));
+    fireEvent.change(await screen.findByLabelText('Translate Judy’s reply'), {
+      target: { value: 'es-MX' },
+    });
+    await screen.findByText('Hola, puedo ayudarte con tu viaje.');
+    fireEvent.click(screen.getByRole('button', { name: 'Speak translation' }));
+
+    await waitFor(() => expect(audioInstances).toHaveLength(2));
+    expect(screen.getByLabelText('Conversation paused')).toBeInTheDocument();
+    expect(recognitionMock.start).toHaveBeenCalledTimes(startsBeforeTranslation);
+
+    act(() => audioInstances[1].onended?.());
+    await waitFor(() => expect(screen.getByLabelText('Judy is listening')).toBeInTheDocument());
+    expect(recognitionMock.start.mock.calls.length).toBeGreaterThan(startsBeforeTranslation);
   });
 
   it('plays the exact WAV returned with Rhubarb cues and follows its audio events', async () => {

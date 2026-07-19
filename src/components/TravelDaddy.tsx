@@ -28,6 +28,7 @@ import AlertsPanel from "./AlertsPanel";
 import { SPEECH_SYNTHESIS_STORAGE_KEY } from "./VoiceSettings";
 import AvatarStage from "./avatar/AvatarStage";
 import ConversationDock from "./avatar/ConversationDock";
+import ReplyActions from "./avatar/ReplyActions";
 import { useBrowserRecognition } from "./avatar/useBrowserRecognition";
 import { useScribeFallback } from "./avatar/useScribeFallback";
 import {
@@ -520,6 +521,38 @@ export default function TravelDaddy({
     }
   };
 
+  const speakReplyAction = useCallback((text: string, language?: string) => {
+    const phaseAtStart = conversation.phase;
+    const resumeListening = conversation.sessionActive && phaseAtStart === "listening";
+    const finishCurrentReply = conversation.sessionActive && phaseAtStart === "speaking";
+
+    abortBrowserRecognition();
+    abortScribeFallback();
+    // A deliberate Speak translation click replaces any current line without
+    // firing that replaced line's completion callback in the middle of playback.
+    speechFinishedRef.current = null;
+    stopLocalSpeech();
+    if (resumeListening) dispatchConversation({ type: "PAUSE" });
+
+    return new Promise<void>((resolve) => {
+      void speakWithLipSync(text, language, () => {
+        if (resumeListening) {
+          dispatchConversation({ type: "RESUME" });
+        } else if (finishCurrentReply) {
+          dispatchConversation({ type: "SPEECH_FINISHED" });
+        }
+        resolve();
+      });
+    });
+  }, [
+    conversation.phase,
+    conversation.sessionActive,
+    abortBrowserRecognition,
+    abortScribeFallback,
+    speakWithLipSync,
+    stopLocalSpeech,
+  ]);
+
   const runTranslate = useCallback(
     (text: string, from: string, to: string) => {
       translation.submit({
@@ -546,7 +579,8 @@ export default function TravelDaddy({
     runTranslate(translatedText, newSource, newTarget);
   }, [translation.result, sourceLang, targetLang, runTranslate]);
 
-  const hasDaddyReply = messages.some((m) => m.role === "daddy");
+  const lastDaddyMessage = [...messages].reverse().find((message) => message.role === "daddy");
+  const hasDaddyReply = Boolean(lastDaddyMessage);
 
   return (
     <div className="travel-daddy-wrapper">
@@ -580,12 +614,15 @@ export default function TravelDaddy({
             person may have it collapsed while the avatar is talking — show a
             live caption of the current line so audio is never the only way
             to get the reply. */}
-        {isTalking && hasDaddyReply && (
-          <div className="td-caption" role="status" aria-live="polite">
-            {(() => {
-              const lastDaddyMsg = [...messages].reverse().find((m) => m.role === "daddy");
-              return lastDaddyMsg?.translation?.translatedText || lastDaddyMsg?.text || "";
-            })()}
+        {isTalking && hasDaddyReply && lastDaddyMessage && (
+          <div className="td-caption" aria-live="polite">
+            <ReplyActions
+              originalText={
+                lastDaddyMessage.translation?.translatedText || lastDaddyMessage.text
+              }
+              originalLanguage={lastDaddyMessage.replyLanguage}
+              onSpeak={speakReplyAction}
+            />
           </div>
         )}
 
@@ -846,7 +883,15 @@ export default function TravelDaddy({
                       {msg.role === "daddy" ? <Compass size={14} /> : userInitial}
                     </span>
                     <div className="td-msg-bubble">
-                      {msg.text}
+                      {msg.role === "daddy" ? (
+                        <ReplyActions
+                          originalText={msg.text}
+                          originalLanguage={msg.replyLanguage}
+                          onSpeak={speakReplyAction}
+                        />
+                      ) : (
+                        msg.text
+                      )}
                       {msg.translation && (
                         <div className="td-translation-inline">
                           <div className="td-translation-lang-label">
