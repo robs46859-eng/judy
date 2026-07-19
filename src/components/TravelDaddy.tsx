@@ -364,6 +364,11 @@ export default function TravelDaddy({
     const trimmed = (messageText ?? input).trim();
     if (!trimmed || isLoading) return;
 
+    const history = messages.slice(-8).map((message) => ({
+      role: message.role === "user" ? ("user" as const) : ("assistant" as const),
+      text: message.text.slice(0, 800),
+    }));
+
     const userMsg: ChatMessage = { role: "user", text: trimmed };
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
@@ -377,6 +382,7 @@ export default function TravelDaddy({
         body: JSON.stringify({
           message: trimmed,
           tripContext: tripContext || null,
+          history,
         }),
       });
       const data = await res.json();
@@ -432,6 +438,7 @@ export default function TravelDaddy({
     }
   }, [
     input,
+    messages,
     isLoading,
     tripContext,
     conversation.sessionActive,
@@ -671,6 +678,19 @@ export default function TravelDaddy({
           }}
           onTypeInstead={() => {
             setChatOpen(true);
+            window.setTimeout(() => inputRef.current?.focus(), 0);
+          }}
+          onSuggestion={(suggestion) => {
+            if (suggestion === "translate") {
+              setTranslateOpen(true);
+              return;
+            }
+            setChatOpen(true);
+            setInput(
+              suggestion === "plan"
+                ? "Help me plan my trip."
+                : "What should I do nearby?"
+            );
             window.setTimeout(() => inputRef.current?.focus(), 0);
           }}
         />

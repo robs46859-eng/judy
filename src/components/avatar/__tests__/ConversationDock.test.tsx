@@ -19,6 +19,7 @@ function callbacks() {
     onResume: vi.fn(),
     onEnd: vi.fn(),
     onTypeInstead: vi.fn(),
+    onSuggestion: vi.fn(),
   };
 }
 
@@ -37,6 +38,12 @@ describe('ConversationDock', () => {
       screen.getByText(/Judy will speak, listen, and help with your trip/i)
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Type instead' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Plan my trip' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Translate a phrase' }));
+    fireEvent.click(screen.getByRole('button', { name: 'What should I do nearby?' }));
+    expect(handlers.onSuggestion).toHaveBeenNthCalledWith(1, 'plan');
+    expect(handlers.onSuggestion).toHaveBeenNthCalledWith(2, 'translate');
+    expect(handlers.onSuggestion).toHaveBeenNthCalledWith(3, 'nearby');
   });
 
   it('shows live transcription with Stop and End conversation while listening', () => {

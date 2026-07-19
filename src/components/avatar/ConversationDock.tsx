@@ -12,6 +12,7 @@ export interface ConversationDockProps {
   onResume(): void;
   onEnd(): void;
   onTypeInstead(): void;
+  onSuggestion(suggestion: "plan" | "translate" | "nearby"): void;
 }
 
 const STATUS_LABELS = {
@@ -30,6 +31,7 @@ export default function ConversationDock({
   onResume,
   onEnd,
   onTypeInstead,
+  onSuggestion,
 }: ConversationDockProps) {
   if (state.phase === "idle") {
     return (
@@ -42,6 +44,11 @@ export default function ConversationDock({
           <button type="button" className="judy-conversation-secondary" onClick={onTypeInstead}>
             <Keyboard size={17} aria-hidden="true" /> Type instead
           </button>
+        </div>
+        <div className="judy-conversation-suggestions" aria-label="Try asking Judy">
+          <button type="button" onClick={() => onSuggestion("plan")}>Plan my trip</button>
+          <button type="button" onClick={() => onSuggestion("translate")}>Translate a phrase</button>
+          <button type="button" onClick={() => onSuggestion("nearby")}>What should I do nearby?</button>
         </div>
       </section>
     );

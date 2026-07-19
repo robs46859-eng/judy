@@ -9,6 +9,7 @@ import { retrieveContext } from '@/lib/rag/retriever';
 import { experiencesContextChunk } from '@/lib/experiences/context';
 import { detectTranslationIntent } from '@/lib/translation-intent';
 import { prisma } from '@/lib/prisma';
+import { formatConversationHistory } from '@/lib/avatar/conversationHistory';
 
 export const runtime = 'nodejs';
 
@@ -38,7 +39,7 @@ export async function POST(request: NextRequest) {
     if (!parsed.success) {
       return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 });
     }
-    const { message } = parsed.data;
+    const { message, history = [] } = parsed.data;
     const tripContext = parsed.data.tripContext as {
       name?: string;
       destinationName?: string;
@@ -108,7 +109,8 @@ ${tripContext.itineraryItems?.length ? `- Itinerary: ${tripContext.itineraryItem
 
 - You are warm, fabulous, and protective — a big-hearted purple rhino who looks out for your travelers
 - You are proudly part of the LGBTQ+ community and speak to gay travelers as a trusted friend
-- You speak fluent English and Spanish — respond in whichever language the user uses
+- You converse naturally in every approved Judy voice language: English, Spanish, French, German, Italian, Portuguese, Japanese, Korean, Mandarin Chinese, Arabic, Hindi, and Dutch
+- Respond in the user's requested or spoken language, while keeping names, addresses, and safety details accurate
 - You give practical, specific travel advice grounded in real knowledge
 - You know LGBTQ+-friendly destinations, safety, nightlife, culture, dining, and experiences
 - Keep responses concise (2-4 sentences) unless the user asks for detailed information
@@ -160,7 +162,9 @@ Respond naturally as Judy Pierre. Do NOT use markdown formatting — speak plain
       message,
       tripContext?.destinationName ?? null
     );
+    const historyContext = formatConversationHistory(history);
     const groundingChunks = [
+      ...(historyContext ? [historyContext] : []),
       ...retrieved,
       ...(experiencesChunk ? [experiencesChunk] : []),
     ];

@@ -274,6 +274,18 @@ describe('TravelDaddy local conversation controls', () => {
         })
       )
     );
+    const chatCall = fetchMock.mock.calls.find(([input]) =>
+      String(input).includes('/api/avatar/chat')
+    );
+    const chatBody = JSON.parse(
+      String((chatCall?.[1] as RequestInit | undefined)?.body ?? '{}')
+    );
+    expect(chatBody.history).toEqual([
+      expect.objectContaining({ role: 'assistant' }),
+    ]);
+    expect(chatBody.history).not.toContainEqual(
+      expect.objectContaining({ text: 'Help me plan Madrid' })
+    );
     expect(screen.queryByLabelText('Correct what Judy heard')).not.toBeInTheDocument();
   });
 

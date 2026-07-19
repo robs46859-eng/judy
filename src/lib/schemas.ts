@@ -58,6 +58,17 @@ export const contactSchema = z.object({
 export const chatSchema = z.object({
   message: z.string().trim().min(1, 'message is required').max(2000),
   tripContext: z.unknown().optional().nullable(),
+  history: z
+    .array(
+      z
+        .object({
+          role: z.enum(['user', 'assistant']),
+          text: z.string().trim().min(1).max(800),
+        })
+        .strict()
+    )
+    .max(8)
+    .optional(),
 });
 
 export const suggestionsSchema = z.object({

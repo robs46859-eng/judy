@@ -2720,6 +2720,29 @@ h1, h2, h3, h4,
   gap: 0.5rem;
 }
 
+.judy-conversation-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+}
+
+.judy-conversation-suggestions button {
+  padding: 0.35rem 0.6rem;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  font: 600 0.72rem/1.2 var(--font-sans);
+  cursor: pointer;
+}
+
+.judy-conversation-suggestions button:hover {
+  color: var(--text-primary);
+  border-color: var(--lilac);
+}
+
 .judy-talk-primary,
 .judy-conversation-secondary,
 .judy-conversation-end {

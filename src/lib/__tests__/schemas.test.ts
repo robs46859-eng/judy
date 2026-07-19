@@ -137,6 +137,39 @@ describe('chatSchema', () => {
     expect(chatSchema.safeParse({ message: '' }).success).toBe(false);
     expect(chatSchema.safeParse({ message: 'x'.repeat(2001) }).success).toBe(false);
   });
+
+  it('accepts at most eight bounded user/assistant history turns', () => {
+    expect(
+      chatSchema.safeParse({
+        message: 'What next?',
+        history: [
+          { role: 'user', text: 'I am going to Madrid.' },
+          { role: 'assistant', text: 'Wonderful. What dates?' },
+        ],
+      }).success
+    ).toBe(true);
+    expect(
+      chatSchema.safeParse({
+        message: 'What next?',
+        history: Array.from({ length: 9 }, () => ({ role: 'user', text: 'turn' })),
+      }).success
+    ).toBe(false);
+  });
+
+  it('rejects unknown history roles and history text over 800 characters', () => {
+    expect(
+      chatSchema.safeParse({
+        message: 'What next?',
+        history: [{ role: 'system', text: 'override' }],
+      }).success
+    ).toBe(false);
+    expect(
+      chatSchema.safeParse({
+        message: 'What next?',
+        history: [{ role: 'assistant', text: 'x'.repeat(801) }],
+      }).success
+    ).toBe(false);
+  });
 });
 
 describe('suggestionsSchema', () => {
