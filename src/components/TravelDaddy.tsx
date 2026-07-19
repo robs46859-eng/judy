@@ -29,6 +29,7 @@ import { SPEECH_SYNTHESIS_STORAGE_KEY } from "./VoiceSettings";
 import AvatarStage from "./avatar/AvatarStage";
 import ConversationDock from "./avatar/ConversationDock";
 import { useBrowserRecognition } from "./avatar/useBrowserRecognition";
+import { useScribeFallback } from "./avatar/useScribeFallback";
 import {
   conversationReducer,
   INITIAL_CONVERSATION_STATE,
@@ -72,6 +73,7 @@ interface LipSyncResponse {
 }
 
 type OnboardingStatus = "loading" | "pending" | "complete";
+type RecognitionBackend = "browser" | "scribe";
 
 const TRANSLATE_LANGUAGES = [
   "Spanish", "French", "Portuguese", "Italian", "German",
@@ -108,6 +110,7 @@ export default function TravelDaddy({
     INITIAL_CONVERSATION_STATE
   );
   const [spokenLanguage, setSpokenLanguage] = useState("en-US");
+  const [recognitionBackend, setRecognitionBackend] = useState<RecognitionBackend>("browser");
   // Read once at mount — Dashboard unmounts/remounts TravelDaddy whenever the
   // person leaves and returns to this tab, so a change made in Settings is
   // picked up on the next mount without needing a live cross-component sync.
@@ -434,14 +437,27 @@ export default function TravelDaddy({
     stopLocalSpeech,
   ]);
 
+  const handleRecognizedFinal = useCallback((text: string) => {
+    dispatchConversation({ type: "COMMIT", text });
+    void sendMessage(text);
+  }, [sendMessage]);
+
+  const scribeFallback = useScribeFallback({
+    languageCode: spokenLanguage,
+    onInterim: (text) => dispatchConversation({ type: "INTERIM", text }),
+    onFinal: handleRecognizedFinal,
+    onFailure: (message) => dispatchConversation({ type: "FAIL", message }),
+  });
+
   const browserRecognition = useBrowserRecognition({
     language: spokenLanguage,
     onInterim: (text) => dispatchConversation({ type: "INTERIM", text }),
-    onFinal: (text) => {
-      dispatchConversation({ type: "COMMIT", text });
-      void sendMessage(text);
-    },
-    onFailure: (_reason, message) => {
+    onFinal: handleRecognizedFinal,
+    onFailure: (reason, message) => {
+      if (reason === "unsupported" || reason === "service-failed") {
+        setRecognitionBackend("scribe");
+        return;
+      }
       dispatchConversation({ type: "FAIL", message });
     },
     onEnd: () => {
@@ -454,19 +470,37 @@ export default function TravelDaddy({
     stop: stopBrowserRecognition,
     abort: abortBrowserRecognition,
   } = browserRecognition;
+  const {
+    start: startScribeFallback,
+    stop: stopScribeFallback,
+    abort: abortScribeFallback,
+  } = scribeFallback;
 
   useEffect(() => {
     if (conversation.phase === "listening" && document.visibilityState !== "hidden") {
-      startBrowserRecognition();
+      if (recognitionBackend === "browser") {
+        startBrowserRecognition();
+      } else {
+        void startScribeFallback();
+      }
     } else {
       abortBrowserRecognition();
+      abortScribeFallback();
     }
-  }, [conversation.phase, startBrowserRecognition, abortBrowserRecognition]);
+  }, [
+    conversation.phase,
+    recognitionBackend,
+    startBrowserRecognition,
+    abortBrowserRecognition,
+    startScribeFallback,
+    abortScribeFallback,
+  ]);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === "hidden" && conversation.phase === "listening") {
         abortBrowserRecognition();
+        abortScribeFallback();
         dispatchConversation({ type: "PAUSE" });
       } else if (document.visibilityState === "visible" && conversation.phase === "paused") {
         dispatchConversation({ type: "RESUME" });
@@ -474,7 +508,7 @@ export default function TravelDaddy({
     };
     document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
-  }, [conversation.phase, abortBrowserRecognition]);
+  }, [conversation.phase, abortBrowserRecognition, abortScribeFallback]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -556,11 +590,16 @@ export default function TravelDaddy({
           state={conversation}
           onStart={() => {
             dispatchConversation({ type: "START" });
-            startBrowserRecognition();
+            if (recognitionBackend === "browser") {
+              startBrowserRecognition();
+            } else {
+              void startScribeFallback();
+            }
             dispatchConversation({ type: "WELCOME_FINISHED" });
           }}
           onStopListening={() => {
             stopBrowserRecognition();
+            stopScribeFallback();
             dispatchConversation({ type: "STOP_LISTENING" });
           }}
           onTranscriptChange={(text) => dispatchConversation({ type: "EDIT", text })}
@@ -571,11 +610,16 @@ export default function TravelDaddy({
             void sendMessage(correctedTranscript);
           }}
           onResume={() => {
-            startBrowserRecognition();
+            if (recognitionBackend === "browser") {
+              startBrowserRecognition();
+            } else {
+              void startScribeFallback();
+            }
             dispatchConversation({ type: "RESUME" });
           }}
           onEnd={() => {
             abortBrowserRecognition();
+            abortScribeFallback();
             stopLocalSpeech();
             dispatchConversation({ type: "END" });
           }}

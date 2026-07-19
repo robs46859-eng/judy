@@ -57,6 +57,18 @@ const recognitionMock = vi.hoisted(() => ({
   abort: vi.fn(),
 }));
 
+const scribeFallbackMock = vi.hoisted(() => ({
+  options: null as null | {
+    languageCode?: string;
+    onInterim(text: string): void;
+    onFinal(text: string): void;
+    onFailure(message: string): void;
+  },
+  start: vi.fn(async () => {}),
+  stop: vi.fn(),
+  abort: vi.fn(),
+}));
+
 vi.mock('../avatar/useBrowserRecognition', () => ({
   useBrowserRecognition: (options: NonNullable<typeof recognitionMock.options>) => {
     recognitionMock.options = options;
@@ -70,6 +82,18 @@ vi.mock('../avatar/useBrowserRecognition', () => ({
   },
 }));
 
+vi.mock('../avatar/useScribeFallback', () => ({
+  useScribeFallback: (options: NonNullable<typeof scribeFallbackMock.options>) => {
+    scribeFallbackMock.options = options;
+    return {
+      listening: false,
+      start: scribeFallbackMock.start,
+      stop: scribeFallbackMock.stop,
+      abort: scribeFallbackMock.abort,
+    };
+  },
+}));
+
 const AVATAR_ALT = "Judy Pierre, Judy's travel translator and guide";
 
 beforeEach(() => {
@@ -78,6 +102,10 @@ beforeEach(() => {
   recognitionMock.start.mockClear();
   recognitionMock.stop.mockClear();
   recognitionMock.abort.mockClear();
+  scribeFallbackMock.options = null;
+  scribeFallbackMock.start.mockClear();
+  scribeFallbackMock.stop.mockClear();
+  scribeFallbackMock.abort.mockClear();
 });
 
 afterEach(() => {
@@ -247,6 +275,35 @@ describe('TravelDaddy local conversation controls', () => {
       )
     );
     expect(screen.queryByLabelText('Correct what Judy heard')).not.toBeInTheDocument();
+  });
+
+  it('switches to the server-backed Scribe fallback after a native service failure', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          onboardingCompletedAt: new Date().toISOString(),
+          spokenLanguage: 'fr-FR',
+        }),
+      }) as Response)
+    );
+
+    render(<TravelDaddy userName="Robert" />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Talk with Judy' }));
+    await waitFor(() => expect(recognitionMock.start).toHaveBeenCalled());
+
+    act(() =>
+      recognitionMock.options?.onFailure(
+        'service-failed',
+        'Voice recognition service is unavailable.'
+      )
+    );
+
+    await waitFor(() => expect(scribeFallbackMock.start).toHaveBeenCalled());
+    expect(scribeFallbackMock.options?.languageCode).toBe('fr-FR');
+    expect(screen.getByRole('status')).toHaveTextContent('Listening');
   });
 });
 
