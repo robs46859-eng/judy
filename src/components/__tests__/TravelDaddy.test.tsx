@@ -89,7 +89,7 @@ describe('TravelDaddy avatar fallback (Swarm J7)', () => {
     );
   });
 
-  it('shows the GLB avatar even when the HeyGen session request errors outright', async () => {
+  it('shows the GLB avatar when unrelated network requests fail', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => {
@@ -100,10 +100,8 @@ describe('TravelDaddy avatar fallback (Swarm J7)', () => {
     render(<TravelDaddy userName="Robert" />);
 
     await waitFor(() => expect(screen.getByTestId('avatar-stage-stub')).toBeInTheDocument());
-    // The live video element stays hidden — it's never displayed without a
-    // live session, so the GLB/text/translation stay usable.
-    const video = document.querySelector('video');
-    expect(video).toHaveStyle({ display: 'none' });
+    // The sunset live-video path is absent, so the GLB/text/translation stay usable.
+    expect(document.querySelector('video')).not.toBeInTheDocument();
   });
 
   it('falls back to the static robjudy.jpg portrait when the GLB avatar reports it cannot render', async () => {
@@ -121,8 +119,8 @@ describe('TravelDaddy avatar fallback (Swarm J7)', () => {
   });
 });
 
-describe('TravelDaddy live session opt-in gate (Swarm J5)', () => {
-  it('never calls /api/avatar/session on mount — the live session requires an explicit "Go live" click', async () => {
+describe('TravelDaddy local conversation controls', () => {
+  it('makes local Judy the primary Talk action and never calls the retired live-session endpoint', async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = typeof input === 'string' ? input : input.toString();
       if (url.includes('/api/user/preferences')) {
@@ -135,37 +133,22 @@ describe('TravelDaddy live session opt-in gate (Swarm J5)', () => {
     render(<TravelDaddy userName="Robert" />);
 
     await screen.findByTestId('avatar-stage-stub');
-    await screen.findByTitle('Start the live avatar');
+    const talkButton = await screen.findByRole('button', { name: 'Talk with Judy' });
+    expect(screen.queryByText('Go live')).not.toBeInTheDocument();
 
     expect(fetchMock).not.toHaveBeenCalledWith(
       expect.stringContaining('/api/avatar/session'),
       expect.anything()
     );
-  });
+    fireEvent.click(talkButton);
 
-  it('only requests a live session after the person clicks "Go live"', async () => {
-    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
-      const url = typeof input === 'string' ? input : input.toString();
-      if (url.includes('/api/user/preferences')) {
-        return { ok: true, status: 200, json: async () => ({ onboardingCompletedAt: new Date().toISOString() }) } as Response;
-      }
-      if (url.includes('/api/avatar/session')) {
-        return { ok: false, status: 501, json: async () => ({}) } as Response;
-      }
-      return { ok: false, status: 404, json: async () => ({}) } as Response;
-    });
-    vi.stubGlobal('fetch', fetchMock);
-
-    render(<TravelDaddy userName="Robert" />);
-
-    const goLiveBtn = await screen.findByTitle('Start the live avatar');
-    fireEvent.click(goLiveBtn);
-
-    await waitFor(() =>
-      expect(fetchMock).toHaveBeenCalledWith(
-        expect.stringContaining('/api/avatar/session'),
-        expect.anything()
-      )
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Judy is getting ready'
+    );
+    expect(screen.getByRole('button', { name: 'End conversation' })).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      expect.stringContaining('/api/avatar/session'),
+      expect.anything()
     );
   });
 });

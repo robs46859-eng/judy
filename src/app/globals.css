@@ -2680,6 +2680,127 @@ h1, h2, h3, h4,
   font-size: 0.78rem;
 }
 
+/* Judy local voice conversation controls. The dock stays over the avatar so
+   the primary action remains visible without opening the chat drawer. */
+.judy-conversation-dock {
+  position: absolute;
+  z-index: 24;
+  left: 50%;
+  bottom: 1rem;
+  width: min(92%, 34rem);
+  transform: translateX(-50%);
+  padding: 0.8rem;
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--panel-bg-solid) 92%, transparent);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  backdrop-filter: blur(14px);
+}
+
+.judy-conversation-dock p,
+.judy-conversation-dock label,
+.judy-conversation-status,
+.judy-live-transcript {
+  margin: 0 0 0.65rem;
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+
+.judy-conversation-dock label {
+  display: block;
+  font-weight: 700;
+}
+
+.judy-conversation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.judy-talk-primary,
+.judy-conversation-secondary,
+.judy-conversation-end {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 2.55rem;
+  padding: 0.55rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid var(--panel-border);
+  font: 700 0.8rem/1 var(--font-sans);
+  cursor: pointer;
+  transition: transform var(--transition), background var(--transition), border-color var(--transition);
+}
+
+.judy-talk-primary {
+  color: #fff;
+  background: var(--lilac);
+  border-color: var(--lilac);
+}
+
+.judy-conversation-secondary {
+  color: var(--text-primary);
+  background: var(--bg-surface);
+}
+
+.judy-conversation-end {
+  color: var(--text-secondary);
+  background: transparent;
+}
+
+.judy-talk-primary:hover:not(:disabled),
+.judy-conversation-secondary:hover,
+.judy-conversation-end:hover {
+  transform: translateY(-1px);
+  border-color: var(--lilac);
+}
+
+.judy-talk-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.judy-live-transcript {
+  min-height: 2.6rem;
+  padding: 0.65rem 0.75rem;
+  color: var(--text-primary);
+  background: var(--bg-surface);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-sm);
+}
+
+.judy-conversation-dock textarea {
+  width: 100%;
+  margin-bottom: 0.65rem;
+  resize: vertical;
+  padding: 0.65rem 0.75rem;
+  color: var(--text-primary);
+  background: var(--bg-surface);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-sm);
+  font: 0.86rem/1.4 var(--font-sans);
+}
+
+.judy-listening-pulse {
+  display: inline-block;
+  width: 0.65rem;
+  height: 0.65rem;
+  margin-right: 0.4rem;
+  background: #d65c78;
+  border-radius: 50%;
+  box-shadow: 0 0 0 0 rgba(214, 92, 120, 0.5);
+  animation: judyListeningPulse 1.4s infinite;
+}
+
+@keyframes judyListeningPulse {
+  70% { box-shadow: 0 0 0 0.55rem rgba(214, 92, 120, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(214, 92, 120, 0); }
+}
+
 /* Inline translated bubble rendered in normal chat (Swarm J4) */
 .td-translation-inline {
   margin-top: 0.5rem;
@@ -3189,7 +3310,7 @@ h1, h2, h3, h4,
   position: absolute;
   left: 1rem;
   right: 1rem;
-  bottom: 1rem;
+  bottom: 7.25rem;
   padding: 0.5rem 0.75rem;
   background: rgba(0, 0, 0, 0.62);
   color: #fff;
@@ -3214,4 +3335,8 @@ h1, h2, h3, h4,
   .td-avatar-dot { animation: none; }
   .td-typing span { animation: none; }
   .td-static-avatar.is-talking { transition: none; }
+  .judy-listening-pulse { animation: none; }
+  .judy-talk-primary,
+  .judy-conversation-secondary,
+  .judy-conversation-end { transition: none; }
 }

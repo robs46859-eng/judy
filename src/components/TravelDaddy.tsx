@@ -6,6 +6,7 @@ import {
   useState,
   useEffect,
   useCallback,
+  useReducer,
 } from "react";
 import {
   Send,
@@ -14,11 +15,6 @@ import {
   X,
   Compass,
   Languages,
-  Video,
-  Volume2,
-  VolumeX,
-  RotateCcw,
-  Square,
   ArrowLeftRight,
   Image as ImageIcon,
   Bell,
@@ -32,6 +28,11 @@ import AlertsPanel from "./AlertsPanel";
 import { SPEECH_SYNTHESIS_STORAGE_KEY } from "./VoiceSettings";
 import AvatarStage from "./avatar/AvatarStage";
 import VoiceInputButton from "./avatar/VoiceInputButton";
+import ConversationDock from "./avatar/ConversationDock";
+import {
+  conversationReducer,
+  INITIAL_CONVERSATION_STATE,
+} from "./avatar/conversationMachine";
 import type { RhubarbCue } from "@/lib/avatar/visemeTimeline";
 
 /** Bundled fallback used until an administrator activates an uploaded model. */
@@ -59,10 +60,6 @@ interface TravelDaddyProps {
   userName?: string;
   userEmail?: string;
   avatarModelUrl?: string;
-}
-
-interface LiveAvatarSession {
-  sessionId: string;
 }
 
 interface LipSyncResponse {
@@ -105,13 +102,10 @@ export default function TravelDaddy({
   const [sourceLang, setSourceLang] = useState("Auto-detect");
   const [targetLang, setTargetLang] = useState("Spanish");
   const translation = useHermesJob("translate");
-  const [liveSession, setLiveSession] = useState<LiveAvatarSession | null>(null);
-  // J5: the live HeyGen session never starts on its own — the person has to
-  // click "Go live" first. `liveOptIn` is the gate; the effect below only
-  // does anything once it flips true, and flipping it back to false is what
-  // triggers the effect's cleanup (disconnect + /api/avatar/stop).
-  const [liveOptIn, setLiveOptIn] = useState(false);
-  const [muted, setMuted] = useState(false);
+  const [conversation, dispatchConversation] = useReducer(
+    conversationReducer,
+    INITIAL_CONVERSATION_STATE
+  );
   // Read once at mount — Dashboard unmounts/remounts TravelDaddy whenever the
   // person leaves and returns to this tab, so a change made in Settings is
   // picked up on the next mount without needing a live cross-component sync.
@@ -129,10 +123,6 @@ export default function TravelDaddy({
   // current reply. Null means "no timeline yet" and AvatarMesh falls back
   // to the stage-1 approximate jaw movement driven by `isTalking`.
   const [visemeCues, setVisemeCues] = useState<RhubarbCue[] | null>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const audioContainerRef = useRef<HTMLDivElement>(null);
-  const roomRef = useRef<import("livekit-client").Room | null>(null);
-  const mutedRef = useRef(false);
   const localAudioRef = useRef<HTMLAudioElement | null>(null);
   const localAudioUrlRef = useRef<string | null>(null);
   const speechRequestRef = useRef(0);
@@ -180,87 +170,6 @@ export default function TravelDaddy({
     return () => {
       cancelled = true;
     };
-  }, []);
-
-  // Keep newly-attached audio elements in sync with the Mute control.
-  useEffect(() => {
-    mutedRef.current = muted;
-    audioContainerRef.current
-      ?.querySelectorAll("audio")
-      .forEach((el) => {
-        el.muted = muted;
-      });
-  }, [muted]);
-
-  // Try to start a HeyGen interactive avatar session — only once the user has
-  // explicitly opted in (Swarm J5). Falls back to the static portrait when
-  // unavailable (no key, quota, network, ...) or whenever the user stops it.
-  useEffect(() => {
-    if (!liveOptIn) return;
-
-    let cancelled = false;
-    let sessionId: string | null = null;
-
-    const startLiveAvatar = async () => {
-      try {
-        const res = await fetch("/api/avatar/session", { method: "POST" });
-        if (!res.ok) return; // 501 = not configured → 3D model
-        const data = await res.json();
-        if (cancelled || !data.sessionId || !data.url || !data.accessToken) return;
-        sessionId = data.sessionId;
-
-        const { Room, RoomEvent, Track } = await import("livekit-client");
-        const room = new Room({ adaptiveStream: true });
-        roomRef.current = room;
-
-        room.on(RoomEvent.TrackSubscribed, (track: import("livekit-client").RemoteTrack) => {
-          if (cancelled) return;
-          if (track.kind === Track.Kind.Video && videoRef.current) {
-            track.attach(videoRef.current);
-          } else if (track.kind === Track.Kind.Audio && audioContainerRef.current) {
-            const el = track.attach();
-            el.muted = mutedRef.current;
-            audioContainerRef.current.appendChild(el);
-          }
-        });
-
-        await room.connect(data.url, data.accessToken);
-        if (cancelled) {
-          room.disconnect();
-          return;
-        }
-        setLiveSession({ sessionId: data.sessionId });
-      } catch {
-        // Any failure → keep the 3D model silently.
-      }
-    };
-
-    startLiveAvatar();
-
-    return () => {
-      cancelled = true;
-      try {
-        roomRef.current?.disconnect();
-      } catch {
-        /* noop */
-      }
-      if (sessionId) {
-        fetch("/api/avatar/stop", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sessionId }),
-          keepalive: true,
-        }).catch(() => {});
-      }
-    };
-  }, [liveOptIn]);
-
-  const stopLiveSession = useCallback(() => {
-    // Flipping liveOptIn off triggers the effect's own cleanup (disconnect +
-    // /api/avatar/stop); resetting liveSession here just gives instant visual
-    // feedback (the static portrait) without waiting on that async teardown.
-    setLiveOptIn(false);
-    setLiveSession(null);
   }, []);
 
   const releaseLocalAudio = useCallback((updateUi = true) => {
@@ -407,27 +316,6 @@ export default function TravelDaddy({
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleReplay = useCallback(() => {
-    const lastDaddyMsg = [...messages].reverse().find((m) => m.role === "daddy");
-    if (!lastDaddyMsg) return;
-    const textToSpeak = lastDaddyMsg.text;
-    const replyLanguage = lastDaddyMsg.replyLanguage;
-    if (liveSession) {
-      showEstimatedTalking(textToSpeak);
-      fetch("/api/avatar/speak", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sessionId: liveSession.sessionId,
-          text: textToSpeak,
-          ...(replyLanguage ? { language: replyLanguage } : {}),
-        }),
-      }).catch(() => {});
-    } else if (speechEnabled) {
-      void speakWithLipSync(textToSpeak, replyLanguage ?? undefined);
-    }
-  }, [messages, liveSession, speechEnabled, showEstimatedTalking, speakWithLipSync]);
-
   const sendMessage = useCallback(async () => {
     const trimmed = input.trim();
     if (!trimmed || isLoading) return;
@@ -464,21 +352,9 @@ export default function TravelDaddy({
         { role: "daddy", text: reply, translation: replyTranslation, replyLanguage },
       ]);
 
-      // Live HeyGen owns its own stream. The local GLB instead plays the
-      // exact ElevenLabs WAV that Rhubarb analyzed, with browser TTS as a
-      // best-effort fallback when server speech is unavailable.
-      if (liveSession) {
-        showEstimatedTalking(reply);
-        fetch("/api/avatar/speak", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            sessionId: liveSession.sessionId,
-            text: reply,
-            ...(replyLanguage ? { language: replyLanguage } : {}),
-          }),
-        }).catch(() => {});
-      } else if (speechEnabled) {
+      // The local GLB plays the exact ElevenLabs WAV that Rhubarb analyzed,
+      // with browser TTS as a best-effort fallback when server speech is unavailable.
+      if (speechEnabled) {
         void speakWithLipSync(reply, replyLanguage ?? undefined);
       } else {
         // Keep the existing visual/caption response when audio is disabled.
@@ -498,7 +374,6 @@ export default function TravelDaddy({
     input,
     isLoading,
     tripContext,
-    liveSession,
     speechEnabled,
     showEstimatedTalking,
     speakWithLipSync,
@@ -542,25 +417,12 @@ export default function TravelDaddy({
 
   return (
     <div className="travel-daddy-wrapper">
-      {/* Avatar: live HeyGen stream when opted in, approved portrait otherwise */}
+      {/* The local rigged Judy is the primary avatar. */}
       <div className="canvas-wrapper">
-        <video
-          ref={videoRef}
-          autoPlay
-          playsInline
-          style={{
-            display: liveSession ? "block" : "none",
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            borderRadius: "inherit",
-          }}
-        />
-        <div ref={audioContainerRef} style={{ display: "none" }} />
         {/* J7: rigged GLB is the primary local avatar (jaw/viseme-driven
             "talking" motion); the flat portrait is only the last-resort
             fallback if the 3D model can't load or render at all. */}
-        {!liveSession && !glbAvatarFailed && (
+        {!glbAvatarFailed && (
           <div className="td-glb-avatar" role="img" aria-label="Judy Pierre, Judy's travel translator and guide">
             <AvatarStage
               modelUrl={avatarModelUrl}
@@ -570,7 +432,7 @@ export default function TravelDaddy({
             />
           </div>
         )}
-        {!liveSession && glbAvatarFailed && (
+        {glbAvatarFailed && (
           <Image
             src="/avatars/robjudy.jpg"
             alt="Judy Pierre, Judy's travel translator and guide"
@@ -580,48 +442,6 @@ export default function TravelDaddy({
             className={`td-static-avatar${isTalking ? " is-talking" : ""}`}
           />
         )}
-
-        {/* Live-session controls (Swarm J5): opt-in gate + Mute/Stop/Replay */}
-        <div className="td-avatar-controls">
-          <button
-            className="td-avatar-control-btn"
-            onClick={handleReplay}
-            disabled={!hasDaddyReply || (!liveSession && !speechEnabled)}
-            title="Replay last reply"
-            aria-label="Replay last reply"
-          >
-            <RotateCcw size={16} aria-hidden="true" />
-          </button>
-          {!liveOptIn ? (
-            <button
-              className="td-avatar-control-btn td-live-btn"
-              onClick={() => setLiveOptIn(true)}
-              title="Start the live avatar"
-            >
-              <Video size={16} aria-hidden="true" /> <span>Go live</span>
-            </button>
-          ) : (
-            <>
-              <button
-                className="td-avatar-control-btn"
-                onClick={() => setMuted((m) => !m)}
-                title={muted ? "Unmute" : "Mute"}
-                aria-label={muted ? "Unmute live avatar" : "Mute live avatar"}
-                aria-pressed={muted}
-              >
-                {muted ? <VolumeX size={16} aria-hidden="true" /> : <Volume2 size={16} aria-hidden="true" />}
-              </button>
-              <button
-                className="td-avatar-control-btn"
-                onClick={stopLiveSession}
-                title="Stop live avatar"
-                aria-label="Stop live avatar"
-              >
-                <Square size={16} aria-hidden="true" />
-              </button>
-            </>
-          )}
-        </div>
 
         {/* Caption (Swarm J6): the chat panel is the full transcript, but the
             person may have it collapsed while the avatar is talking — show a
@@ -635,6 +455,23 @@ export default function TravelDaddy({
             })()}
           </div>
         )}
+
+        <ConversationDock
+          state={conversation}
+          onStart={() => dispatchConversation({ type: "START" })}
+          onStopListening={() => dispatchConversation({ type: "STOP_LISTENING" })}
+          onTranscriptChange={(text) => dispatchConversation({ type: "EDIT", text })}
+          onSubmit={() => dispatchConversation({ type: "SUBMIT" })}
+          onResume={() => dispatchConversation({ type: "RESUME" })}
+          onEnd={() => {
+            stopLocalSpeech();
+            dispatchConversation({ type: "END" });
+          }}
+          onTypeInstead={() => {
+            setChatOpen(true);
+            window.setTimeout(() => inputRef.current?.focus(), 0);
+          }}
+        />
       </div>
 
       {/* Translate toggle button (gay-travel translation avatar) */}
