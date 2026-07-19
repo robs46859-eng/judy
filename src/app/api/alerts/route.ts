@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { getSessionUserId } from '@/lib/auth';
 import { enforceRateLimit } from '@/lib/rate-limit';
+import { configuredGeminiTextModel, createGeminiClient } from '@/lib/gemini/config';
 
 export const runtime = 'nodejs';
 
@@ -72,12 +72,12 @@ async function aiAlerts(destination: string): Promise<Alert[]> {
     'Be factual and non-alarmist. Do not state specific laws as certainties — frame legal/safety items as guidance to verify.',
   ].join('\n');
   try {
-    const genAI = new GoogleGenerativeAI(key);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
-    const result = await model.generateContent({
+    const genAI = createGeminiClient(key);
+    const result = await genAI.models.generateContent({
+      model: configuredGeminiTextModel(),
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
     });
-    const arr = extractJsonArray(result.response.text());
+    const arr = extractJsonArray(result.text ?? null);
     if (!arr) return [];
     return arr.slice(0, 4).flatMap((raw, i): Alert[] => {
       if (!raw || typeof raw !== 'object') return [];

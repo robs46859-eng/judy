@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { configuredGeminiTextModel, createGeminiClient } from '@/lib/gemini/config';
 import { z } from 'zod';
 import { runTravelKnowledge } from '@/lib/hermes/knowledge-runner';
 import { retrieveContext } from '@/lib/rag/retriever';
@@ -154,12 +154,12 @@ async function askGeminiJson(prompt: string): Promise<unknown | null> {
   const key = process.env.GEMINI_API_KEY;
   if (!key) return null;
   try {
-    const genAI = new GoogleGenerativeAI(key);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
-    const result = await model.generateContent({
+    const genAI = createGeminiClient(key);
+    const result = await genAI.models.generateContent({
+      model: configuredGeminiTextModel(),
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
     });
-    return extractJsonObject(result.response.text());
+    return extractJsonObject(result.text ?? null);
   } catch {
     return null;
   }

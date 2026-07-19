@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { Modality } from '@google/genai';
 import { z } from 'zod';
 import { getSessionUserId } from '@/lib/auth';
 import { enforceRateLimit } from '@/lib/rate-limit';
 import { presetById } from '@/lib/memories/edit-presets';
+import { configuredGeminiImageModel, createGeminiClient } from '@/lib/gemini/config';
 
 export const runtime = 'nodejs';
 
@@ -18,8 +19,6 @@ export const runtime = 'nodejs';
  */
 
 const MAX_BASE64_CHARS = 8 * 1024 * 1024;
-const IMAGE_MODEL = process.env.GEMINI_IMAGE_MODEL || 'gemini-2.5-flash-image-preview';
-
 const bodySchema = z
   .object({
     imageBase64: z.string().min(16).max(MAX_BASE64_CHARS),
@@ -67,24 +66,19 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const genAI = new GoogleGenerativeAI(key);
-    const model = genAI.getGenerativeModel({ model: IMAGE_MODEL });
-    // Ask the model to return an image. `responseModalities` isn't in the older
-    // SDK's request typings, so the whole request is cast to the expected type.
-    const genRequest = {
+    const genAI = createGeminiClient(key);
+    const result = await genAI.models.generateContent({
+      model: configuredGeminiImageModel(),
       contents: [
         {
           role: 'user',
           parts: [{ text: instruction }, { inlineData: { mimeType, data: imageBase64 } }],
         },
       ],
-      generationConfig: { responseModalities: ['IMAGE', 'TEXT'] },
-    };
-    const result = await model.generateContent(
-      genRequest as unknown as Parameters<typeof model.generateContent>[0]
-    );
+      config: { responseModalities: [Modality.IMAGE, Modality.TEXT] },
+    });
 
-    const parts = (result.response.candidates?.[0]?.content?.parts ?? []) as InlineDataPart[];
+    const parts = (result.candidates?.[0]?.content?.parts ?? []) as InlineDataPart[];
     const imagePart = parts.find((p) => p.inlineData?.data);
     if (imagePart?.inlineData?.data) {
       return NextResponse.json(

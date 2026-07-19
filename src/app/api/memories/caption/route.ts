@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { z } from 'zod';
 import { getSessionUserId } from '@/lib/auth';
 import { enforceRateLimit } from '@/lib/rate-limit';
+import { configuredGeminiTextModel, createGeminiClient } from '@/lib/gemini/config';
 
 export const runtime = 'nodejs';
 
@@ -106,9 +106,9 @@ export async function POST(request: NextRequest) {
     .join('\n');
 
   try {
-    const genAI = new GoogleGenerativeAI(key);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
-    const result = await model.generateContent({
+    const genAI = createGeminiClient(key);
+    const result = await genAI.models.generateContent({
+      model: configuredGeminiTextModel(),
       contents: [
         {
           role: 'user',
@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
       ],
     });
 
-    const captioned = normalize(extractJson(result.response.text()));
+    const captioned = normalize(extractJson(result.text ?? null));
     if (captioned) {
       return NextResponse.json(captioned, { headers: { 'Cache-Control': 'no-store' } });
     }

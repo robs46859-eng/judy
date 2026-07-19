@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { getSessionUserId } from '@/lib/auth';
 import { enforceRateLimit } from '@/lib/rate-limit';
 import { suggestionsSchema, formatZodError } from '@/lib/schemas';
+import { configuredGeminiTextModel, createGeminiClient } from '@/lib/gemini/config';
 
 /**
  * POST /api/suggestions
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'GEMINI_API_KEY not configured in .env' }, { status: 500 });
     }
 
-    const genAI = new GoogleGenerativeAI(apiKey);
+    const genAI = createGeminiClient(apiKey);
 
     const categoryDescriptions: Record<string, string> = {
       food: 'restaurants, cafes, food tours, street food, and local cuisine',
@@ -75,10 +75,11 @@ Provide a brief paragraph about renting in this area, then provide exactly these
 Format as JSON: { "overview": "...", "platforms": [{ "name": "...", "url": "...", "description": "..." }] }`;
     }
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
-    const result = await model.generateContent(prompt);
-    const response = result.response;
-    const text = response.text() || '';
+    const response = await genAI.models.generateContent({
+      model: configuredGeminiTextModel(),
+      contents: prompt,
+    });
+    const text = response.text || '';
 
     // Try to extract JSON from the response
     let extracted = null;

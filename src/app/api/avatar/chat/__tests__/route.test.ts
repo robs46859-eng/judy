@@ -27,12 +27,11 @@ vi.mock('@/lib/rag/retriever', () => ({ retrieveContext: mocks.retrieveContext }
 vi.mock('@/lib/experiences/context', () => ({
   experiencesContextChunk: mocks.experiencesContextChunk,
 }));
-vi.mock('@google/generative-ai', () => ({
-  GoogleGenerativeAI: class {
-    getGenerativeModel() {
-      return { generateContent: mocks.generateContent };
-    }
-  },
+vi.mock('@/lib/gemini/config', () => ({
+  configuredGeminiTextModel: () => 'gemini-3.5-flash',
+  createGeminiClient: () => ({
+    models: { generateContent: mocks.generateContent },
+  }),
 }));
 
 import { POST } from '../route';
@@ -80,23 +79,54 @@ describe('POST /api/avatar/chat conversation history', () => {
           expect.stringContaining('Traveler: I am visiting Madrid.'),
           expect.stringContaining('Judy Pierre'),
         ]),
-      })
+      }),
+      8_000
     );
   });
 
   it('grounds the Gemini fallback with the same recent history', async () => {
     mocks.runTravelKnowledge.mockResolvedValue(null);
     mocks.generateContent.mockResolvedValue({
-      response: { text: () => 'A concise Gemini answer.' },
+      text: 'A concise Gemini answer.',
     });
     process.env.GEMINI_API_KEY = 'test-key';
 
     const response = await POST(jsonRequest({ message: 'Next weekend.', history }));
     expect(response.status).toBe(200);
     const request = mocks.generateContent.mock.calls[0][0];
+    expect(request.model).toBe('gemini-3.5-flash');
     const prompt = request.contents[0].parts[0].text;
     expect(prompt).toContain('Recent conversation:');
     expect(prompt).toContain('Traveler: I am visiting Madrid.');
     expect(prompt).toContain('User says: Next weekend.');
+  });
+
+  it('falls directly to Gemini after a bounded explicit-translation attempt', async () => {
+    mocks.detectTranslationIntent.mockReturnValue({
+      reason: 'explicit',
+      textToTranslate: 'Where is the train station?',
+      sourceLanguage: 'English',
+      targetLanguage: 'Spanish',
+    });
+    mocks.runTravelTranslation.mockResolvedValue(null);
+    mocks.runTravelKnowledge.mockResolvedValue('This path must not run.');
+    mocks.generateContent.mockResolvedValue({
+      text: '¿Dónde está la estación de tren?',
+    });
+    process.env.GEMINI_API_KEY = 'test-key';
+
+    const response = await POST(
+      jsonRequest({ message: "Translate 'Where is the train station?' into Spanish." })
+    );
+
+    expect(response.status).toBe(200);
+    expect(mocks.runTravelTranslation).toHaveBeenCalledWith(
+      expect.any(Headers),
+      'user-a',
+      expect.objectContaining({ targetLanguage: 'Spanish' }),
+      8_000
+    );
+    expect(mocks.runTravelKnowledge).not.toHaveBeenCalled();
+    expect(mocks.generateContent).toHaveBeenCalledOnce();
   });
 });

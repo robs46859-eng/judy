@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { getSessionUserId } from '@/lib/auth';
 import { enforceRateLimit } from '@/lib/rate-limit';
 import { chatSchema, formatZodError } from '@/lib/schemas';
@@ -10,8 +9,13 @@ import { experiencesContextChunk } from '@/lib/experiences/context';
 import { detectTranslationIntent } from '@/lib/translation-intent';
 import { prisma } from '@/lib/prisma';
 import { formatConversationHistory } from '@/lib/avatar/conversationHistory';
+import {
+  configuredGeminiTextModel,
+  createGeminiClient,
+} from '@/lib/gemini/config';
 
 export const runtime = 'nodejs';
+const INLINE_HERMES_BUDGET_MS = 8_000;
 
 /**
  * POST /api/avatar/chat
@@ -129,7 +133,7 @@ Respond naturally as Judy Pierre. Do NOT use markdown formatting — speak plain
         text: intent.textToTranslate,
         targetLanguage: intent.targetLanguage,
         sourceLanguage: intent.sourceLanguage,
-      });
+      }, INLINE_HERMES_BUDGET_MS);
       if (translated) {
         // Telemetry: routing decision only — never message content.
         console.info('[avatar-chat] routed', { userId, route: 'translation', reason: intent.reason });
@@ -168,10 +172,17 @@ Respond naturally as Judy Pierre. Do NOT use markdown formatting — speak plain
       ...retrieved,
       ...(experiencesChunk ? [experiencesChunk] : []),
     ];
-    const gemmaReply = await runTravelKnowledge(request.headers, userId, {
-      prompt: message,
-      contextChunks: [systemPrompt, ...groundingChunks],
-    });
+    const gemmaReply = intent
+      ? null
+      : await runTravelKnowledge(
+          request.headers,
+          userId,
+          {
+            prompt: message,
+            contextChunks: [systemPrompt, ...groundingChunks],
+          },
+          INLINE_HERMES_BUDGET_MS
+        );
     if (gemmaReply) {
       console.info('[avatar-chat] routed', { userId, route: 'gemma' });
       return NextResponse.json({ reply: gemmaReply, source: 'gemma' });
@@ -182,20 +193,18 @@ Respond naturally as Judy Pierre. Do NOT use markdown formatting — speak plain
     if (!geminiKey) {
       return NextResponse.json({ error: 'GEMINI_API_KEY not configured' }, { status: 500 });
     }
-    const genAI = new GoogleGenerativeAI(geminiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const genAI = createGeminiClient(geminiKey);
 
     const geminiPrompt =
       systemPrompt +
       (groundingChunks.length > 0 ? '\n\n' + groundingChunks.join('\n\n') : '') +
       '\n\nUser says: ' +
       message;
-    const result = await model.generateContent({
+    const response = await genAI.models.generateContent({
+      model: configuredGeminiTextModel(),
       contents: [{ role: 'user', parts: [{ text: geminiPrompt }] }],
     });
-
-    const response = result.response;
-    const text = response.text() || "Sorry darling, my mind wandered off for a second there — ask me again!";
+    const text = response.text || "Sorry darling, my mind wandered off for a second there — ask me again!";
 
     console.info('[avatar-chat] routed', { userId, route: 'gemini' });
     return NextResponse.json({ reply: text });
