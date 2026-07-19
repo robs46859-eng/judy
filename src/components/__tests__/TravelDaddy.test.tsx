@@ -341,6 +341,135 @@ describe('TravelDaddy caption overlay (Swarm J6)', () => {
 });
 
 describe('TravelDaddy synchronized local speech', () => {
+  it('starts no audio on mount, then speaks the welcome and keeps the microphone off until it ends', async () => {
+    const audioInstances: MockAudio[] = [];
+    class MockAudio {
+      onplay: (() => void) | null = null;
+      onended: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      pause = vi.fn();
+      play = vi.fn(async () => undefined);
+
+      constructor(readonly src: string) {
+        audioInstances.push(this);
+      }
+    }
+
+    vi.stubGlobal('Audio', MockAudio);
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:judy-welcome');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : input.toString();
+      if (url.includes('/api/user/preferences')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            onboardingCompletedAt: new Date().toISOString(),
+            spokenLanguage: 'en-US',
+          }),
+        } as Response;
+      }
+      if (url.includes('/api/avatar/lipsync')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            audio: window.btoa('welcome wav'),
+            mimeType: 'audio/wav',
+            cues: [{ start: 0, end: 0.2, value: 'A' }],
+          }),
+        } as Response;
+      }
+      return { ok: false, status: 404, json: async () => ({}) } as Response;
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<TravelDaddy userName="Robert" />);
+    await screen.findByRole('button', { name: 'Talk with Judy' });
+    expect(audioInstances).toHaveLength(0);
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      '/api/avatar/lipsync',
+      expect.anything()
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Talk with Judy' }));
+    await waitFor(() => expect(audioInstances).toHaveLength(1));
+    expect(screen.getByRole('status')).toHaveTextContent('Judy is getting ready');
+    expect(recognitionMock.start).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/avatar/lipsync',
+      expect.objectContaining({
+        body: expect.stringContaining("Hi, I’m Judy Pierre"),
+      })
+    );
+
+    act(() => audioInstances[0].onended?.());
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Listening'));
+    expect(recognitionMock.start).toHaveBeenCalled();
+    expect(window.localStorage.getItem('judy-speech-synthesis-enabled')).toBe('true');
+  });
+
+  it('uses synchronized speech for active-conversation replies even when the old toggle began off', async () => {
+    const audioInstances: MockAudio[] = [];
+    class MockAudio {
+      onplay: (() => void) | null = null;
+      onended: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      pause = vi.fn();
+      play = vi.fn(async () => undefined);
+
+      constructor(readonly src: string) {
+        audioInstances.push(this);
+      }
+    }
+
+    vi.stubGlobal('Audio', MockAudio);
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:judy-active-conversation');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = typeof input === 'string' ? input : input.toString();
+        if (url.includes('/api/user/preferences')) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ onboardingCompletedAt: new Date().toISOString() }),
+          } as Response;
+        }
+        if (url.includes('/api/avatar/chat')) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ reply: 'Take a light jacket.' }),
+          } as Response;
+        }
+        if (url.includes('/api/avatar/lipsync')) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              audio: window.btoa('speech wav'),
+              mimeType: 'audio/wav',
+              cues: [],
+            }),
+          } as Response;
+        }
+        return { ok: false, status: 404, json: async () => ({}) } as Response;
+      })
+    );
+
+    render(<TravelDaddy userName="Robert" />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Talk with Judy' }));
+    await waitFor(() => expect(audioInstances).toHaveLength(1));
+    act(() => audioInstances[0].onended?.());
+    await waitFor(() => expect(recognitionMock.start).toHaveBeenCalled());
+
+    act(() => recognitionMock.options?.onFinal('What should I wear?'));
+    await waitFor(() => expect(audioInstances).toHaveLength(2));
+  });
+
   it('plays the exact WAV returned with Rhubarb cues and follows its audio events', async () => {
     window.localStorage.setItem('judy-speech-synthesis-enabled', 'true');
 
@@ -464,15 +593,17 @@ describe('TravelDaddy synchronized local speech', () => {
 
     render(<TravelDaddy userName="Robert" />);
     fireEvent.click(await screen.findByRole('button', { name: 'Talk with Judy' }));
+    await waitFor(() => expect(audioInstances).toHaveLength(1));
+    act(() => audioInstances[0].onended?.());
     await waitFor(() => expect(recognitionMock.start).toHaveBeenCalled());
     const startsBeforeReply = recognitionMock.start.mock.calls.length;
 
     act(() => recognitionMock.options?.onFinal('Which train should I take?'));
-    await waitFor(() => expect(audioInstances).toHaveLength(1));
+    await waitFor(() => expect(audioInstances).toHaveLength(2));
     expect(screen.getByRole('status')).toHaveTextContent('Judy is speaking');
     expect(recognitionMock.start).toHaveBeenCalledTimes(startsBeforeReply);
 
-    act(() => audioInstances[0].onended?.());
+    act(() => audioInstances[1].onended?.());
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Listening'));
     expect(recognitionMock.start.mock.calls.length).toBeGreaterThan(startsBeforeReply);
   });

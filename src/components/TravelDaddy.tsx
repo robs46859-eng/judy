@@ -81,6 +81,9 @@ const TRANSLATE_LANGUAGES = [
   "Mandarin Chinese", "Arabic", "Turkish", "English",
 ];
 
+export const JUDY_CONVERSATION_WELCOME =
+  "Hi, I’m Judy Pierre, your travel translator and guide. Ask me about your trip, say a phrase to translate, or ask what to do nearby. I’ll listen after I finish speaking; tap Stop whenever you want to edit what I heard.";
+
 function audioBlobFromBase64(audio: string, mimeType: string): Blob {
   const decoded = window.atob(audio);
   const bytes = new Uint8Array(decoded.length);
@@ -114,7 +117,7 @@ export default function TravelDaddy({
   // Read once at mount — Dashboard unmounts/remounts TravelDaddy whenever the
   // person leaves and returns to this tab, so a change made in Settings is
   // picked up on the next mount without needing a live cross-component sync.
-  const [speechEnabled] = useState<boolean>(() => {
+  const [speechEnabled, setSpeechEnabled] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
     return window.localStorage.getItem(SPEECH_SYNTHESIS_STORAGE_KEY) === "true";
   });
@@ -400,7 +403,7 @@ export default function TravelDaddy({
 
       // The local GLB plays the exact ElevenLabs WAV that Rhubarb analyzed,
       // with browser TTS as a best-effort fallback when server speech is unavailable.
-      if (speechEnabled) {
+      if (speechEnabled || conversation.sessionActive) {
         void speakWithLipSync(
           reply,
           replyLanguage ?? undefined,
@@ -590,12 +593,17 @@ export default function TravelDaddy({
           state={conversation}
           onStart={() => {
             dispatchConversation({ type: "START" });
-            if (recognitionBackend === "browser") {
-              startBrowserRecognition();
-            } else {
-              void startScribeFallback();
+            abortBrowserRecognition();
+            abortScribeFallback();
+            setSpeechEnabled(true);
+            if (typeof window !== "undefined") {
+              window.localStorage.setItem(SPEECH_SYNTHESIS_STORAGE_KEY, "true");
             }
-            dispatchConversation({ type: "WELCOME_FINISHED" });
+            void speakWithLipSync(
+              JUDY_CONVERSATION_WELCOME,
+              spokenLanguage,
+              () => dispatchConversation({ type: "WELCOME_FINISHED" })
+            );
           }}
           onStopListening={() => {
             stopBrowserRecognition();

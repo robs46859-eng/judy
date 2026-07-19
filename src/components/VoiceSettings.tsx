@@ -9,8 +9,8 @@ export const SPEECH_SYNTHESIS_STORAGE_KEY = "judy-speech-synthesis-enabled";
 /**
  * Voice preference controls (Swarm J5): pick from the server-approved
  * catalog only (persisted via PATCH /api/user/preferences), plus a
- * feature-flagged toggle for browser speech synthesis on the GLB/text
- * fallback. The toggle is a local, client-only preference — no server
+ * read-aloud toggle for Judy's local GLB speech. The toggle is a local,
+ * client-only preference — no server
  * round-trip needed for something this low-stakes.
  */
 export default function VoiceSettings() {
@@ -134,7 +134,7 @@ export default function VoiceSettings() {
       )}
 
       <div className="settings-group">
-        <label htmlFor="speech-synthesis-toggle">Read replies aloud (browser voice, when not live)</label>
+        <label htmlFor="speech-synthesis-toggle">Speak Judy’s replies automatically</label>
         <input
           id="speech-synthesis-toggle"
           type="checkbox"
