@@ -9,6 +9,6 @@ describe('Gemini production model configuration', () => {
   it('uses supported production models for text, images, and embeddings', () => {
     expect(GEMINI_TEXT_MODEL).toBe('gemini-3.5-flash');
     expect(GEMINI_IMAGE_MODEL).toBe('gemini-3.1-flash-image');
-    expect(RAG_EMBED_MODEL).toBe('gemini-embedding-001');
+    expect(RAG_EMBED_MODEL).toBe('gemini-embedding-2');
   });
 });

@@ -4,7 +4,7 @@
  *   npx tsx src/lib/rag/ingest.ts
  *
  * Reads every file under data/rag/sources/ (.md, .txt, .json), chunks the text,
- * embeds each chunk with Gemini (gemini-embedding-001), and writes the index to
+ * embeds each chunk with Gemini (gemini-embedding-2), and writes the index to
  * data/rag/index/. Without GEMINI_API_KEY it still writes chunks (keyword-only
  * retrieval); with a key it writes embeddings too (cosine retrieval).
  *
@@ -107,7 +107,7 @@ async function main() {
 
   const vectors = new Map<string, number[]>();
   if (embeddingsAvailable()) {
-    console.log('[RAG] Embedding with gemini-embedding-001…');
+    console.log('[RAG] Embedding with gemini-embedding-2…');
     const batchSize = 50;
     for (let i = 0; i < chunks.length; i += batchSize) {
       const batch = chunks.slice(i, i + batchSize);

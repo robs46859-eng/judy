@@ -4,7 +4,7 @@ import { createGeminiClient, RAG_EMBED_MODEL } from '@/lib/gemini/config';
 /**
  * Gemini embeddings for the local RAG index.
  *
- * Uses `gemini-embedding-001` via the SDK the app already depends on
+ * Uses `gemini-embedding-2` via the SDK the app already depends on
  * through the maintained Google Gen AI SDK. Tries a batch request first and
  * falls back to per-item embedding if the batch shape isn't as expected.
  * Returns null on any failure so callers can degrade to keyword search.

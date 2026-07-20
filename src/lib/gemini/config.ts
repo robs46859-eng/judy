@@ -2,7 +2,7 @@ import { GoogleGenAI } from '@google/genai';
 
 export const GEMINI_TEXT_MODEL = 'gemini-3.5-flash';
 export const GEMINI_IMAGE_MODEL = 'gemini-3.1-flash-image';
-export const RAG_EMBED_MODEL = 'gemini-embedding-001';
+export const RAG_EMBED_MODEL = 'gemini-embedding-2';
 export const GEMINI_REQUEST_TIMEOUT_MS = 12_000;
 
 export function configuredGeminiTextModel(
