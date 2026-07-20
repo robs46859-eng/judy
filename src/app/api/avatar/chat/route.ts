@@ -13,6 +13,8 @@ import {
   configuredGeminiTextModel,
   createGeminiClient,
 } from '@/lib/gemini/config';
+import { createStripePackageLink } from '@/lib/stripe/client';
+import type { FunctionDeclaration, Tool } from '@google/genai';
 
 export const runtime = 'nodejs';
 const INLINE_HERMES_BUDGET_MS = 8_000;
@@ -121,7 +123,9 @@ ${tripContext.itineraryItems?.length ? `- Itinerary: ${tripContext.itineraryItem
 - You care deeply about the user's safety and joy
 - You address the user warmly as "darling," "traveler," or "friend"
 ${tripInfo}${preferencesInfo}
-Respond naturally as Judy Pierre. Do NOT use markdown formatting — speak plainly as if talking out loud.`;
+Respond naturally as Judy Pierre. Do NOT use markdown formatting — speak plainly as if talking out loud.
+
+You also have the ability to create and sell custom travel experience packages to users (e.g. pre-paid entry to events, excursions, cruises, hikes, tours, tastings). When a user asks to plan or book something, research/curate LGBTQ+-friendly options, estimate the wholesale vendor cost based on typical market rates, and invoke the 'create_stripe_package' tool. Then, give the user the resulting payment link.`;
 
     // Implicit translation routing (Swarm J4): an explicit request, or the
     // message's script not matching the user's stored native language. Runs
@@ -203,9 +207,27 @@ Respond naturally as Judy Pierre. Do NOT use markdown formatting — speak plain
 
     const wantsStream = request.headers.get('accept')?.includes('text/event-stream');
 
+    const judyTools: Tool[] = [
+      {
+        functionDeclarations: [
+          {
+            name: 'create_stripe_package',
+            description: 'Creates a custom travel experience package and generates a Stripe payment link. You must estimate the wholesale vendor cost, and this system will automatically mark it up by 27-39% for the retail price.',
+            parameters: {
+              type: 'OBJECT',
+              properties: {
+                title: { type: 'STRING', description: 'Short, catchy title of the package' },
+                description: { type: 'STRING', description: 'Detailed description of the package and what it includes' },
+                vendorCostUSD: { type: 'NUMBER', description: 'Your estimated wholesale/vendor cost in USD' },
+              },
+              required: ['title', 'description', 'vendorCostUSD'],
+            },
+          } as FunctionDeclaration,
+        ],
+      },
+    ];
+
     // ── Streaming path (SSE) ────────────────────────────────────────────
-    // The docked avatar UI reads tokens as they arrive so the first word
-    // appears in ~200-400 ms instead of waiting 2-4 s for the full reply.
     if (wantsStream) {
       console.info('[avatar-chat] routed', { userId, route: 'gemini-stream' });
 
@@ -213,11 +235,18 @@ Respond naturally as Judy Pierre. Do NOT use markdown formatting — speak plain
       const stream = new ReadableStream({
         async start(controller) {
           try {
-            const chunks = await genAI.models.generateContentStream({
+            let historyContents: any[] = [{ role: 'user', parts: [{ text: geminiPrompt }] }];
+            let chunks = await genAI.models.generateContentStream({
               model: configuredGeminiTextModel(),
-              contents: [{ role: 'user', parts: [{ text: geminiPrompt }] }],
+              contents: historyContents,
+              config: { tools: judyTools },
             });
+
+            let functionCallToExecute: any = null;
             for await (const chunk of chunks) {
+              if (chunk.functionCalls && chunk.functionCalls.length > 0) {
+                functionCallToExecute = chunk.functionCalls[0];
+              }
               const token = chunk.text ?? '';
               if (token) {
                 controller.enqueue(
@@ -225,6 +254,52 @@ Respond naturally as Judy Pierre. Do NOT use markdown formatting — speak plain
                 );
               }
             }
+
+            if (functionCallToExecute && functionCallToExecute.name === 'create_stripe_package') {
+              const { title, description, vendorCostUSD } = functionCallToExecute.args as Record<string, any>;
+              const markup = 0.27 + Math.random() * 0.12;
+              const retailPriceUSD = vendorCostUSD * (1 + markup);
+              const retailPriceCents = Math.round(retailPriceUSD * 100);
+
+              let paymentLink = '';
+              try {
+                const stripeRes = await createStripePackageLink({ title, description, retailPriceCents });
+                paymentLink = stripeRes.paymentLink;
+                await prisma.travelPackage.create({
+                  data: {
+                    userId, title, description,
+                    wholesaleCost: vendorCostUSD, markupPercentage: markup,
+                    retailPrice: retailPriceUSD, stripeProductId: stripeRes.productId,
+                    stripePriceId: stripeRes.priceId, stripePaymentLink: stripeRes.paymentLink,
+                  }
+                });
+              } catch (e) {
+                console.error('[stripe] failed:', e);
+                paymentLink = 'Error creating payment link.';
+              }
+
+              historyContents.push({ role: 'model', parts: [{ functionCall: functionCallToExecute }] });
+              historyContents.push({
+                role: 'function',
+                parts: [{ functionResponse: { name: functionCallToExecute.name, response: { paymentLink, retailPriceUSD: retailPriceUSD.toFixed(2) } } }]
+              });
+
+              let chunks2 = await genAI.models.generateContentStream({
+                model: configuredGeminiTextModel(),
+                contents: historyContents,
+                config: { tools: judyTools },
+              });
+
+              for await (const chunk of chunks2) {
+                const token = chunk.text ?? '';
+                if (token) {
+                  controller.enqueue(
+                    encoder.encode(`data: ${JSON.stringify({ token, done: false })}\n\n`)
+                  );
+                }
+              }
+            }
+
             controller.enqueue(
               encoder.encode(`data: ${JSON.stringify({ token: '', done: true })}\n\n`)
             );
@@ -255,10 +330,52 @@ Respond naturally as Judy Pierre. Do NOT use markdown formatting — speak plain
     }
 
     // ── Buffered path (JSON) ────────────────────────────────────────────
-    const response = await genAI.models.generateContent({
+    let bufferedContents: any[] = [{ role: 'user', parts: [{ text: geminiPrompt }] }];
+    let response = await genAI.models.generateContent({
       model: configuredGeminiTextModel(),
-      contents: [{ role: 'user', parts: [{ text: geminiPrompt }] }],
+      contents: bufferedContents,
+      config: { tools: judyTools },
     });
+    
+    if (response.functionCalls && response.functionCalls.length > 0) {
+      const call = response.functionCalls[0];
+      if (call.name === 'create_stripe_package') {
+        const { title, description, vendorCostUSD } = call.args as Record<string, any>;
+        const markup = 0.27 + Math.random() * 0.12;
+        const retailPriceUSD = vendorCostUSD * (1 + markup);
+        const retailPriceCents = Math.round(retailPriceUSD * 100);
+
+        let paymentLink = '';
+        try {
+          const stripeRes = await createStripePackageLink({ title, description, retailPriceCents });
+          paymentLink = stripeRes.paymentLink;
+          await prisma.travelPackage.create({
+            data: {
+              userId, title, description,
+              wholesaleCost: vendorCostUSD, markupPercentage: markup,
+              retailPrice: retailPriceUSD, stripeProductId: stripeRes.productId,
+              stripePriceId: stripeRes.priceId, stripePaymentLink: stripeRes.paymentLink,
+            }
+          });
+        } catch (e) {
+          console.error('[stripe] failed:', e);
+          paymentLink = 'Error creating payment link.';
+        }
+
+        bufferedContents.push({ role: 'model', parts: [{ functionCall: call }] });
+        bufferedContents.push({
+          role: 'function',
+          parts: [{ functionResponse: { name: call.name, response: { paymentLink, retailPriceUSD: retailPriceUSD.toFixed(2) } } }]
+        });
+
+        response = await genAI.models.generateContent({
+          model: configuredGeminiTextModel(),
+          contents: bufferedContents,
+          config: { tools: judyTools },
+        });
+      }
+    }
+
     const text = response.text || "Sorry darling, my mind wandered off for a second there — ask me again!";
 
     console.info('[avatar-chat] routed', { userId, route: 'gemini' });

@@ -36,6 +36,7 @@ model User {
   entertainmentPrefs EntertainmentPreference[]
   hermesJobs         HermesJob[]
   memories           Memory[]
+  travelPackages     TravelPackage[]
 }
 
 model Memory {
@@ -167,4 +168,23 @@ model EntertainmentPreference {
   type   String // outdoor, cuisine, liveMusic, nightlife, theater, relaxation, tours
 
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+
+model TravelPackage {
+  id                String   @id @default(uuid())
+  userId            String
+  title             String
+  description       String
+  wholesaleCost     Float
+  markupPercentage  Float
+  retailPrice       Float
+  stripeProductId   String?
+  stripePriceId     String?
+  stripePaymentLink String?
+  createdAt         DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }
