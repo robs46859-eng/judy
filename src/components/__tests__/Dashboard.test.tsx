@@ -4,12 +4,12 @@ import { render, screen, waitFor, cleanup, fireEvent } from '@testing-library/re
 import '@testing-library/jest-dom/vitest';
 import Dashboard from '../Dashboard';
 
-// The avatar/chat/translation experience is TravelDaddy's own concern
-// (covered separately in TravelDaddy.test.tsx). Stub it here so Dashboard
+// The avatar/chat/translation experience is JudyDock's own concern
+// (covered separately in JudyDock.test.tsx). Stub it here so Dashboard
 // tests focus on the shell and home-screen composition.
-vi.mock('../TravelDaddy', () => ({
+vi.mock('../JudyDock', () => ({
   default: ({ avatarModelUrl }: { avatarModelUrl?: string }) => (
-    <div data-testid="travel-daddy-stub" data-model-url={avatarModelUrl}>
+    <div data-testid="judy-dock-stub" data-model-url={avatarModelUrl}>
       Judy Pierre
     </div>
   ),
@@ -73,7 +73,7 @@ describe('Dashboard', () => {
 
     render(<Dashboard userName="Robert" userEmail="robs46859@gmail.com" />);
 
-    await waitFor(() => expect(screen.getByTestId('travel-daddy-stub')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByTestId('judy-dock-stub')).toBeInTheDocument());
 
     expect(screen.queryByText(/be gay while away/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Hello, Robert/i)).not.toBeInTheDocument();
@@ -86,7 +86,7 @@ describe('Dashboard', () => {
     );
 
     render(<Dashboard userName="Robert" userEmail="robs46859@gmail.com" />);
-    await waitFor(() => expect(screen.getByTestId('travel-daddy-stub')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByTestId('judy-dock-stub')).toBeInTheDocument());
 
     expect(screen.getByAltText('Judy')).toBeInTheDocument();
     expect(screen.getByTitle('Profile')).toBeInTheDocument();
@@ -115,7 +115,7 @@ describe('Dashboard', () => {
       'href',
       '/admin/avatar'
     );
-    expect(screen.getByTestId('travel-daddy-stub')).toHaveAttribute(
+    expect(screen.getByTestId('judy-dock-stub')).toHaveAttribute(
       'data-model-url',
       '/api/avatar/model?v=abc123'
     );
@@ -139,7 +139,7 @@ describe('Dashboard', () => {
     );
 
     render(<Dashboard userName="Robert" userEmail="robs46859@gmail.com" />);
-    await waitFor(() => expect(screen.getByTestId('travel-daddy-stub')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByTestId('judy-dock-stub')).toBeInTheDocument());
     // "Lisbon" appears twice (countdown destination + weather badge) once
     // the trip loads — wait for both rather than asserting a single match.
     await waitFor(() => expect(screen.getAllByText('Lisbon').length).toBeGreaterThan(0));
@@ -159,7 +159,7 @@ describe('Dashboard', () => {
     );
 
     render(<Dashboard userName="Robert" userEmail="robs46859@gmail.com" />);
-    await waitFor(() => expect(screen.getByTestId('travel-daddy-stub')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByTestId('judy-dock-stub')).toBeInTheDocument());
 
     expect(await screen.findByText(/no upcoming trip yet/i)).toBeInTheDocument();
     expect(screen.getByText('Trip Countdown')).toBeInTheDocument();
@@ -193,7 +193,7 @@ describe('Dashboard', () => {
     );
 
     render(<Dashboard userName="Robert" userEmail="robs46859@gmail.com" />);
-    await waitFor(() => expect(screen.getByTestId('travel-daddy-stub')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByTestId('judy-dock-stub')).toBeInTheDocument());
 
     const dashboardNavBtn = screen.getByRole('button', { name: 'Dashboard' });
     const settingsNavBtn = screen.getByRole('button', { name: 'Settings' });

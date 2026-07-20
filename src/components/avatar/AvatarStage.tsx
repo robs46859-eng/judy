@@ -1,11 +1,12 @@
 "use client";
 
-import { Component, Suspense, type ReactNode } from "react";
+import { Component, Suspense, useMemo, type ReactNode } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Bounds } from "@react-three/drei";
 import AvatarMesh from "./AvatarMesh";
 import type { RhubarbCue } from "@/lib/avatar/visemeTimeline";
 import { getAvatarFacingRotation } from "@/lib/avatar/motion";
+import type { EmotionPreset } from "@/lib/avatar/emotion";
 import type { ConversationPhase } from "./conversationMachine";
 
 export interface AvatarStageProps {
@@ -13,9 +14,11 @@ export interface AvatarStageProps {
   talking: boolean;
   phase: ConversationPhase;
   cues?: RhubarbCue[] | null;
+  /** Emotion preset derived from reply text (blended into avatar motion). */
+  emotion?: EmotionPreset | null;
   /**
    * Called at most once if the GLB fails to load or render (missing file,
-   * malformed GLTF, WebGL unavailable, ...). The caller (TravelDaddy) should
+   * malformed GLTF, WebGL unavailable, ...). The caller (JudyDock) should
    * fall back to the static portrait — a broken 3D avatar must never leave
    * the person with nothing to look at.
    */
@@ -51,13 +54,65 @@ class AvatarErrorBoundary extends Component<
   }
 }
 
+/* ── Phase-aware lighting colors ────────────────────────────────────── */
+
+const PHASE_AMBIENT: Record<string, string> = {
+  welcoming: '#ffecd2',  // warm amber
+  listening: '#d6e8ff',  // cool blue
+  thinking:  '#e8e0f0',  // soft lavender
+  speaking:  '#fff3d4',  // golden
+  error:     '#ffe0e0',  // muted rose
+  editing:   '#e8e8ee',  // neutral
+  paused:    '#e8e8ee',
+  idle:      '#f0ecf4',  // very subtle lilac
+};
+
+const PHASE_AMBIENT_INTENSITY: Record<string, number> = {
+  welcoming: 1.0,
+  listening: 0.95,
+  thinking:  0.85,
+  speaking:  1.05,
+  error:     0.9,
+  editing:   0.85,
+  paused:    0.8,
+  idle:      0.9,
+};
+
+function PhaseAwareLighting({ phase }: { phase: ConversationPhase }) {
+  const ambientColor = PHASE_AMBIENT[phase] ?? PHASE_AMBIENT.idle;
+  const ambientIntensity = PHASE_AMBIENT_INTENSITY[phase] ?? 0.9;
+
+  return (
+    <>
+      <ambientLight color={ambientColor} intensity={ambientIntensity} />
+      {/* Key light — slightly warm, upper right */}
+      <directionalLight position={[0.5, 1.2, 1]} intensity={1.1} />
+      {/* Rim / back light — adds depth and separates avatar from background */}
+      <directionalLight
+        position={[-0.6, 0.8, -1]}
+        intensity={0.35}
+        color="#c8b8e8"
+      />
+      {/* Fill light — very subtle, from the left */}
+      <directionalLight
+        position={[-1, 0.2, 0.5]}
+        intensity={0.2}
+        color="#e8e0f0"
+      />
+    </>
+  );
+}
+
 export default function AvatarStage({
   modelUrl,
   talking,
   phase,
   cues,
+  emotion,
   onUnavailable,
 }: AvatarStageProps) {
+  const facingRotation = useMemo(() => getAvatarFacingRotation(modelUrl), [modelUrl]);
+
   return (
     <AvatarErrorBoundary onUnavailable={onUnavailable}>
       <Canvas
@@ -69,8 +124,7 @@ export default function AvatarStage({
           if (!gl.getContext()) onUnavailable?.();
         }}
       >
-        <ambientLight intensity={0.9} />
-        <directionalLight position={[0.5, 1.2, 1]} intensity={1.1} />
+        <PhaseAwareLighting phase={phase} />
         <Suspense fallback={null}>
           <Bounds fit clip observe margin={1.12}>
             <AvatarMesh
@@ -78,7 +132,8 @@ export default function AvatarStage({
               talking={talking}
               phase={phase}
               cues={cues}
-              facingRotationY={getAvatarFacingRotation(modelUrl)}
+              emotion={emotion}
+              facingRotationY={facingRotation}
             />
           </Bounds>
         </Suspense>
@@ -86,3 +141,4 @@ export default function AvatarStage({
     </AvatarErrorBoundary>
   );
 }
+

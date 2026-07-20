@@ -40,6 +40,8 @@ describe('sampleAvatarMotion', () => {
       headRoll: 0,
       earRoll: 0,
       chestPitch: 0,
+      blinkWeight: 0,
+      microExpressions: {},
     });
   });
 

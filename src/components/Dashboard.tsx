@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import Image from "next/image";
-import TravelDaddy from "./TravelDaddy";
+import JudyDock from "./JudyDock";
 import ItineraryBuilder from "./ItineraryBuilder";
 import BudgetAutoAllocate from "./BudgetAutoAllocate";
 import UserProfileModal from "./UserProfileModal";
@@ -88,9 +88,7 @@ export default function Dashboard({
     document.documentElement.setAttribute("data-theme", newTheme);
   };
 
-  // Load trip from API — pick the nearest active/upcoming trip, falling back
-  // to the most recently updated past trip. See selectTrip() for why we
-  // can't just take the first item the API returns.
+  // Load trip from API
   const loadTrip = useCallback(async () => {
     try {
       const res = await fetch("/api/trips");
@@ -159,8 +157,6 @@ export default function Dashboard({
           daysUntilDeparture: data.daysUntilDeparture,
         });
       } catch {
-        // Fallback: show that we couldn't fetch, without collapsing the
-        // widget or losing its size.
         setWeather({
           isHistorical: false,
           error: "Weather is temporarily unavailable. Showing the last known layout — try again shortly.",
@@ -173,8 +169,7 @@ export default function Dashboard({
     fetchWeather();
   }, [trip?.destinationLat, trip?.destinationLng, trip?.departureDate]);
 
-  // Countdown ticker — seed the value immediately so the widget never
-  // shows a blank/zero state while waiting for the first interval tick.
+  // Countdown ticker
   useEffect(() => {
     if (!trip?.departureDate) {
       setCountdown(null);
@@ -309,26 +304,12 @@ export default function Dashboard({
           ))}
         </aside>
 
-        {/* Content Area */}
-        <main className="content-area">
-          {activeTab === "dashboard" && (
-            <>
-              {/* Avatar */}
-              <div className="avatar-container">
-                <TravelDaddy
-                  tripContext={trip}
-                  userName={userName}
-                  userEmail={userEmail}
-                  avatarModelUrl={avatarModelUrl}
-                />
-              </div>
-
-              {/* Right Widgets — countdown and weather only. The focused
-                  home screen intentionally omits Get Started, Next Up, and
-                  Budget Overview; those live on their dedicated tabs. */}
-              <div className="widgets-container">
-                {/* Countdown — always rendered at a stable size so there's
-                    no layout jump between the no-trip and active states. */}
+        {/* Content Area — main content with Judy dock alongside */}
+        <div className="content-with-dock">
+          <main className="content-area">
+            {activeTab === "dashboard" && (
+              <div className="dashboard-widgets">
+                {/* Countdown */}
                 <div className="widget countdown-widget">
                   <div className="countdown-label">
                     <Timer size={16} /> Trip Countdown
@@ -362,7 +343,7 @@ export default function Dashboard({
                   )}
                 </div>
 
-                {/* Weather — Live Data */}
+                {/* Weather */}
                 <div className="widget">
                   <div className="widget-header">
                     <ThermometerSun size={20} /> Weather
@@ -438,171 +419,182 @@ export default function Dashboard({
                   </div>
                 </div>
               </div>
-            </>
-          )}
+            )}
 
-          {activeTab === "itinerary" && (
-            <div className="full-width-content">
-              <ItineraryBuilder onTripCreated={handleTripCreated} />
-            </div>
-          )}
+            {activeTab === "itinerary" && (
+              <div className="full-width-content">
+                <ItineraryBuilder onTripCreated={handleTripCreated} />
+              </div>
+            )}
 
-          {activeTab === "viewer" && (
-            <div className="full-width-content">
-              {trip ? (
-                <div className="viewer-placeholder">
-                  <div className="widget" style={{ maxWidth: 800, margin: "0 auto" }}>
-                    <div className="widget-header">
-                      <Eye size={20} /> Trip Viewer — {trip.name || trip.destinationName}
-                    </div>
-                    <div className="widget-content">
-                      <div className="stat-row">
-                        <span>Destination</span>
-                        <span className="stat-value">{trip.destinationName}</span>
+            {activeTab === "viewer" && (
+              <div className="full-width-content">
+                {trip ? (
+                  <div className="viewer-placeholder">
+                    <div className="widget" style={{ maxWidth: 800, margin: "0 auto" }}>
+                      <div className="widget-header">
+                        <Eye size={20} /> Trip Viewer — {trip.name || trip.destinationName}
                       </div>
-                      <div className="stat-row">
-                        <span>Departure</span>
-                        <span className="stat-value">
-                          {new Date(trip.departureDate).toLocaleDateString()}
-                        </span>
-                      </div>
-                      <div className="stat-row">
-                        <span>Return</span>
-                        <span className="stat-value">
-                          {new Date(trip.returnDate).toLocaleDateString()}
-                        </span>
-                      </div>
-                      {trip.notes && (
+                      <div className="widget-content">
                         <div className="stat-row">
-                          <span>Notes</span>
-                          <span className="stat-value">{trip.notes}</span>
+                          <span>Destination</span>
+                          <span className="stat-value">{trip.destinationName}</span>
+                        </div>
+                        <div className="stat-row">
+                          <span>Departure</span>
+                          <span className="stat-value">
+                            {new Date(trip.departureDate).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <div className="stat-row">
+                          <span>Return</span>
+                          <span className="stat-value">
+                            {new Date(trip.returnDate).toLocaleDateString()}
+                          </span>
+                        </div>
+                        {trip.notes && (
+                          <div className="stat-row">
+                            <span>Notes</span>
+                            <span className="stat-value">{trip.notes}</span>
+                          </div>
+                        )}
+                      </div>
+                      {trip.itineraryItems?.length > 0 && (
+                        <div style={{ marginTop: "1rem" }}>
+                          <div className="widget-header" style={{ marginBottom: "0.75rem" }}>
+                            <Calendar size={18} /> Itinerary ({trip.itineraryItems.length} items)
+                          </div>
+                          {trip.itineraryItems.map((item: any, idx: number) => (
+                            <div key={item.id || idx} className="stat-row">
+                              <span>
+                                <span className="item-time">{item.time || "—"}</span> {item.title}
+                              </span>
+                              <span className="stat-value">
+                                {item.cost ? `$${item.cost}` : "—"}
+                              </span>
+                            </div>
+                          ))}
                         </div>
                       )}
                     </div>
-                    {trip.itineraryItems?.length > 0 && (
-                      <div style={{ marginTop: "1rem" }}>
-                        <div className="widget-header" style={{ marginBottom: "0.75rem" }}>
-                          <Calendar size={18} /> Itinerary ({trip.itineraryItems.length} items)
-                        </div>
-                        {trip.itineraryItems.map((item: any, idx: number) => (
-                          <div key={item.id || idx} className="stat-row">
-                            <span>
-                              <span className="item-time">{item.time || "—"}</span> {item.title}
-                            </span>
-                            <span className="stat-value">
-                              {item.cost ? `$${item.cost}` : "—"}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
                   </div>
+                ) : (
+                  <div className="widget" style={{ maxWidth: 600, margin: "2rem auto", textAlign: "center" }}>
+                    <div className="widget-header">
+                      <Eye size={20} /> Trip Viewer
+                    </div>
+                    <div className="widget-content">
+                      <p>Create a trip first to view it here.</p>
+                      <button className="widget-action-btn" onClick={() => setActiveTab("itinerary")}>
+                        Build Itinerary
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === "budget" && trip && (
+              <div className="full-width-content">
+                <div className="budget-page">
+                  <h2>
+                    <CreditCard size={24} /> Budget Breakdown
+                  </h2>
+                  <div className="budget-summary-grid">
+                    <div className="budget-card total">
+                      <span>Total Budget</span>
+                      <strong>${trip.totalBudget?.toFixed(2)}</strong>
+                    </div>
+                    <div className="budget-card">
+                      <span>Airfare</span>
+                      <strong>${trip.airfareCost?.toFixed(2)}</strong>
+                    </div>
+                    <div className="budget-card">
+                      <span>Hotel</span>
+                      <strong>${trip.hotelCost?.toFixed(2)}</strong>
+                    </div>
+                    <div className="budget-card accent">
+                      <span>Spending Budget</span>
+                      <strong>${trip.spendingBudget?.toFixed(2)}</strong>
+                    </div>
+                  </div>
+
+                  <BudgetAutoAllocate tripId={trip.id} onApplied={loadTrip} />
+
+                  {trip.budgetItems?.length > 0 && (
+                    <div className="budget-allocations">
+                      <h3>Allocations</h3>
+                      {trip.budgetItems.map((bi: any) => (
+                        <div key={bi.id} className="allocation-row">
+                          <span className="alloc-label">{bi.label}</span>
+                          <div className="alloc-bar-container">
+                            <div
+                              className="alloc-bar"
+                              style={{ width: `${(bi.amount / trip.spendingBudget) * 100}%` }}
+                            />
+                          </div>
+                          <span className="alloc-amount">${bi.amount?.toFixed(2)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              ) : (
+              </div>
+            )}
+
+            {activeTab === "budget" && !trip && (
+              <div className="full-width-content">
                 <div className="widget" style={{ maxWidth: 600, margin: "2rem auto", textAlign: "center" }}>
                   <div className="widget-header">
-                    <Eye size={20} /> Trip Viewer
+                    <CreditCard size={20} /> Budget
                   </div>
                   <div className="widget-content">
-                    <p>Create a trip first to view it here.</p>
+                    <p>Create a trip first to see your budget breakdown.</p>
                     <button className="widget-action-btn" onClick={() => setActiveTab("itinerary")}>
                       Build Itinerary
                     </button>
                   </div>
                 </div>
-              )}
-            </div>
-          )}
-
-          {activeTab === "budget" && trip && (
-            <div className="full-width-content">
-              <div className="budget-page">
-                <h2>
-                  <CreditCard size={24} /> Budget Breakdown
-                </h2>
-                <div className="budget-summary-grid">
-                  <div className="budget-card total">
-                    <span>Total Budget</span>
-                    <strong>${trip.totalBudget?.toFixed(2)}</strong>
-                  </div>
-                  <div className="budget-card">
-                    <span>Airfare</span>
-                    <strong>${trip.airfareCost?.toFixed(2)}</strong>
-                  </div>
-                  <div className="budget-card">
-                    <span>Hotel</span>
-                    <strong>${trip.hotelCost?.toFixed(2)}</strong>
-                  </div>
-                  <div className="budget-card accent">
-                    <span>Spending Budget</span>
-                    <strong>${trip.spendingBudget?.toFixed(2)}</strong>
-                  </div>
-                </div>
-
-                <BudgetAutoAllocate tripId={trip.id} onApplied={loadTrip} />
-
-                {trip.budgetItems?.length > 0 && (
-                  <div className="budget-allocations">
-                    <h3>Allocations</h3>
-                    {trip.budgetItems.map((bi: any) => (
-                      <div key={bi.id} className="allocation-row">
-                        <span className="alloc-label">{bi.label}</span>
-                        <div className="alloc-bar-container">
-                          <div
-                            className="alloc-bar"
-                            style={{ width: `${(bi.amount / trip.spendingBudget) * 100}%` }}
-                          />
-                        </div>
-                        <span className="alloc-amount">${bi.amount?.toFixed(2)}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
-            </div>
-          )}
+            )}
 
-          {activeTab === "budget" && !trip && (
-            <div className="full-width-content">
-              <div className="widget" style={{ maxWidth: 600, margin: "2rem auto", textAlign: "center" }}>
-                <div className="widget-header">
-                  <CreditCard size={20} /> Budget
-                </div>
-                <div className="widget-content">
-                  <p>Create a trip first to see your budget breakdown.</p>
-                  <button className="widget-action-btn" onClick={() => setActiveTab("itinerary")}>
-                    Build Itinerary
-                  </button>
+            {activeTab === "settings" && (
+              <div className="full-width-content">
+                <div className="settings-page">
+                  <h2>
+                    <Settings size={24} /> Settings
+                  </h2>
+                  <div className="settings-group">
+                    <label>Theme</label>
+                    <button className="theme-toggle-btn" onClick={toggleTheme}>
+                      {theme === "dark" ? (
+                        <>
+                          <Sun size={16} /> Switch to Light Mode
+                        </>
+                      ) : (
+                        <>
+                          <Moon size={16} /> Switch to Dark Mode
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <VoiceSettings />
                 </div>
               </div>
-            </div>
-          )}
+            )}
+          </main>
 
-          {activeTab === "settings" && (
-            <div className="full-width-content">
-              <div className="settings-page">
-                <h2>
-                  <Settings size={24} /> Settings
-                </h2>
-                <div className="settings-group">
-                  <label>Theme</label>
-                  <button className="theme-toggle-btn" onClick={toggleTheme}>
-                    {theme === "dark" ? (
-                      <>
-                        <Sun size={16} /> Switch to Light Mode
-                      </>
-                    ) : (
-                      <>
-                        <Moon size={16} /> Switch to Dark Mode
-                      </>
-                    )}
-                  </button>
-                </div>
-                <VoiceSettings />
-              </div>
-            </div>
-          )}
-        </main>
+          {/* Persistent Judy Dock — visible across all tabs */}
+          <aside className="judy-dock-column" aria-label="Judy Pierre assistant">
+            <JudyDock
+              tripContext={trip}
+              userName={userName}
+              userEmail={userEmail}
+              avatarModelUrl={avatarModelUrl}
+              docked
+            />
+          </aside>
+        </div>
       </div>
 
       {/* Modals */}

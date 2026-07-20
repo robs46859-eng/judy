@@ -446,7 +446,7 @@ h1, h2, h3, h4,
   top: 0; left: 0;
 }
 
-.td-static-avatar {
+.judy-static-avatar {
   object-fit: contain;
   object-position: center bottom;
   border-radius: inherit;
@@ -455,24 +455,24 @@ h1, h2, h3, h4,
 
 /* J7: rigged GLB avatar — fills the same canvas-wrapper the static portrait
    and HeyGen video use, so all three avatar modes share one layout box. */
-.td-glb-avatar {
+.judy-glb-avatar {
   position: absolute;
   inset: 0;
   border-radius: inherit;
   overflow: hidden;
 }
 
-.td-glb-avatar canvas {
+.judy-glb-avatar canvas {
   border-radius: inherit;
 }
 
-.td-static-avatar.is-talking {
+.judy-static-avatar.is-talking {
   transform: scale(1.012);
   filter: saturate(1.04) brightness(1.02);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .td-static-avatar {
+  .judy-static-avatar {
     transition: none;
   }
 }
@@ -709,7 +709,7 @@ h1, h2, h3, h4,
 
   /* Keep chat/translate overlays fully within the viewport instead of a
      fixed 360px panel that can overflow narrow screens. */
-  .td-chat-panel {
+  .judy-chat-panel {
     left: 0.5rem;
     right: 0.5rem;
     width: auto;
@@ -717,7 +717,7 @@ h1, h2, h3, h4,
     bottom: max(0.5rem, env(safe-area-inset-bottom));
   }
 
-  .td-chat-toggle {
+  .judy-chat-toggle {
     bottom: max(1rem, env(safe-area-inset-bottom));
   }
 }
@@ -744,7 +744,7 @@ h1, h2, h3, h4,
     font-size: 1.7rem;
   }
 
-  .td-chat-panel {
+  .judy-chat-panel {
     left: 0.35rem;
     right: 0.35rem;
   }
@@ -1502,7 +1502,7 @@ h1, h2, h3, h4,
   height: 100%;
 }
 
-.td-chat-toggle {
+.judy-chat-toggle {
   position: absolute;
   bottom: 1.5rem;
   left: 50%;
@@ -1530,12 +1530,12 @@ h1, h2, h3, h4,
   50% { box-shadow: 0 4px 30px var(--accent-glow), 0 0 50px rgba(211, 146, 88, 0.16); }
 }
 
-.td-chat-toggle:hover {
+.judy-chat-toggle:hover {
   transform: translateX(-50%) translateY(-2px);
   box-shadow: 0 6px 25px var(--accent-glow);
 }
 
-.td-chat-panel {
+.judy-chat-panel {
   position: absolute;
   bottom: 0;
   right: 0;
@@ -1557,7 +1557,7 @@ h1, h2, h3, h4,
   to { opacity: 1; transform: translateY(0); }
 }
 
-.td-chat-header {
+.judy-chat-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1566,7 +1566,7 @@ h1, h2, h3, h4,
   border-bottom: 1px solid var(--panel-border);
 }
 
-.td-chat-title {
+.judy-chat-title {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -1574,7 +1574,7 @@ h1, h2, h3, h4,
   font-size: 0.9rem;
 }
 
-.td-avatar-dot {
+.judy-avatar-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
@@ -1588,7 +1588,7 @@ h1, h2, h3, h4,
   50% { opacity: 0.5; }
 }
 
-.td-chat-close {
+.judy-chat-close {
   background: transparent;
   border: none;
   color: var(--text-secondary);
@@ -1598,12 +1598,12 @@ h1, h2, h3, h4,
   transition: all var(--transition);
 }
 
-.td-chat-close:hover {
+.judy-chat-close:hover {
   color: var(--text-primary);
   background: var(--bg-surface);
 }
 
-.td-chat-messages {
+.judy-chat-messages {
   flex: 1;
   overflow-y: auto;
   padding: 0.75rem;
@@ -1614,23 +1614,23 @@ h1, h2, h3, h4,
   max-height: 320px;
 }
 
-.td-chat-messages::-webkit-scrollbar { width: 4px; }
-.td-chat-messages::-webkit-scrollbar-thumb {
+.judy-chat-messages::-webkit-scrollbar { width: 4px; }
+.judy-chat-messages::-webkit-scrollbar-thumb {
   background: var(--panel-border);
   border-radius: 2px;
 }
 
-.td-msg {
+.judy-msg {
   display: flex;
   align-items: flex-end;
   gap: 0.4rem;
 }
 
-.td-msg-user {
+.judy-msg-user {
   flex-direction: row-reverse;
 }
 
-.td-msg-avatar {
+.judy-msg-avatar {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1646,13 +1646,13 @@ h1, h2, h3, h4,
   border: 1px solid var(--panel-border);
 }
 
-.td-msg-user .td-msg-avatar {
+.judy-msg-user .judy-msg-avatar {
   background: var(--accent-color);
   color: var(--chat-user-text);
   border-color: transparent;
 }
 
-.td-msg-bubble {
+.judy-msg-bubble {
   max-width: 80%;
   padding: 0.6rem 0.85rem;
   border-radius: var(--radius-md);
@@ -1660,28 +1660,28 @@ h1, h2, h3, h4,
   line-height: 1.5;
 }
 
-.td-msg-daddy .td-msg-bubble {
+.judy-msg-daddy .judy-msg-bubble {
   background: var(--chat-daddy-bg);
   border: 1px solid var(--panel-border);
   color: var(--chat-daddy-text);
   border-bottom-left-radius: 4px;
 }
 
-.td-msg-user .td-msg-bubble {
+.judy-msg-user .judy-msg-bubble {
   background: linear-gradient(135deg, var(--chat-user-bg), var(--accent-hover));
   color: var(--chat-user-text);
   border-bottom-right-radius: 4px;
 }
 
 /* Typing indicator */
-.td-typing {
+.judy-typing {
   display: flex;
   align-items: center;
   gap: 4px;
   padding: 0.8rem 1rem;
 }
 
-.td-typing span {
+.judy-typing span {
   width: 6px;
   height: 6px;
   border-radius: 50%;
@@ -1689,15 +1689,15 @@ h1, h2, h3, h4,
   animation: typingBounce 1.4s ease-in-out infinite;
 }
 
-.td-typing span:nth-child(2) { animation-delay: 0.2s; }
-.td-typing span:nth-child(3) { animation-delay: 0.4s; }
+.judy-typing span:nth-child(2) { animation-delay: 0.2s; }
+.judy-typing span:nth-child(3) { animation-delay: 0.4s; }
 
 @keyframes typingBounce {
   0%, 60%, 100% { transform: translateY(0); }
   30% { transform: translateY(-6px); }
 }
 
-.td-chat-input-bar {
+.judy-chat-input-bar {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -1705,7 +1705,7 @@ h1, h2, h3, h4,
   border-top: 1px solid var(--panel-border);
 }
 
-.td-chat-input {
+.judy-chat-input {
   flex: 1;
   padding: 0.55rem 0.75rem;
   background: var(--bg-surface);
@@ -1718,20 +1718,20 @@ h1, h2, h3, h4,
   outline: none;
 }
 
-.td-chat-input:focus {
+.judy-chat-input:focus {
   border-color: var(--accent-color);
   box-shadow: 0 0 0 2px var(--accent-glow);
 }
 
-.td-chat-input::placeholder {
+.judy-chat-input::placeholder {
   color: var(--text-muted);
 }
 
-[data-theme='dark'] .td-chat-input {
+[data-theme='dark'] .judy-chat-input {
   background: rgba(0, 0, 0, 0.25);
 }
 
-.td-send-btn {
+.judy-send-btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1746,19 +1746,19 @@ h1, h2, h3, h4,
   flex-shrink: 0;
 }
 
-.td-send-btn:hover:not(:disabled) {
+.judy-send-btn:hover:not(:disabled) {
   background: var(--accent-hover);
   transform: translateY(-1px);
 }
 
-.td-send-btn:disabled {
+.judy-send-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
 
 /* ═══════════════════════════════════════════
    ONBOARDING INTAKE (Swarm J3)
-   Reuses .td-msg / .td-chat-input-bar / .td-send-btn
+   Reuses .judy-msg / .judy-chat-input-bar / .judy-send-btn
    for visual consistency with the normal chat thread.
    ═══════════════════════════════════════════ */
 .onboarding-intake {
@@ -1903,7 +1903,7 @@ h1, h2, h3, h4,
 /* ═══════════════════════════════════════════
    TRANSLATE PANEL (Gemma-powered)
    ═══════════════════════════════════════════ */
-.td-translate-toggle {
+.judy-translate-toggle {
   position: absolute;
   top: 1rem;
   right: 1rem;
@@ -1922,28 +1922,28 @@ h1, h2, h3, h4,
   z-index: 20;
 }
 
-.td-translate-toggle:hover,
-.td-translate-toggle.active {
+.judy-translate-toggle:hover,
+.judy-translate-toggle.active {
   color: #fff;
   background: var(--lilac);
   border-color: var(--lilac);
   transform: translateY(-1px);
 }
 
-.td-translate-panel {
+.judy-translate-panel {
   left: 0;
   right: auto;
   max-height: 420px;
 }
 
-.td-translate-body {
+.judy-translate-body {
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
   padding: 0.85rem;
 }
 
-.td-translate-input {
+.judy-translate-input {
   width: 100%;
   padding: 0.6rem 0.7rem;
   background: var(--bg-surface);
@@ -1958,18 +1958,18 @@ h1, h2, h3, h4,
   transition: border-color var(--transition);
 }
 
-.td-translate-input:focus {
+.judy-translate-input:focus {
   border-color: var(--lilac);
   box-shadow: 0 0 0 2px var(--lilac-soft);
 }
 
-.td-translate-controls {
+.judy-translate-controls {
   display: flex;
   align-items: center;
   gap: 0.5rem;
 }
 
-.td-translate-lang-label {
+.judy-translate-lang-label {
   display: flex;
   align-items: center;
   gap: 0.4rem;
@@ -1978,7 +1978,7 @@ h1, h2, h3, h4,
   color: var(--text-secondary);
 }
 
-.td-translate-lang {
+.judy-translate-lang {
   flex: 1;
   padding: 0.5rem 0.6rem;
   background: var(--bg-surface);
@@ -1991,17 +1991,17 @@ h1, h2, h3, h4,
   cursor: pointer;
 }
 
-.td-translate-lang:focus { border-color: var(--lilac); }
+.judy-translate-lang:focus { border-color: var(--lilac); }
 
-.td-translate-go {
+.judy-translate-go {
   background: var(--lilac);
 }
-.td-translate-go:hover:not(:disabled) {
+.judy-translate-go:hover:not(:disabled) {
   background: var(--lilac);
   filter: brightness(0.94);
 }
 
-.td-translate-result {
+.judy-translate-result {
   padding: 0.7rem 0.85rem;
   background: var(--chat-daddy-bg);
   border: 1px solid var(--panel-border);
@@ -2012,7 +2012,7 @@ h1, h2, h3, h4,
   line-height: 1.5;
 }
 
-.td-translate-error {
+.judy-translate-error {
   padding: 0.6rem 0.8rem;
   background: rgba(184, 80, 63, 0.1);
   border: 1px solid rgba(184, 80, 63, 0.32);
@@ -2021,7 +2021,7 @@ h1, h2, h3, h4,
   font-size: 0.78rem;
 }
 
-.td-translate-hint {
+.judy-translate-hint {
   font-size: 0.78rem;
   color: var(--text-muted);
   display: flex;
@@ -2032,7 +2032,7 @@ h1, h2, h3, h4,
 /* ═══════════════════════════════════════════
    EXPERIENCES PANEL (curated gay experiences)
    ═══════════════════════════════════════════ */
-.td-experiences-toggle {
+.judy-experiences-toggle {
   position: absolute;
   top: 3.9rem;
   right: 1rem;
@@ -2051,22 +2051,22 @@ h1, h2, h3, h4,
   z-index: 20;
 }
 
-.td-experiences-toggle:hover,
-.td-experiences-toggle.active {
+.judy-experiences-toggle:hover,
+.judy-experiences-toggle.active {
   color: #fff;
   background: var(--accent-color);
   border-color: var(--accent-color);
   transform: translateY(-1px);
 }
 
-.td-experiences-panel {
+.judy-experiences-panel {
   left: 0;
   right: auto;
   width: 380px;
   max-height: 460px;
 }
 
-.td-exp-cats {
+.judy-exp-cats {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
@@ -2074,7 +2074,7 @@ h1, h2, h3, h4,
   border-bottom: 1px solid var(--panel-border);
 }
 
-.td-exp-cat {
+.judy-exp-cat {
   padding: 0.25rem 0.6rem;
   background: var(--bg-surface);
   border: 1px solid var(--panel-border);
@@ -2087,14 +2087,14 @@ h1, h2, h3, h4,
   transition: all var(--transition);
 }
 
-.td-exp-cat:hover { border-color: var(--accent-color); color: var(--accent-color); }
-.td-exp-cat.active {
+.judy-exp-cat:hover { border-color: var(--accent-color); color: var(--accent-color); }
+.judy-exp-cat.active {
   background: var(--accent-color);
   border-color: var(--accent-color);
   color: #fff;
 }
 
-.td-exp-list {
+.judy-exp-list {
   flex: 1;
   overflow-y: auto;
   padding: 0.75rem 0.85rem;
@@ -2103,7 +2103,7 @@ h1, h2, h3, h4,
   gap: 0.6rem;
 }
 
-.td-exp-card {
+.judy-exp-card {
   padding: 0.7rem 0.8rem;
   background: var(--panel-bg);
   border: 1px solid var(--panel-border);
@@ -2111,7 +2111,7 @@ h1, h2, h3, h4,
   border-radius: var(--radius-sm);
 }
 
-.td-exp-card-head {
+.judy-exp-card-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2119,7 +2119,7 @@ h1, h2, h3, h4,
   margin-bottom: 0.3rem;
 }
 
-.td-exp-cat-tag {
+.judy-exp-cat-tag {
   font-size: 0.66rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -2130,7 +2130,7 @@ h1, h2, h3, h4,
   border-radius: 99px;
 }
 
-.td-exp-loc {
+.judy-exp-loc {
   display: inline-flex;
   align-items: center;
   gap: 0.2rem;
@@ -2138,33 +2138,33 @@ h1, h2, h3, h4,
   color: var(--text-muted);
 }
 
-.td-exp-title {
+.judy-exp-title {
   display: block;
   font-size: 0.9rem;
   color: var(--text-primary);
   margin-bottom: 0.2rem;
 }
 
-.td-exp-desc {
+.judy-exp-desc {
   font-size: 0.8rem;
   line-height: 1.45;
   color: var(--text-secondary);
 }
 
-.td-exp-meta {
+.judy-exp-meta {
   display: flex;
   gap: 0.6rem;
   margin-top: 0.4rem;
 }
 
-.td-exp-price,
-.td-exp-dur {
+.judy-exp-price,
+.judy-exp-dur {
   font-size: 0.72rem;
   font-weight: 600;
   color: var(--accent-color);
 }
 
-.td-exp-hint {
+.judy-exp-hint {
   display: flex;
   align-items: center;
   gap: 0.4rem;
@@ -2173,7 +2173,7 @@ h1, h2, h3, h4,
   padding: 0.5rem 0;
 }
 
-.td-exp-error {
+.judy-exp-error {
   font-size: 0.78rem;
   color: var(--danger);
   padding: 0.5rem 0;
@@ -2182,7 +2182,7 @@ h1, h2, h3, h4,
 /* ═══════════════════════════════════════════
    MEMORIES PANEL (AI-captioned travel albums)
    ═══════════════════════════════════════════ */
-.td-memories-toggle {
+.judy-memories-toggle {
   position: absolute;
   top: 6.8rem;
   right: 1rem;
@@ -2201,22 +2201,22 @@ h1, h2, h3, h4,
   z-index: 20;
 }
 
-.td-memories-toggle:hover,
-.td-memories-toggle.active {
+.judy-memories-toggle:hover,
+.judy-memories-toggle.active {
   color: #fff;
   background: var(--accent-deep);
   border-color: var(--accent-deep);
   transform: translateY(-1px);
 }
 
-.td-memories-panel {
+.judy-memories-panel {
   left: 0;
   right: auto;
   width: 380px;
   max-height: 480px;
 }
 
-.td-mem-body {
+.judy-mem-body {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -2224,9 +2224,9 @@ h1, h2, h3, h4,
   overflow-y: auto;
 }
 
-.td-mem-file { display: none; }
+.judy-mem-file { display: none; }
 
-.td-mem-drop {
+.judy-mem-drop {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2243,15 +2243,15 @@ h1, h2, h3, h4,
   transition: all var(--transition);
 }
 
-.td-mem-drop:hover { border-color: var(--accent-color); color: var(--accent-color); }
+.judy-mem-drop:hover { border-color: var(--accent-color); color: var(--accent-color); }
 
-.td-mem-compose {
+.judy-mem-compose {
   display: flex;
   flex-direction: column;
   gap: 0.55rem;
 }
 
-.td-mem-preview {
+.judy-mem-preview {
   width: 100%;
   max-height: 200px;
   object-fit: cover;
@@ -2259,7 +2259,7 @@ h1, h2, h3, h4,
   border: 1px solid var(--panel-border);
 }
 
-.td-mem-loc {
+.judy-mem-loc {
   display: flex;
   align-items: center;
   gap: 0.4rem;
@@ -2270,7 +2270,7 @@ h1, h2, h3, h4,
   color: var(--text-muted);
 }
 
-.td-mem-loc input {
+.judy-mem-loc input {
   flex: 1;
   border: none;
   background: none;
@@ -2280,8 +2280,8 @@ h1, h2, h3, h4,
   font-size: 0.82rem;
 }
 
-.td-mem-generate,
-.td-mem-add {
+.judy-mem-generate,
+.judy-mem-add {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2298,17 +2298,17 @@ h1, h2, h3, h4,
   transition: all var(--transition);
 }
 
-.td-mem-generate:hover:not(:disabled),
-.td-mem-add:hover { background: var(--accent-hover); }
-.td-mem-generate:disabled { opacity: 0.6; cursor: not-allowed; }
+.judy-mem-generate:hover:not(:disabled),
+.judy-mem-add:hover { background: var(--accent-hover); }
+.judy-mem-generate:disabled { opacity: 0.6; cursor: not-allowed; }
 
-.td-mem-draft {
+.judy-mem-draft {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
 }
 
-.td-mem-caption {
+.judy-mem-caption {
   width: 100%;
   padding: 0.55rem 0.7rem;
   background: var(--bg-surface);
@@ -2322,15 +2322,15 @@ h1, h2, h3, h4,
   outline: none;
 }
 
-.td-mem-caption:focus { border-color: var(--accent-color); }
+.judy-mem-caption:focus { border-color: var(--accent-color); }
 
-.td-mem-tags {
+.judy-mem-tags {
   display: flex;
   flex-wrap: wrap;
   gap: 0.3rem;
 }
 
-.td-mem-tag {
+.judy-mem-tag {
   font-size: 0.7rem;
   color: var(--accent-deep);
   background: var(--accent-glow);
@@ -2338,19 +2338,19 @@ h1, h2, h3, h4,
   border-radius: 99px;
 }
 
-.td-mem-error {
+.judy-mem-error {
   font-size: 0.78rem;
   color: var(--danger);
 }
 
-.td-mem-album {
+.judy-mem-album {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0.6rem;
   margin-top: 0.25rem;
 }
 
-.td-mem-card {
+.judy-mem-card {
   margin: 0;
   border: 1px solid var(--panel-border);
   border-radius: var(--radius-sm);
@@ -2358,21 +2358,21 @@ h1, h2, h3, h4,
   background: var(--panel-bg);
 }
 
-.td-mem-thumb {
+.judy-mem-thumb {
   width: 100%;
   height: 110px;
   object-fit: cover;
   display: block;
 }
 
-.td-mem-figcap {
+.judy-mem-figcap {
   padding: 0.45rem 0.55rem;
   font-size: 0.74rem;
   line-height: 1.4;
   color: var(--text-secondary);
 }
 
-.td-mem-figloc {
+.judy-mem-figloc {
   display: flex;
   align-items: center;
   gap: 0.2rem;
@@ -2381,9 +2381,9 @@ h1, h2, h3, h4,
   margin-bottom: 0.15rem;
 }
 
-.td-mem-card { position: relative; }
+.judy-mem-card { position: relative; }
 
-.td-mem-del {
+.judy-mem-del {
   position: absolute;
   top: 4px;
   right: 4px;
@@ -2401,17 +2401,17 @@ h1, h2, h3, h4,
   transition: opacity var(--transition);
 }
 
-.td-mem-card:hover .td-mem-del { opacity: 1; }
-.td-mem-del:hover { background: var(--danger); }
+.judy-mem-card:hover .judy-mem-del { opacity: 1; }
+.judy-mem-del:hover { background: var(--danger); }
 
-.td-mem-figtrans {
+.judy-mem-figtrans {
   display: block;
   margin-top: 0.2rem;
   font-style: italic;
   color: var(--lilac);
 }
 
-.td-mem-hint {
+.judy-mem-hint {
   display: flex;
   align-items: center;
   gap: 0.4rem;
@@ -2420,7 +2420,7 @@ h1, h2, h3, h4,
 }
 
 /* AI edit controls */
-.td-mem-edit {
+.judy-mem-edit {
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
@@ -2430,7 +2430,7 @@ h1, h2, h3, h4,
   border-radius: var(--radius-sm);
 }
 
-.td-mem-edit-head {
+.judy-mem-edit-head {
   display: flex;
   align-items: center;
   gap: 0.35rem;
@@ -2441,7 +2441,7 @@ h1, h2, h3, h4,
   color: var(--lilac);
 }
 
-.td-mem-revert {
+.judy-mem-revert {
   display: inline-flex;
   align-items: center;
   gap: 0.2rem;
@@ -2456,15 +2456,15 @@ h1, h2, h3, h4,
   letter-spacing: 0;
   cursor: pointer;
 }
-.td-mem-revert:hover { color: var(--accent-color); border-color: var(--accent-color); }
+.judy-mem-revert:hover { color: var(--accent-color); border-color: var(--accent-color); }
 
-.td-mem-edit-chips {
+.judy-mem-edit-chips {
   display: flex;
   flex-wrap: wrap;
   gap: 0.3rem;
 }
 
-.td-mem-editchip {
+.judy-mem-editchip {
   padding: 0.25rem 0.55rem;
   background: var(--panel-bg-solid);
   border: 1px solid var(--panel-border);
@@ -2475,15 +2475,15 @@ h1, h2, h3, h4,
   cursor: pointer;
   transition: all var(--transition);
 }
-.td-mem-editchip:hover:not(:disabled) { border-color: var(--lilac); color: var(--lilac); }
-.td-mem-editchip:disabled { opacity: 0.5; cursor: not-allowed; }
+.judy-mem-editchip:hover:not(:disabled) { border-color: var(--lilac); color: var(--lilac); }
+.judy-mem-editchip:disabled { opacity: 0.5; cursor: not-allowed; }
 
-.td-mem-edit-custom {
+.judy-mem-edit-custom {
   display: flex;
   gap: 0.4rem;
 }
 
-.td-mem-edit-custom input {
+.judy-mem-edit-custom input {
   flex: 1;
   padding: 0.4rem 0.55rem;
   background: var(--panel-bg-solid);
@@ -2494,9 +2494,9 @@ h1, h2, h3, h4,
   font-size: 0.78rem;
   outline: none;
 }
-.td-mem-edit-custom input:focus { border-color: var(--lilac); }
+.judy-mem-edit-custom input:focus { border-color: var(--lilac); }
 
-.td-mem-editgo {
+.judy-mem-editgo {
   padding: 0.4rem 0.7rem;
   border: none;
   border-radius: var(--radius-sm);
@@ -2507,12 +2507,12 @@ h1, h2, h3, h4,
   font-weight: 600;
   cursor: pointer;
 }
-.td-mem-editgo:disabled { opacity: 0.5; cursor: not-allowed; }
+.judy-mem-editgo:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* ═══════════════════════════════════════════
    TRAVEL ALERTS PANEL
    ═══════════════════════════════════════════ */
-.td-alerts-toggle {
+.judy-alerts-toggle {
   position: absolute;
   top: 9.7rem;
   right: 1rem;
@@ -2531,22 +2531,22 @@ h1, h2, h3, h4,
   z-index: 20;
 }
 
-.td-alerts-toggle:hover,
-.td-alerts-toggle.active {
+.judy-alerts-toggle:hover,
+.judy-alerts-toggle.active {
   color: #fff;
   background: var(--warning);
   border-color: var(--warning);
   transform: translateY(-1px);
 }
 
-.td-alerts-panel {
+.judy-alerts-panel {
   left: 0;
   right: auto;
   width: 380px;
   max-height: 460px;
 }
 
-.td-alerts-list {
+.judy-alerts-list {
   flex: 1;
   overflow-y: auto;
   padding: 0.75rem 0.85rem;
@@ -2555,7 +2555,7 @@ h1, h2, h3, h4,
   gap: 0.55rem;
 }
 
-.td-alert {
+.judy-alert {
   display: flex;
   gap: 0.55rem;
   padding: 0.6rem 0.7rem;
@@ -2565,29 +2565,29 @@ h1, h2, h3, h4,
   background: var(--panel-bg);
 }
 
-.td-alert-icon { flex-shrink: 0; margin-top: 0.1rem; }
+.judy-alert-icon { flex-shrink: 0; margin-top: 0.1rem; }
 
-.td-alert-text strong {
+.judy-alert-text strong {
   display: block;
   font-size: 0.85rem;
   color: var(--text-primary);
   margin-bottom: 0.15rem;
 }
 
-.td-alert-text p {
+.judy-alert-text p {
   font-size: 0.8rem;
   line-height: 1.45;
   color: var(--text-secondary);
 }
 
-.td-alert-info { border-left-color: var(--lilac); }
-.td-alert-info .td-alert-icon { color: var(--lilac); }
-.td-alert-caution { border-left-color: var(--warning); }
-.td-alert-caution .td-alert-icon { color: var(--warning); }
-.td-alert-warning { border-left-color: var(--danger); }
-.td-alert-warning .td-alert-icon { color: var(--danger); }
+.judy-alert-info { border-left-color: var(--lilac); }
+.judy-alert-info .judy-alert-icon { color: var(--lilac); }
+.judy-alert-caution { border-left-color: var(--warning); }
+.judy-alert-caution .judy-alert-icon { color: var(--warning); }
+.judy-alert-warning { border-left-color: var(--danger); }
+.judy-alert-warning .judy-alert-icon { color: var(--danger); }
 
-.td-alerts-hint {
+.judy-alerts-hint {
   display: flex;
   align-items: center;
   gap: 0.4rem;
@@ -2595,17 +2595,17 @@ h1, h2, h3, h4,
   color: var(--text-muted);
 }
 
-.td-alerts-error {
+.judy-alerts-error {
   font-size: 0.8rem;
   color: var(--danger);
 }
 
-.td-translate-swap-row {
+.judy-translate-swap-row {
   display: flex;
   justify-content: flex-end;
 }
 
-.td-translate-swap {
+.judy-translate-swap {
   display: flex;
   align-items: center;
   gap: 0.35rem;
@@ -2620,13 +2620,13 @@ h1, h2, h3, h4,
   transition: all var(--transition);
 }
 
-.td-translate-swap:hover:not(:disabled) {
+.judy-translate-swap:hover:not(:disabled) {
   color: #fff;
   background: var(--lilac);
   border-color: var(--lilac);
 }
 
-.td-translate-swap:disabled {
+.judy-translate-swap:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
@@ -2634,7 +2634,7 @@ h1, h2, h3, h4,
 /* ═══════════════════════════════════════════
    AVATAR CONTROLS (Swarm J5: opt-in live session)
    ═══════════════════════════════════════════ */
-.td-avatar-controls {
+.judy-avatar-controls {
   position: absolute;
   top: 1rem;
   left: 1rem;
@@ -2644,7 +2644,7 @@ h1, h2, h3, h4,
   z-index: 20;
 }
 
-.td-avatar-control-btn {
+.judy-avatar-control-btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2661,18 +2661,18 @@ h1, h2, h3, h4,
   transition: all var(--transition);
 }
 
-.td-avatar-control-btn:hover:not(:disabled) {
+.judy-avatar-control-btn:hover:not(:disabled) {
   color: #fff;
   background: var(--lilac);
   border-color: var(--lilac);
 }
 
-.td-avatar-control-btn:disabled {
+.judy-avatar-control-btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }
 
-.td-live-btn {
+.judy-live-btn {
   width: auto;
   border-radius: 999px;
   padding: 0 0.85rem;
@@ -2825,7 +2825,7 @@ h1, h2, h3, h4,
 }
 
 /* Inline translated bubble rendered in normal chat (Swarm J4) */
-.td-translation-inline {
+.judy-translation-inline {
   margin-top: 0.5rem;
   padding: 0.55rem 0.7rem;
   background: var(--bg-surface);
@@ -2834,7 +2834,7 @@ h1, h2, h3, h4,
   border-radius: var(--radius-sm);
 }
 
-.td-translation-lang-label {
+.judy-translation-lang-label {
   font-size: 0.72rem;
   color: var(--text-muted);
   text-transform: uppercase;
@@ -2842,13 +2842,13 @@ h1, h2, h3, h4,
   margin-bottom: 0.3rem;
 }
 
-.td-translation-original {
+.judy-translation-original {
   font-size: 0.82rem;
   color: var(--text-secondary);
   margin-bottom: 0.25rem;
 }
 
-.td-translation-translated {
+.judy-translation-translated {
   font-size: 0.9rem;
   color: var(--chat-daddy-text);
   font-weight: 500;
@@ -3329,7 +3329,7 @@ h1, h2, h3, h4,
 /* Live-avatar caption overlay (Swarm J6 — spec calls for captions/transcript
    alongside Mute/Stop/Replay; the chat panel is the transcript, this is the
    caption for whenever it's collapsed while the avatar is talking). */
-.td-caption {
+.judy-caption {
   position: absolute;
   left: 1rem;
   right: 1rem;
@@ -3414,13 +3414,13 @@ h1, h2, h3, h4,
   color: var(--text-secondary);
 }
 
-.td-caption .judy-reply-original,
-.td-caption .judy-reply-status {
+.judy-caption .judy-reply-original,
+.judy-caption .judy-reply-status {
   color: #fff;
 }
 
-.td-caption .judy-reply-action-row button,
-.td-caption .judy-reply-language {
+.judy-caption .judy-reply-action-row button,
+.judy-caption .judy-reply-language {
   color: #fff;
   background: rgba(255, 255, 255, 0.12);
   border-color: rgba(255, 255, 255, 0.28);
@@ -3435,13 +3435,182 @@ h1, h2, h3, h4,
      None of them carry meaning beyond "something is active," which is
      already conveyed by the surrounding text/state, so they're safe to
      fully disable rather than just slow down. */
-  .td-chat-toggle { animation: none; }
-  .td-chat-panel { animation: none; }
-  .td-avatar-dot { animation: none; }
-  .td-typing span { animation: none; }
-  .td-static-avatar.is-talking { transition: none; }
+  .judy-chat-toggle { animation: none; }
+  .judy-chat-panel { animation: none; }
+  .judy-avatar-dot { animation: none; }
+  .judy-typing span { animation: none; }
+  .judy-static-avatar.is-talking { transition: none; }
   .judy-listening-pulse { animation: none; }
   .judy-talk-primary,
   .judy-conversation-secondary,
   .judy-conversation-end { transition: none; }
+}
+
+/* ═══════════════════════════════════════════
+   JUDY DOCK & NEW LAYOUT STRUCTURE
+   ═══════════════════════════════════════════ */
+.content-with-dock {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  position: relative;
+  width: 100%;
+}
+
+.judy-dock-column {
+  width: 360px;
+  flex-shrink: 0;
+  border-left: 1px solid var(--panel-border);
+  background: var(--panel-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  position: relative;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.judy-dock {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  position: relative;
+}
+
+.judy-dock-avatar {
+  flex: 0 0 280px; /* fixed height for avatar area when docked */
+  position: relative;
+  border-bottom: 1px solid var(--panel-border);
+  background: radial-gradient(circle at center, rgba(192, 166, 210, 0.05) 0%, transparent 70%);
+}
+
+.judy-dock-handle {
+  display: none; /* Only visible on mobile */
+}
+
+/* Redefine speech captions for better pill-shaped overlay */
+.judy-speech-caption,
+.judy-speech-caption-docked {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 1.5rem;
+  width: max-content;
+  max-width: 90%;
+  padding: 0.6rem 1rem;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  border-radius: 999px;
+  text-align: center;
+  z-index: 15;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+  font-weight: 500;
+}
+
+.judy-speech-caption-docked {
+  bottom: 0.75rem;
+  font-size: 0.85rem;
+  padding: 0.5rem 0.85rem;
+  background: rgba(0, 0, 0, 0.75);
+}
+
+.dashboard-widgets {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+/* Desktop chat inline overrides */
+.judy-chat-inline {
+  position: static !important;
+  box-shadow: none !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: auto !important;
+  max-height: none !important;
+  overflow: hidden;
+}
+
+.judy-chat-inline .judy-chat-messages {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.judy-panel-docked {
+  position: absolute !important;
+  inset: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  border: none !important;
+  z-index: 30;
+}
+
+/* RESPONSIVE LAYOUT FOR DOCK */
+@media (max-width: 1024px) {
+  .judy-dock-column {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: 80px; /* Collapsed height */
+    border-left: none;
+    border-top: 1px solid var(--panel-border);
+    transform: translateY(0);
+    /* Remove padding to let handle take full width */
+  }
+
+  .judy-dock-expanded {
+    height: 70vh !important;
+  }
+  
+  .judy-dock-column .judy-dock {
+    height: 100%;
+  }
+  
+  .judy-dock-handle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1.5rem;
+    background: color-mix(in srgb, var(--lilac) 15%, var(--panel-bg));
+    border: none;
+    border-bottom: 1px solid var(--panel-border);
+    color: var(--text-primary);
+    font-family: var(--font-serif);
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    width: 100%;
+  }
+
+  .judy-dock-handle-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .judy-dock-avatar {
+    flex: 0 0 140px; /* smaller avatar on mobile */
+  }
+
+  .content-with-dock {
+    flex-direction: column;
+  }
+  
+  .content-area {
+    padding-bottom: 90px; /* space for collapsed dock */
+  }
 }

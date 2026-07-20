@@ -200,6 +200,61 @@ Respond naturally as Judy Pierre. Do NOT use markdown formatting — speak plain
       (groundingChunks.length > 0 ? '\n\n' + groundingChunks.join('\n\n') : '') +
       '\n\nUser says: ' +
       message;
+
+    const wantsStream = request.headers.get('accept')?.includes('text/event-stream');
+
+    // ── Streaming path (SSE) ────────────────────────────────────────────
+    // The docked avatar UI reads tokens as they arrive so the first word
+    // appears in ~200-400 ms instead of waiting 2-4 s for the full reply.
+    if (wantsStream) {
+      console.info('[avatar-chat] routed', { userId, route: 'gemini-stream' });
+
+      const encoder = new TextEncoder();
+      const stream = new ReadableStream({
+        async start(controller) {
+          try {
+            const chunks = await genAI.models.generateContentStream({
+              model: configuredGeminiTextModel(),
+              contents: [{ role: 'user', parts: [{ text: geminiPrompt }] }],
+            });
+            for await (const chunk of chunks) {
+              const token = chunk.text ?? '';
+              if (token) {
+                controller.enqueue(
+                  encoder.encode(`data: ${JSON.stringify({ token, done: false })}\n\n`)
+                );
+              }
+            }
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify({ token: '', done: true })}\n\n`)
+            );
+          } catch (err) {
+            console.error('[avatar-chat] stream error:', err);
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({
+                  token: "Hmm, my signal got a little fuzzy there, darling. Try asking me again!",
+                  done: true,
+                  error: true,
+                })}\n\n`
+              )
+            );
+          } finally {
+            controller.close();
+          }
+        },
+      });
+
+      return new Response(stream, {
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache, no-transform',
+          Connection: 'keep-alive',
+        },
+      });
+    }
+
+    // ── Buffered path (JSON) ────────────────────────────────────────────
     const response = await genAI.models.generateContent({
       model: configuredGeminiTextModel(),
       contents: [{ role: 'user', parts: [{ text: geminiPrompt }] }],
@@ -216,3 +271,4 @@ Respond naturally as Judy Pierre. Do NOT use markdown formatting — speak plain
     );
   }
 }
+

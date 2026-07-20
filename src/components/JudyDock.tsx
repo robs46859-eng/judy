@@ -18,6 +18,8 @@ import {
   ArrowLeftRight,
   Image as ImageIcon,
   Bell,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 import { useHermesJob } from "@/lib/hermes/useHermesJob";
 import { extractHermesText } from "@/lib/hermes/result";
@@ -37,6 +39,8 @@ import {
 } from "./avatar/conversationMachine";
 import type { RhubarbCue } from "@/lib/avatar/visemeTimeline";
 import { normalizeVoiceLocale } from "@/lib/voice/catalog";
+import { detectEmotion, type EmotionPreset } from "@/lib/avatar/emotion";
+import { splitSentences, currentSentenceIndex } from "@/lib/avatar/sentenceSplit";
 
 /** Bundled fallback used until an administrator activates an uploaded model. */
 export const GLB_AVATAR_MODEL_URL = "/models/judyface.glb";
@@ -49,7 +53,7 @@ interface ChatTranslation {
 }
 
 interface ChatMessage {
-  role: "user" | "daddy";
+  role: "user" | "judy";
   text: string;
   translation?: ChatTranslation;
   /** Language of the displayed reply when known; audio may be localized separately. */
@@ -58,11 +62,13 @@ interface ChatMessage {
 
 /* ── Component ────────────────────────────────────────────── */
 
-interface TravelDaddyProps {
+interface JudyDockProps {
   tripContext?: any;
   userName?: string;
   userEmail?: string;
   avatarModelUrl?: string;
+  /** When true, renders as a persistent sidebar/drawer instead of overlay. */
+  docked?: boolean;
 }
 
 interface LipSyncResponse {
@@ -83,7 +89,7 @@ const TRANSLATE_LANGUAGES = [
 ];
 
 export const JUDY_CONVERSATION_WELCOME =
-  "Hi, I’m Judy Pierre, your travel translator and guide. Ask me about your trip, say a phrase to translate, or ask what to do nearby. I’ll listen after I finish speaking; tap Stop whenever you want to edit what I heard.";
+  "Hi, I'm Judy Pierre, your travel translator and guide. Ask me about your trip, say a phrase to translate, or ask what to do nearby. I'll listen after I finish speaking; tap Stop whenever you want to edit what I heard.";
 
 function audioBlobFromBase64(audio: string, mimeType: string): Blob {
   const decoded = window.atob(audio);
@@ -94,13 +100,14 @@ function audioBlobFromBase64(audio: string, mimeType: string): Blob {
   return new Blob([bytes], { type: mimeType });
 }
 
-export default function TravelDaddy({
+export default function JudyDock({
   tripContext,
   userName,
   userEmail,
   avatarModelUrl = GLB_AVATAR_MODEL_URL,
-}: TravelDaddyProps) {
-  const [chatOpen, setChatOpen] = useState(false);
+  docked = false,
+}: JudyDockProps) {
+  const [chatOpen, setChatOpen] = useState(docked);
   const [translateOpen, setTranslateOpen] = useState(false);
   const [experiencesOpen, setExperiencesOpen] = useState(false);
   const [memoriesOpen, setMemoriesOpen] = useState(false);
@@ -115,32 +122,29 @@ export default function TravelDaddy({
   );
   const [spokenLanguage, setSpokenLanguage] = useState("en-US");
   const [recognitionBackend, setRecognitionBackend] = useState<RecognitionBackend>("browser");
-  // Read once at mount — Dashboard unmounts/remounts TravelDaddy whenever the
-  // person leaves and returns to this tab, so a change made in Settings is
-  // picked up on the next mount without needing a live cross-component sync.
   const [speechEnabled, setSpeechEnabled] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
     return window.localStorage.getItem(SPEECH_SYNTHESIS_STORAGE_KEY) === "true";
   });
   const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus>("loading");
-  // J7: rigged GLB is the primary local avatar now — robjudy.jpg is the
-  // last-resort fallback for when the GLB fails to load/render (missing
-  // file, malformed GLTF, no WebGL, ...), not the everyday default.
   const [glbAvatarFailed, setGlbAvatarFailed] = useState(false);
-  // Stage 2 (accurate lip sync) — populated once /api/avatar/chat (or a
-  // dedicated visemes endpoint) returns a Rhubarb cue timeline for the
-  // current reply. Null means "no timeline yet" and AvatarMesh falls back
-  // to the stage-1 approximate jaw movement driven by `isTalking`.
   const [visemeCues, setVisemeCues] = useState<RhubarbCue[] | null>(null);
   const localAudioRef = useRef<HTMLAudioElement | null>(null);
   const localAudioUrlRef = useRef<string | null>(null);
   const speechRequestRef = useRef(0);
   const talkingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const speechFinishedRef = useRef<(() => void) | null>(null);
+  /** Current emotion preset for the avatar, detected from the last reply. */
+  const [emotion, setEmotion] = useState<EmotionPreset | null>(null);
+  /** Current sentence index for the subtitle caption during speech. */
+  const [currentCaption, setCurrentCaption] = useState<string | null>(null);
+  const captionTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  /** Mobile dock expand/collapse state. */
+  const [mobileExpanded, setMobileExpanded] = useState(false);
 
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
-      role: "daddy",
+      role: "judy",
       text: "Hey darling! I'm Judy Pierre, your purple rhino travel guide. Ask me anything about your trip — where to go, what to do, how to say it — and I'll steer you right!",
     },
   ]);
@@ -152,10 +156,7 @@ export default function TravelDaddy({
 
   const userInitial = (userName || "You").trim().charAt(0).toUpperCase();
 
-  // Deterministic onboarding intake (Swarm J3): if the signed-in user hasn't
-  // completed it yet, open the chat panel automatically with the intake
-  // flow instead of free-form chat. Any failure here fails OPEN to normal
-  // chat — a broken preferences check must never trap the user.
+  // Deterministic onboarding intake
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -186,6 +187,36 @@ export default function TravelDaddy({
     };
   }, []);
 
+  // ── Caption timer management ──────────────────────────────────
+  const startCaptionTimer = useCallback((text: string) => {
+    if (captionTimerRef.current) clearInterval(captionTimerRef.current);
+    const sentences = splitSentences(text);
+    if (sentences.length === 0) return;
+    const startTime = performance.now();
+    setCurrentCaption(sentences[0]);
+    captionTimerRef.current = setInterval(() => {
+      const elapsed = (performance.now() - startTime) / 1000;
+      const idx = currentSentenceIndex(sentences, elapsed);
+      if (idx >= 0 && idx < sentences.length) {
+        setCurrentCaption(sentences[idx]);
+      }
+    }, 200);
+  }, []);
+
+  const stopCaptionTimer = useCallback(() => {
+    if (captionTimerRef.current) {
+      clearInterval(captionTimerRef.current);
+      captionTimerRef.current = null;
+    }
+    setCurrentCaption(null);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (captionTimerRef.current) clearInterval(captionTimerRef.current);
+    };
+  }, []);
+
   const releaseLocalAudio = useCallback((updateUi = true) => {
     const audio = localAudioRef.current;
     if (audio) {
@@ -202,8 +233,9 @@ export default function TravelDaddy({
     if (updateUi) {
       setIsTalking(false);
       setVisemeCues(null);
+      stopCaptionTimer();
     }
-  }, []);
+  }, [stopCaptionTimer]);
 
   const finishSpeechLifecycle = useCallback(() => {
     const onFinished = speechFinishedRef.current;
@@ -251,12 +283,16 @@ export default function TravelDaddy({
         if (availableVoice) utterance.voice = availableVoice;
       }
       utterance.onstart = () => {
-        if (speechRequestRef.current === requestId) setIsTalking(true);
+        if (speechRequestRef.current === requestId) {
+          setIsTalking(true);
+          startCaptionTimer(text);
+        }
       };
       const finish = () => {
         if (speechRequestRef.current !== requestId) return;
         setIsTalking(false);
         setVisemeCues(null);
+        stopCaptionTimer();
         finishSpeechLifecycle();
       };
       utterance.onend = finish;
@@ -264,15 +300,11 @@ export default function TravelDaddy({
       window.speechSynthesis.speak(utterance);
     } catch {
       setIsTalking(false);
+      stopCaptionTimer();
       finishSpeechLifecycle();
     }
-  }, [finishSpeechLifecycle, stopLocalSpeech]);
+  }, [finishSpeechLifecycle, stopLocalSpeech, startCaptionTimer, stopCaptionTimer]);
 
-  /**
-   * Play the exact WAV Rhubarb analyzed. Starting the cue clock from the
-   * audio element's `play` event keeps the visible mouth and audible voice
-   * on the same timeline. Browser speech remains the fail-open fallback.
-   */
   const speakWithLipSync = useCallback(async (
     text: string,
     language?: string,
@@ -314,6 +346,7 @@ export default function TravelDaddy({
         if (speechRequestRef.current !== requestId || localAudioRef.current !== audio) return;
         setVisemeCues(cues.length > 0 ? cues : null);
         setIsTalking(true);
+        startCaptionTimer(text);
       };
       audio.onended = finish;
       const spokenText = typeof payload.spokenText === "string" ? payload.spokenText : text;
@@ -331,20 +364,22 @@ export default function TravelDaddy({
         speakWithBrowser(text, language, onFinished);
       }
     }
-  }, [finishSpeechLifecycle, releaseLocalAudio, speakWithBrowser, stopLocalSpeech]);
+  }, [finishSpeechLifecycle, releaseLocalAudio, speakWithBrowser, stopLocalSpeech, startCaptionTimer]);
 
   const showEstimatedTalking = useCallback((text: string, onFinished?: () => void) => {
     stopLocalSpeech();
     speechFinishedRef.current = onFinished ?? null;
     if (talkingTimerRef.current) clearTimeout(talkingTimerRef.current);
     setIsTalking(true);
+    startCaptionTimer(text);
     const duration = Math.min(Math.max(text.length * 55, 1200), 8000);
     talkingTimerRef.current = setTimeout(() => {
       talkingTimerRef.current = null;
       setIsTalking(false);
+      stopCaptionTimer();
       finishSpeechLifecycle();
     }, duration);
-  }, [finishSpeechLifecycle, stopLocalSpeech]);
+  }, [finishSpeechLifecycle, stopLocalSpeech, startCaptionTimer, stopCaptionTimer]);
 
   useEffect(() => {
     return () => {
@@ -360,6 +395,7 @@ export default function TravelDaddy({
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // ── Streaming + buffered message send ─────────────────────────
   const sendMessage = useCallback(async (messageText?: string) => {
     const trimmed = (messageText ?? input).trim();
     if (!trimmed || isLoading) return;
@@ -376,56 +412,127 @@ export default function TravelDaddy({
     stopLocalSpeech();
 
     try {
+      // Try streaming first (SSE), fall back to buffered JSON
       const res = await fetch("/api/avatar/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "text/event-stream",
+        },
         body: JSON.stringify({
           message: trimmed,
           tripContext: tripContext || null,
           history,
         }),
       });
-      const data = await res.json();
-      const reply = data.reply || "Hmm, the trail went quiet for a moment. Try again, friend!";
-      const replyTranslation: ChatTranslation | undefined = data.translation
-        ? {
-            original: data.translation.original,
-            translatedText: data.translation.translatedText,
-            sourceLanguage: data.translation.sourceLanguage ?? null,
-            targetLanguage: data.translation.targetLanguage,
+
+      // SSE streaming path
+      if (res.headers.get("content-type")?.includes("text/event-stream") && res.body) {
+        let fullReply = "";
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        // Add a placeholder message that we'll update as tokens arrive
+        const judyMsgIndex = messages.length + 1; // +1 for the user msg we just added
+        setMessages((prev) => [...prev, { role: "judy", text: "" }]);
+
+        let buffer = "";
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+
+          // Parse SSE events from buffer
+          const lines = buffer.split("\n");
+          buffer = lines.pop() ?? ""; // keep incomplete line in buffer
+          for (const line of lines) {
+            if (!line.startsWith("data: ")) continue;
+            try {
+              const data = JSON.parse(line.slice(6));
+              if (data.token) {
+                fullReply += data.token;
+                setMessages((prev) => {
+                  const updated = [...prev];
+                  if (updated.length > judyMsgIndex) {
+                    updated[judyMsgIndex] = { ...updated[judyMsgIndex], text: fullReply };
+                  }
+                  return updated;
+                });
+              }
+            } catch {
+              // skip malformed SSE lines
+            }
           }
-        : undefined;
-      const replyLanguage = replyTranslation?.targetLanguage ?? null;
+        }
 
-      setMessages((prev) => [
-        ...prev,
-        { role: "daddy", text: reply, translation: replyTranslation, replyLanguage },
-      ]);
-      if (conversation.sessionActive) {
-        dispatchConversation({ type: "REPLY_READY" });
-      }
-      const finishConversationSpeech = conversation.sessionActive
-        ? () => dispatchConversation({ type: "SPEECH_FINISHED" })
-        : undefined;
+        const reply = fullReply || "Hmm, the trail went quiet for a moment. Try again, friend!";
+        // Ensure final message is complete
+        setMessages((prev) => {
+          const updated = [...prev];
+          if (updated.length > judyMsgIndex) {
+            updated[judyMsgIndex] = { ...updated[judyMsgIndex], text: reply };
+          }
+          return updated;
+        });
 
-      // The local GLB plays the exact ElevenLabs WAV that Rhubarb analyzed,
-      // with browser TTS as a best-effort fallback when server speech is unavailable.
-      if (speechEnabled || conversation.sessionActive) {
-        void speakWithLipSync(
-          reply,
-          replyLanguage ?? undefined,
-          finishConversationSpeech
-        );
+        // Detect emotion from the completed reply
+        setEmotion(detectEmotion(reply));
+
+        if (conversation.sessionActive) {
+          dispatchConversation({ type: "REPLY_READY" });
+        }
+        const finishConversationSpeech = conversation.sessionActive
+          ? () => dispatchConversation({ type: "SPEECH_FINISHED" })
+          : undefined;
+
+        if (speechEnabled || conversation.sessionActive) {
+          void speakWithLipSync(reply, undefined, finishConversationSpeech);
+        } else {
+          showEstimatedTalking(reply, finishConversationSpeech);
+        }
       } else {
-        // Keep the existing visual/caption response when audio is disabled.
-        // This is an intentionally approximate animation, not lip sync.
-        showEstimatedTalking(reply, finishConversationSpeech);
+        // Buffered JSON path (Hermes/Gemma or non-streaming Gemini)
+        const data = await res.json();
+        const reply = data.reply || "Hmm, the trail went quiet for a moment. Try again, friend!";
+        const replyTranslation: ChatTranslation | undefined = data.translation
+          ? {
+              original: data.translation.original,
+              translatedText: data.translation.translatedText,
+              sourceLanguage: data.translation.sourceLanguage ?? null,
+              targetLanguage: data.translation.targetLanguage,
+            }
+          : undefined;
+        const replyLanguage = replyTranslation?.targetLanguage ?? null;
+
+        setMessages((prev) => [
+          ...prev,
+          { role: "judy", text: reply, translation: replyTranslation, replyLanguage },
+        ]);
+
+        // Detect emotion from the reply
+        setEmotion(detectEmotion(reply));
+
+        if (conversation.sessionActive) {
+          dispatchConversation({ type: "REPLY_READY" });
+        }
+        const finishConversationSpeech = conversation.sessionActive
+          ? () => dispatchConversation({ type: "SPEECH_FINISHED" })
+          : undefined;
+
+        if (speechEnabled || conversation.sessionActive) {
+          void speakWithLipSync(
+            reply,
+            replyLanguage ?? undefined,
+            finishConversationSpeech
+          );
+        } else {
+          showEstimatedTalking(reply, finishConversationSpeech);
+        }
       }
     } catch {
       setIsTalking(false);
       setMessages((prev) => [
         ...prev,
-        { role: "daddy", text: "HAH! Looks like the signal's a bit fuzzy out here in the woods. Try again!" },
+        { role: "judy", text: "HAH! Looks like the signal's a bit fuzzy out here in the woods. Try again!" },
       ]);
       if (conversation.sessionActive) {
         dispatchConversation({
@@ -471,10 +578,7 @@ export default function TravelDaddy({
       }
       dispatchConversation({ type: "FAIL", message });
     },
-    onEnd: () => {
-      // The reducer phase controls whether another turn starts. A final result
-      // moves to thinking; Stop moves to editing; neither should auto-restart here.
-    },
+    onEnd: () => {},
   });
   const {
     start: startBrowserRecognition,
@@ -535,8 +639,6 @@ export default function TravelDaddy({
 
     abortBrowserRecognition();
     abortScribeFallback();
-    // A deliberate Speak translation click replaces any current line without
-    // firing that replaced line's completion callback in the middle of playback.
     speechFinishedRef.current = null;
     stopLocalSpeech();
     if (resumeListening) dispatchConversation({ type: "PAUSE" });
@@ -571,10 +673,6 @@ export default function TravelDaddy({
     [translation]
   );
 
-  // Swap languages (Swarm J4): swaps the source/target selectors and resubmits
-  // the last translated text through in the opposite direction. "Auto-detect"
-  // has no concrete language to swap into, so it falls back to English as the
-  // new target — the person can always change it again before resubmitting.
   const handleSwap = useCallback(() => {
     const translatedText = extractHermesText(translation.result);
     if (!translatedText) return;
@@ -586,23 +684,45 @@ export default function TravelDaddy({
     runTranslate(translatedText, newSource, newTarget);
   }, [translation.result, sourceLang, targetLang, runTranslate]);
 
-  const lastDaddyMessage = [...messages].reverse().find((message) => message.role === "daddy");
-  const hasDaddyReply = Boolean(lastDaddyMessage);
+  const lastJudyMessage = [...messages].reverse().find((message) => message.role === "judy");
+
+  // ── Render ────────────────────────────────────────────────────
+  const wrapperClass = docked
+    ? `judy-dock${mobileExpanded ? " judy-dock-expanded" : ""}`
+    : "judy-wrapper";
 
   return (
-    <div className="travel-daddy-wrapper">
-      {/* The local rigged Judy is the primary avatar. */}
-      <div className="canvas-wrapper">
-        {/* J7: rigged GLB is the primary local avatar (jaw/viseme-driven
-            "talking" motion); the flat portrait is only the last-resort
-            fallback if the 3D model can't load or render at all. */}
+    <div className={wrapperClass}>
+      {/* Mobile dock header (collapsed bar when docked) */}
+      {docked && (
+        <button
+          type="button"
+          className="judy-dock-handle"
+          onClick={() => setMobileExpanded((v) => !v)}
+          aria-label={mobileExpanded ? "Collapse Judy" : "Expand Judy"}
+        >
+          <span className="judy-dock-handle-label">
+            <Compass size={16} aria-hidden="true" />
+            Judy Pierre
+          </span>
+          {mobileExpanded ? (
+            <ChevronDown size={16} aria-hidden="true" />
+          ) : (
+            <ChevronUp size={16} aria-hidden="true" />
+          )}
+        </button>
+      )}
+
+      {/* Avatar canvas */}
+      <div className={docked ? "judy-dock-avatar" : "canvas-wrapper"}>
         {!glbAvatarFailed && (
-          <div className="td-glb-avatar" role="img" aria-label="Judy Pierre, Judy's travel translator and guide">
+          <div className="judy-glb-avatar" role="img" aria-label="Judy Pierre, Judy's travel translator and guide">
             <AvatarStage
               modelUrl={avatarModelUrl}
               talking={isTalking}
               phase={conversation.phase}
               cues={visemeCues}
+              emotion={emotion}
               onUnavailable={() => setGlbAvatarFailed(true)}
             />
           </div>
@@ -612,111 +732,130 @@ export default function TravelDaddy({
             src="/avatars/robjudy.jpg"
             alt="Judy Pierre, Judy's travel translator and guide"
             fill
-            sizes="(max-width: 768px) 100vw, 65vw"
+            sizes="(max-width: 768px) 100vw, 360px"
             priority
-            className={`td-static-avatar${isTalking ? " is-talking" : ""}`}
+            className={`judy-static-avatar${isTalking ? " is-talking" : ""}`}
           />
         )}
 
-        {/* Caption (Swarm J6): the chat panel is the full transcript, but the
-            person may have it collapsed while the avatar is talking — show a
-            live caption of the current line so audio is never the only way
-            to get the reply. */}
-        {isTalking && hasDaddyReply && lastDaddyMessage && (
-          <div className="td-caption" aria-live="polite">
-            <ReplyActions
-              originalText={
-                lastDaddyMessage.translation?.translatedText || lastDaddyMessage.text
-              }
-              originalLanguage={lastDaddyMessage.replyLanguage}
-              onSpeak={speakReplyAction}
-            />
+        {/* Subtle pill caption — only when NOT docked (docked shows inline chat) */}
+        {isTalking && currentCaption && !docked && (
+          <div className="judy-speech-caption" aria-live="polite">
+            {currentCaption}
           </div>
         )}
 
-        <ConversationDock
-          state={conversation}
-          onStart={() => {
-            dispatchConversation({ type: "START" });
-            abortBrowserRecognition();
-            abortScribeFallback();
-            setSpeechEnabled(true);
-            if (typeof window !== "undefined") {
-              window.localStorage.setItem(SPEECH_SYNTHESIS_STORAGE_KEY, "true");
-            }
-            void speakWithLipSync(
-              JUDY_CONVERSATION_WELCOME,
-              spokenLanguage,
-              () => dispatchConversation({ type: "WELCOME_FINISHED" })
-            );
-          }}
-          onStopListening={() => {
-            stopBrowserRecognition();
-            stopScribeFallback();
-            dispatchConversation({ type: "STOP_LISTENING" });
-          }}
-          onTranscriptChange={(text) => dispatchConversation({ type: "EDIT", text })}
-          onSubmit={() => {
-            const correctedTranscript = conversation.finalTranscript.trim();
-            if (!correctedTranscript) return;
-            dispatchConversation({ type: "SUBMIT" });
-            void sendMessage(correctedTranscript);
-          }}
-          onResume={() => {
-            if (recognitionBackend === "browser") {
-              startBrowserRecognition();
-            } else {
-              void startScribeFallback();
-            }
-            dispatchConversation({ type: "RESUME" });
-          }}
-          onEnd={() => {
-            abortBrowserRecognition();
-            abortScribeFallback();
-            stopLocalSpeech();
-            dispatchConversation({ type: "END" });
-          }}
-          onTypeInstead={() => {
-            setChatOpen(true);
-            window.setTimeout(() => inputRef.current?.focus(), 0);
-          }}
-          onSuggestion={(suggestion) => {
-            if (suggestion === "translate") {
-              setTranslateOpen(true);
-              return;
-            }
-            setChatOpen(true);
-            setInput(
-              suggestion === "plan"
-                ? "Help me plan my trip."
-                : "What should I do nearby?"
-            );
-            window.setTimeout(() => inputRef.current?.focus(), 0);
-          }}
-        />
+        {/* Subtle pill caption — docked mode, over the avatar area */}
+        {isTalking && currentCaption && docked && (
+          <div className="judy-speech-caption judy-speech-caption-docked" aria-live="polite">
+            {currentCaption}
+          </div>
+        )}
       </div>
 
-      {/* Translate toggle button (gay-travel translation avatar) */}
-      <button
-        className={`td-translate-toggle${translateOpen ? " active" : ""}`}
-        onClick={() => setTranslateOpen((v) => !v)}
-        title="Translate a phrase"
-        aria-label="Translate a phrase"
-        aria-pressed={translateOpen}
-      >
-        <Languages size={18} aria-hidden="true" />
-      </button>
+      {/* Conversation dock controls */}
+      <ConversationDock
+        state={conversation}
+        onStart={() => {
+          dispatchConversation({ type: "START" });
+          abortBrowserRecognition();
+          abortScribeFallback();
+          setSpeechEnabled(true);
+          if (typeof window !== "undefined") {
+            window.localStorage.setItem(SPEECH_SYNTHESIS_STORAGE_KEY, "true");
+          }
+          void speakWithLipSync(
+            JUDY_CONVERSATION_WELCOME,
+            spokenLanguage,
+            () => dispatchConversation({ type: "WELCOME_FINISHED" })
+          );
+        }}
+        onStopListening={() => {
+          stopBrowserRecognition();
+          stopScribeFallback();
+          dispatchConversation({ type: "STOP_LISTENING" });
+        }}
+        onTranscriptChange={(text) => dispatchConversation({ type: "EDIT", text })}
+        onSubmit={() => {
+          const correctedTranscript = conversation.finalTranscript.trim();
+          if (!correctedTranscript) return;
+          dispatchConversation({ type: "SUBMIT" });
+          void sendMessage(correctedTranscript);
+        }}
+        onResume={() => {
+          if (recognitionBackend === "browser") {
+            startBrowserRecognition();
+          } else {
+            void startScribeFallback();
+          }
+          dispatchConversation({ type: "RESUME" });
+        }}
+        onEnd={() => {
+          abortBrowserRecognition();
+          abortScribeFallback();
+          stopLocalSpeech();
+          dispatchConversation({ type: "END" });
+        }}
+        onTypeInstead={() => {
+          setChatOpen(true);
+          window.setTimeout(() => inputRef.current?.focus(), 0);
+        }}
+        onSuggestion={(suggestion) => {
+          if (suggestion === "translate") {
+            setTranslateOpen(true);
+            return;
+          }
+          setChatOpen(true);
+          setInput(
+            suggestion === "plan"
+              ? "Help me plan my trip."
+              : "What should I do nearby?"
+          );
+          window.setTimeout(() => inputRef.current?.focus(), 0);
+        }}
+      />
 
-      {/* Experiences quick-action — curated gay-tailored experiences */}
-      <button
-        className={`td-experiences-toggle${experiencesOpen ? " active" : ""}`}
-        onClick={() => setExperiencesOpen((v) => !v)}
-        title="Browse experiences"
-        aria-label="Browse experiences"
-        aria-pressed={experiencesOpen}
-      >
-        <Compass size={18} aria-hidden="true" />
-      </button>
+      {/* Quick-action bar */}
+      <div className="judy-quick-actions">
+        <button
+          className={`judy-quick-btn${translateOpen ? " active" : ""}`}
+          onClick={() => setTranslateOpen((v) => !v)}
+          title="Translate a phrase"
+          aria-label="Translate a phrase"
+          aria-pressed={translateOpen}
+        >
+          <Languages size={16} aria-hidden="true" />
+        </button>
+        <button
+          className={`judy-quick-btn${experiencesOpen ? " active" : ""}`}
+          onClick={() => setExperiencesOpen((v) => !v)}
+          title="Browse experiences"
+          aria-label="Browse experiences"
+          aria-pressed={experiencesOpen}
+        >
+          <Compass size={16} aria-hidden="true" />
+        </button>
+        <button
+          className={`judy-quick-btn${memoriesOpen ? " active" : ""}`}
+          onClick={() => setMemoriesOpen((v) => !v)}
+          title="Travel memories"
+          aria-label="Travel memories"
+          aria-pressed={memoriesOpen}
+        >
+          <ImageIcon size={16} aria-hidden="true" />
+        </button>
+        <button
+          className={`judy-quick-btn${alertsOpen ? " active" : ""}`}
+          onClick={() => setAlertsOpen((v) => !v)}
+          title="Travel alerts"
+          aria-label="Travel alerts"
+          aria-pressed={alertsOpen}
+        >
+          <Bell size={16} aria-hidden="true" />
+        </button>
+      </div>
+
+      {/* Panels */}
       <ExperiencesPanel
         open={experiencesOpen}
         onClose={() => setExperiencesOpen(false)}
@@ -724,17 +863,6 @@ export default function TravelDaddy({
           (tripContext as { destinationName?: string } | null | undefined)?.destinationName ?? null
         }
       />
-
-      {/* Memories quick-action — AI-captioned travel albums */}
-      <button
-        className={`td-memories-toggle${memoriesOpen ? " active" : ""}`}
-        onClick={() => setMemoriesOpen((v) => !v)}
-        title="Travel memories"
-        aria-label="Travel memories"
-        aria-pressed={memoriesOpen}
-      >
-        <ImageIcon size={18} aria-hidden="true" />
-      </button>
       <MemoriesPanel
         open={memoriesOpen}
         onClose={() => setMemoriesOpen(false)}
@@ -742,17 +870,6 @@ export default function TravelDaddy({
           (tripContext as { destinationName?: string } | null | undefined)?.destinationName ?? null
         }
       />
-
-      {/* Travel alerts quick-action */}
-      <button
-        className={`td-alerts-toggle${alertsOpen ? " active" : ""}`}
-        onClick={() => setAlertsOpen((v) => !v)}
-        title="Travel alerts"
-        aria-label="Travel alerts"
-        aria-pressed={alertsOpen}
-      >
-        <Bell size={18} aria-hidden="true" />
-      </button>
       <AlertsPanel
         open={alertsOpen}
         onClose={() => setAlertsOpen(false)}
@@ -761,36 +878,36 @@ export default function TravelDaddy({
         }
       />
 
-      {/* Translate panel — powered by Gemma via Hermes */}
+      {/* Translate panel */}
       {translateOpen && (
-        <div className="td-chat-panel td-translate-panel">
-          <div className="td-chat-header">
-            <div className="td-chat-title">
+        <div className={`judy-chat-panel judy-translate-panel${docked ? " judy-panel-docked" : ""}`}>
+          <div className="judy-chat-header">
+            <div className="judy-chat-title">
               <Languages size={16} aria-hidden="true" />
               <span>Translate</span>
             </div>
             <button
-              className="td-chat-close"
+              className="judy-chat-close"
               onClick={() => setTranslateOpen(false)}
               aria-label="Close translate panel"
             >
               <X size={16} aria-hidden="true" />
             </button>
           </div>
-          <div className="td-translate-body">
+          <div className="judy-translate-body">
             <textarea
-              className="td-translate-input"
+              className="judy-translate-input"
               value={translateText}
               onChange={(e) => setTranslateText(e.target.value)}
               placeholder="Type a phrase to translate…"
               rows={3}
               maxLength={6000}
             />
-            <div className="td-translate-controls">
-              <label className="td-translate-lang-label">
+            <div className="judy-translate-controls">
+              <label className="judy-translate-lang-label">
                 <span>from</span>
                 <select
-                  className="td-translate-lang"
+                  className="judy-translate-lang"
                   value={sourceLang}
                   onChange={(e) => setSourceLang(e.target.value)}
                 >
@@ -800,10 +917,10 @@ export default function TravelDaddy({
                   ))}
                 </select>
               </label>
-              <label className="td-translate-lang-label">
+              <label className="judy-translate-lang-label">
                 <span>to</span>
                 <select
-                  className="td-translate-lang"
+                  className="judy-translate-lang"
                   value={targetLang}
                   onChange={(e) => setTargetLang(e.target.value)}
                 >
@@ -813,7 +930,7 @@ export default function TravelDaddy({
                 </select>
               </label>
               <button
-                className="td-send-btn td-translate-go"
+                className="judy-send-btn judy-translate-go"
                 onClick={() => runTranslate(translateText.trim(), sourceLang, targetLang)}
                 disabled={translation.isBusy || !translateText.trim()}
                 title="Translate"
@@ -828,16 +945,16 @@ export default function TravelDaddy({
             </div>
 
             {translation.isBusy && (
-              <div className="td-translate-hint" role="status" aria-live="polite">Asking Gemma…</div>
+              <div className="judy-translate-hint" role="status" aria-live="polite">Asking Gemma…</div>
             )}
             {translation.status === "succeeded" && (
               <>
-                <div className="td-translate-result" role="status" aria-live="polite">
+                <div className="judy-translate-result" role="status" aria-live="polite">
                   {extractHermesText(translation.result) || "No translation returned."}
                 </div>
-                <div className="td-translate-swap-row">
+                <div className="judy-translate-swap-row">
                   <button
-                    className="td-translate-swap"
+                    className="judy-translate-swap"
                     onClick={handleSwap}
                     disabled={translation.isBusy || !extractHermesText(translation.result)}
                     title="Swap languages and translate back"
@@ -848,7 +965,7 @@ export default function TravelDaddy({
               </>
             )}
             {translation.status === "failed" && (
-              <div className="td-translate-error" role="alert">
+              <div className="judy-translate-error" role="alert">
                 {translation.error || "Translation is unavailable right now."}
               </div>
             )}
@@ -856,10 +973,10 @@ export default function TravelDaddy({
         </div>
       )}
 
-      {/* Chat toggle button */}
-      {!chatOpen && (
+      {/* Chat toggle (non-docked only) */}
+      {!docked && !chatOpen && (
         <button
-          className="td-chat-toggle"
+          className="judy-chat-toggle"
           onClick={() => {
             setChatOpen(true);
             setTimeout(() => inputRef.current?.focus(), 100);
@@ -871,24 +988,24 @@ export default function TravelDaddy({
         </button>
       )}
 
-      {/* Chat panel — runs the deterministic onboarding intake first (if not
-          yet completed), then falls through to normal free-form chat. The
-          close button always works so the panel is never a trap. */}
-      {chatOpen && (
-        <div className="td-chat-panel">
-          <div className="td-chat-header">
-            <div className="td-chat-title">
-              <div className="td-avatar-dot" aria-hidden="true" />
-              <span>{onboardingStatus === "pending" ? "Getting to know you" : "Judy Pierre"}</span>
+      {/* Chat panel / inline chat */}
+      {(chatOpen || docked) && (
+        <div className={`judy-chat-panel${docked ? " judy-chat-inline" : ""}`}>
+          {!docked && (
+            <div className="judy-chat-header">
+              <div className="judy-chat-title">
+                <div className="judy-avatar-dot" aria-hidden="true" />
+                <span>{onboardingStatus === "pending" ? "Getting to know you" : "Judy Pierre"}</span>
+              </div>
+              <button
+                className="judy-chat-close"
+                onClick={() => setChatOpen(false)}
+                aria-label="Close chat"
+              >
+                <X size={16} aria-hidden="true" />
+              </button>
             </div>
-            <button
-              className="td-chat-close"
-              onClick={() => setChatOpen(false)}
-              aria-label="Close chat"
-            >
-              <X size={16} aria-hidden="true" />
-            </button>
-          </div>
+          )}
 
           {onboardingStatus === "pending" ? (
             <OnboardingIntake
@@ -897,14 +1014,14 @@ export default function TravelDaddy({
             />
           ) : (
             <>
-              <div className="td-chat-messages" role="log" aria-live="polite" aria-relevant="additions">
+              <div className="judy-chat-messages" role="log" aria-live="polite" aria-relevant="additions">
                 {messages.map((msg, i) => (
-                  <div key={i} className={`td-msg ${msg.role === "user" ? "td-msg-user" : "td-msg-daddy"}`}>
-                    <span className="td-msg-avatar" aria-hidden="true">
-                      {msg.role === "daddy" ? <Compass size={14} /> : userInitial}
+                  <div key={i} className={`judy-msg ${msg.role === "user" ? "judy-msg-user" : "judy-msg-judy"}`}>
+                    <span className="judy-msg-avatar" aria-hidden="true">
+                      {msg.role === "judy" ? <Compass size={14} /> : userInitial}
                     </span>
-                    <div className="td-msg-bubble">
-                      {msg.role === "daddy" ? (
+                    <div className="judy-msg-bubble">
+                      {msg.role === "judy" ? (
                         <ReplyActions
                           originalText={msg.text}
                           originalLanguage={msg.replyLanguage}
@@ -914,21 +1031,21 @@ export default function TravelDaddy({
                         msg.text
                       )}
                       {msg.translation && (
-                        <div className="td-translation-inline">
-                          <div className="td-translation-lang-label">
+                        <div className="judy-translation-inline">
+                          <div className="judy-translation-lang-label">
                             {(msg.translation.sourceLanguage ?? "Detected")} → {msg.translation.targetLanguage}
                           </div>
-                          <div className="td-translation-original">{msg.translation.original}</div>
-                          <div className="td-translation-translated">{msg.translation.translatedText}</div>
+                          <div className="judy-translation-original">{msg.translation.original}</div>
+                          <div className="judy-translation-translated">{msg.translation.translatedText}</div>
                         </div>
                       )}
                     </div>
                   </div>
                 ))}
                 {isLoading && (
-                  <div className="td-msg td-msg-daddy">
-                    <span className="td-msg-avatar" aria-hidden="true"><Compass size={14} /></span>
-                    <div className="td-msg-bubble td-typing">
+                  <div className="judy-msg judy-msg-judy">
+                    <span className="judy-msg-avatar" aria-hidden="true"><Compass size={14} /></span>
+                    <div className="judy-msg-bubble judy-typing">
                       <span aria-hidden="true" /><span aria-hidden="true" /><span aria-hidden="true" />
                       <span className="sr-only">Judy Pierre is typing…</span>
                     </div>
@@ -937,7 +1054,7 @@ export default function TravelDaddy({
                 <div ref={chatEndRef} />
               </div>
 
-              <div className="td-chat-input-bar">
+              <div className="judy-chat-input-bar">
                 <input
                   ref={inputRef}
                   type="text"
@@ -945,12 +1062,12 @@ export default function TravelDaddy({
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder="Ask Judy Pierre anything..."
-                  className="td-chat-input"
+                  className="judy-chat-input"
                   disabled={isLoading}
                   aria-label="Message to Judy Pierre"
                 />
                 <button
-                  className="td-send-btn"
+                  className="judy-send-btn"
                   onClick={() => void sendMessage()}
                   disabled={isLoading || !input.trim()}
                   title="Send message"

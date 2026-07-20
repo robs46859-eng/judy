@@ -2,7 +2,7 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { render, screen, waitFor, cleanup, fireEvent, act, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
-import TravelDaddy from '../TravelDaddy';
+import JudyDock from '../JudyDock';
 
 vi.mock('next/image', () => ({
   default: ({ src, alt, className }: { src: string; alt: string; className?: string }) => (
@@ -13,7 +13,7 @@ vi.mock('next/image', () => ({
 
 // AvatarStage wraps a real @react-three/fiber <Canvas>, which needs a real
 // WebGL context — meaningless (and unsupported) in jsdom. Stub it so these
-// tests exercise TravelDaddy's own primary/fallback logic, not Three.js.
+// tests exercise JudyDock's own primary/fallback logic, not Three.js.
 // `avatarStageMock.shouldFail` lets a test simulate AvatarStage's
 // onUnavailable callback (a failed GLTF load / no WebGL) the same way the
 // real component's error boundary would report it.
@@ -115,14 +115,14 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('TravelDaddy avatar fallback (Swarm J7)', () => {
+describe('JudyDock avatar fallback (Swarm J7)', () => {
   it('shows the rigged GLB avatar by default — the flat portrait is not the everyday avatar anymore', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => ({ ok: false, status: 501, json: async () => ({}) }) as Response)
     );
 
-    render(<TravelDaddy userName="Robert" />);
+    render(<JudyDock userName="Robert" />);
 
     expect(await screen.findByTestId('avatar-stage-stub')).toBeInTheDocument();
     expect(screen.getByTestId('avatar-stage-stub')).toHaveAttribute('data-model-url', '/models/judyface.glb');
@@ -139,7 +139,7 @@ describe('TravelDaddy avatar fallback (Swarm J7)', () => {
       vi.fn(async () => ({ ok: false, status: 501, json: async () => ({}) }) as Response)
     );
 
-    render(<TravelDaddy userName="Robert" avatarModelUrl="/api/avatar/model?v=abc123" />);
+    render(<JudyDock userName="Robert" avatarModelUrl="/api/avatar/model?v=abc123" />);
 
     expect(await screen.findByTestId('avatar-stage-stub')).toHaveAttribute(
       'data-model-url',
@@ -155,7 +155,7 @@ describe('TravelDaddy avatar fallback (Swarm J7)', () => {
       })
     );
 
-    render(<TravelDaddy userName="Robert" />);
+    render(<JudyDock userName="Robert" />);
 
     await waitFor(() => expect(screen.getByTestId('avatar-stage-stub')).toBeInTheDocument());
     // The sunset live-video path is absent, so the GLB/text/translation stay usable.
@@ -169,7 +169,7 @@ describe('TravelDaddy avatar fallback (Swarm J7)', () => {
       vi.fn(async () => ({ ok: false, status: 501, json: async () => ({}) }) as Response)
     );
 
-    render(<TravelDaddy userName="Robert" />);
+    render(<JudyDock userName="Robert" />);
 
     const avatarImg = await screen.findByAltText(AVATAR_ALT);
     expect(avatarImg).toHaveAttribute('src', '/avatars/robjudy.jpg');
@@ -177,18 +177,18 @@ describe('TravelDaddy avatar fallback (Swarm J7)', () => {
   });
 });
 
-describe('TravelDaddy local conversation controls', () => {
+describe('JudyDock local conversation controls', () => {
   it('makes local Judy the primary Talk action and never calls the retired live-session endpoint', async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = typeof input === 'string' ? input : input.toString();
       if (url.includes('/api/user/preferences')) {
-        return { ok: true, status: 200, json: async () => ({ onboardingCompletedAt: new Date().toISOString() }) } as Response;
+        return { ok: true, status: 200, json: async () => ({ onboardingCompletedAt: new Date().toISOString() }), headers: { get: () => null } } as unknown as Response;
       }
-      return { ok: false, status: 501, json: async () => ({}) } as Response;
+      return { ok: false, status: 501, json: async () => ({}), headers: { get: () => null } } as unknown as Response;
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    render(<TravelDaddy userName="Robert" />);
+    render(<JudyDock userName="Robert" />);
 
     await screen.findByTestId('avatar-stage-stub');
     const talkButton = await screen.findByRole('button', { name: 'Talk with Judy' });
@@ -221,7 +221,7 @@ describe('TravelDaddy local conversation controls', () => {
       }) as Response)
     );
 
-    render(<TravelDaddy userName="Robert" />);
+    render(<JudyDock userName="Robert" />);
     fireEvent.click(await screen.findByRole('button', { name: 'Talk with Judy' }));
 
     await waitFor(() => expect(recognitionMock.start).toHaveBeenCalled());
@@ -247,20 +247,20 @@ describe('TravelDaddy local conversation controls', () => {
             onboardingCompletedAt: new Date().toISOString(),
             spokenLanguage: 'en-US',
           }),
-        } as Response;
+        headers: { get: () => null } } as unknown as Response;
       }
       if (url.includes('/api/avatar/chat')) {
         return {
           ok: true,
           status: 200,
           json: async () => ({ reply: 'I can help with that.' }),
-        } as Response;
+        headers: { get: () => null } } as unknown as Response;
       }
-      return { ok: false, status: 404, json: async () => ({}) } as Response;
+      return { ok: false, status: 404, json: async () => ({}), headers: { get: () => null } } as unknown as Response;
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    render(<TravelDaddy userName="Robert" />);
+    render(<JudyDock userName="Robert" />);
     fireEvent.click(await screen.findByRole('button', { name: 'Talk with Judy' }));
     await waitFor(() => expect(recognitionMock.start).toHaveBeenCalled());
     act(() => recognitionMock.options?.onFinal('Help me plan Madrid'));
@@ -302,7 +302,7 @@ describe('TravelDaddy local conversation controls', () => {
       }) as Response)
     );
 
-    render(<TravelDaddy userName="Robert" />);
+    render(<JudyDock userName="Robert" />);
     fireEvent.click(await screen.findByRole('button', { name: 'Talk with Judy' }));
     await waitFor(() => expect(recognitionMock.start).toHaveBeenCalled());
 
@@ -319,21 +319,21 @@ describe('TravelDaddy local conversation controls', () => {
   });
 });
 
-describe('TravelDaddy caption overlay (Swarm J6)', () => {
+describe('JudyDock caption overlay (Swarm J6)', () => {
   it('shows a live caption of the reply even when the chat panel is closed', async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = typeof input === 'string' ? input : input.toString();
       if (url.includes('/api/user/preferences')) {
-        return { ok: true, status: 200, json: async () => ({ onboardingCompletedAt: new Date().toISOString() }) } as Response;
+        return { ok: true, status: 200, json: async () => ({ onboardingCompletedAt: new Date().toISOString() }), headers: { get: () => null } } as unknown as Response;
       }
       if (url.includes('/api/avatar/chat')) {
-        return { ok: true, status: 200, json: async () => ({ reply: 'Pack a raincoat, friend!' }) } as Response;
+        return { ok: true, status: 200, json: async () => ({ reply: 'Pack a raincoat, friend!' }), headers: { get: () => null } } as unknown as Response;
       }
-      return { ok: false, status: 501, json: async () => ({}) } as Response;
+      return { ok: false, status: 501, json: async () => ({}), headers: { get: () => null } } as unknown as Response;
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    render(<TravelDaddy userName="Robert" />);
+    render(<JudyDock userName="Robert" />);
 
     fireEvent.click(await screen.findByTitle('Chat with Judy Pierre'));
     const input = await screen.findByPlaceholderText('Ask Judy Pierre anything...');
@@ -344,19 +344,19 @@ describe('TravelDaddy caption overlay (Swarm J6)', () => {
     // mirrored as an on-screen caption — the transcript alone isn't enough
     // once the chat panel is collapsed.
     await waitFor(() => {
-      const caption = document.querySelector('.td-caption');
+      const caption = document.querySelector('.judy-speech-caption');
       expect(caption).not.toBeNull();
       expect(within(caption as HTMLElement).getByText('Pack a raincoat, friend!')).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Close chat' }));
-    const caption = document.querySelector('.td-caption');
+    const caption = document.querySelector('.judy-speech-caption');
     expect(caption).not.toBeNull();
     expect(within(caption as HTMLElement).getByText('Pack a raincoat, friend!')).toBeInTheDocument();
   });
 });
 
-describe('TravelDaddy synchronized local speech', () => {
+describe('JudyDock synchronized local speech', () => {
   it('starts no audio on mount, then speaks the welcome and keeps the microphone off until it ends', async () => {
     const audioInstances: MockAudio[] = [];
     class MockAudio {
@@ -384,7 +384,7 @@ describe('TravelDaddy synchronized local speech', () => {
             onboardingCompletedAt: new Date().toISOString(),
             spokenLanguage: 'en-US',
           }),
-        } as Response;
+        headers: { get: () => null } } as unknown as Response;
       }
       if (url.includes('/api/avatar/lipsync')) {
         return {
@@ -395,13 +395,13 @@ describe('TravelDaddy synchronized local speech', () => {
             mimeType: 'audio/wav',
             cues: [{ start: 0, end: 0.2, value: 'A' }],
           }),
-        } as Response;
+        headers: { get: () => null } } as unknown as Response;
       }
-      return { ok: false, status: 404, json: async () => ({}) } as Response;
+      return { ok: false, status: 404, json: async () => ({}), headers: { get: () => null } } as unknown as Response;
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    render(<TravelDaddy userName="Robert" />);
+    render(<JudyDock userName="Robert" />);
     await screen.findByRole('button', { name: 'Talk with Judy' });
     expect(audioInstances).toHaveLength(0);
     expect(fetchMock).not.toHaveBeenCalledWith(
@@ -416,7 +416,7 @@ describe('TravelDaddy synchronized local speech', () => {
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/avatar/lipsync',
       expect.objectContaining({
-        body: expect.stringContaining("Hi, I’m Judy Pierre"),
+        body: expect.stringContaining("Hi, I'm Judy Pierre"),
       })
     );
 
@@ -452,14 +452,14 @@ describe('TravelDaddy synchronized local speech', () => {
             ok: true,
             status: 200,
             json: async () => ({ onboardingCompletedAt: new Date().toISOString() }),
-          } as Response;
+          headers: { get: () => null } } as unknown as Response;
         }
         if (url.includes('/api/avatar/chat')) {
           return {
             ok: true,
             status: 200,
             json: async () => ({ reply: 'Take a light jacket.' }),
-          } as Response;
+          headers: { get: () => null } } as unknown as Response;
         }
         if (url.includes('/api/avatar/lipsync')) {
           return {
@@ -470,13 +470,13 @@ describe('TravelDaddy synchronized local speech', () => {
               mimeType: 'audio/wav',
               cues: [],
             }),
-          } as Response;
+          headers: { get: () => null } } as unknown as Response;
         }
-        return { ok: false, status: 404, json: async () => ({}) } as Response;
+        return { ok: false, status: 404, json: async () => ({}), headers: { get: () => null } } as unknown as Response;
       })
     );
 
-    render(<TravelDaddy userName="Robert" />);
+    render(<JudyDock userName="Robert" />);
     fireEvent.click(await screen.findByRole('button', { name: 'Talk with Judy' }));
     await waitFor(() => expect(audioInstances).toHaveLength(1));
     act(() => audioInstances[0].onended?.());
@@ -512,7 +512,7 @@ describe('TravelDaddy synchronized local speech', () => {
             ok: true,
             status: 200,
             json: async () => ({ onboardingCompletedAt: new Date().toISOString() }),
-          } as Response;
+          headers: { get: () => null } } as unknown as Response;
         }
         if (url.includes('/api/hermes/translate')) {
           return {
@@ -523,7 +523,7 @@ describe('TravelDaddy synchronized local speech', () => {
               status: 'succeeded',
               result: { translated_text: 'Hola, puedo ayudarte con tu viaje.' },
             }),
-          } as Response;
+          headers: { get: () => null } } as unknown as Response;
         }
         if (url.includes('/api/avatar/lipsync')) {
           return {
@@ -534,13 +534,13 @@ describe('TravelDaddy synchronized local speech', () => {
               mimeType: 'audio/wav',
               cues: [],
             }),
-          } as Response;
+          headers: { get: () => null } } as unknown as Response;
         }
-        return { ok: false, status: 404, json: async () => ({}) } as Response;
+        return { ok: false, status: 404, json: async () => ({}), headers: { get: () => null } } as unknown as Response;
       })
     );
 
-    render(<TravelDaddy userName="Robert" />);
+    render(<JudyDock userName="Robert" />);
     fireEvent.click(await screen.findByRole('button', { name: 'Talk with Judy' }));
     await waitFor(() => expect(audioInstances).toHaveLength(1));
     act(() => audioInstances[0].onended?.());
@@ -586,10 +586,10 @@ describe('TravelDaddy synchronized local speech', () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = typeof input === 'string' ? input : input.toString();
       if (url.includes('/api/user/preferences')) {
-        return { ok: true, status: 200, json: async () => ({ onboardingCompletedAt: new Date().toISOString() }) } as Response;
+        return { ok: true, status: 200, json: async () => ({ onboardingCompletedAt: new Date().toISOString() }), headers: { get: () => null } } as unknown as Response;
       }
       if (url.includes('/api/avatar/chat')) {
-        return { ok: true, status: 200, json: async () => ({ reply: 'Your train leaves at noon.' }) } as Response;
+        return { ok: true, status: 200, json: async () => ({ reply: 'Your train leaves at noon.' }), headers: { get: () => null } } as unknown as Response;
       }
       if (url.includes('/api/avatar/lipsync')) {
         return {
@@ -600,13 +600,13 @@ describe('TravelDaddy synchronized local speech', () => {
             mimeType: 'audio/wav',
             cues: [{ start: 0, end: 0.2, value: 'A' }],
           }),
-        } as Response;
+        headers: { get: () => null } } as unknown as Response;
       }
-      return { ok: false, status: 404, json: async () => ({}) } as Response;
+      return { ok: false, status: 404, json: async () => ({}), headers: { get: () => null } } as unknown as Response;
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    render(<TravelDaddy userName="Robert" />);
+    render(<JudyDock userName="Robert" />);
     fireEvent.click(await screen.findByTitle('Chat with Judy Pierre'));
     fireEvent.change(await screen.findByPlaceholderText('Ask Judy Pierre anything...'), {
       target: { value: 'When does my train leave?' },
@@ -660,14 +660,14 @@ describe('TravelDaddy synchronized local speech', () => {
               onboardingCompletedAt: new Date().toISOString(),
               spokenLanguage: 'en-US',
             }),
-          } as Response;
+          headers: { get: () => null } } as unknown as Response;
         }
         if (url.includes('/api/avatar/chat')) {
           return {
             ok: true,
             status: 200,
             json: async () => ({ reply: 'Take the morning train.' }),
-          } as Response;
+          headers: { get: () => null } } as unknown as Response;
         }
         if (url.includes('/api/avatar/lipsync')) {
           return {
@@ -678,13 +678,13 @@ describe('TravelDaddy synchronized local speech', () => {
               mimeType: 'audio/wav',
               cues: [{ start: 0, end: 0.2, value: 'B' }],
             }),
-          } as Response;
+          headers: { get: () => null } } as unknown as Response;
         }
-        return { ok: false, status: 404, json: async () => ({}) } as Response;
+        return { ok: false, status: 404, json: async () => ({}), headers: { get: () => null } } as unknown as Response;
       })
     );
 
-    render(<TravelDaddy userName="Robert" />);
+    render(<JudyDock userName="Robert" />);
     fireEvent.click(await screen.findByRole('button', { name: 'Talk with Judy' }));
     await waitFor(() => expect(audioInstances).toHaveLength(1));
     act(() => audioInstances[0].onended?.());

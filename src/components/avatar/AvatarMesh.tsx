@@ -18,8 +18,12 @@ import {
   clearMorphTargetInfluences,
   restoreJawBindRotation,
 } from "@/lib/avatar/rigRuntime";
-import { sampleAvatarMotion } from "@/lib/avatar/motion";
+import { sampleAvatarMotion, speechEnergyNod } from "@/lib/avatar/motion";
+import type { EmotionPreset } from "@/lib/avatar/emotion";
 import type { ConversationPhase } from "./conversationMachine";
+
+/** Morph target names for eye blink (ARKit convention). */
+const BLINK_TARGETS = ['eyeBlink_L', 'eyeBlink_R'] as const;
 
 export interface AvatarMeshProps {
   /** Path under /public to the rigged GLB. */
@@ -35,6 +39,8 @@ export interface AvatarMeshProps {
   cues?: RhubarbCue[] | null;
   phase: ConversationPhase;
   facingRotationY?: number;
+  /** Emotion preset detected from the current reply text. */
+  emotion?: EmotionPreset | null;
   /** Reported once, if the GLTF fails to parse after loading. */
   onRigError?: (message: string) => void;
 }
@@ -168,6 +174,7 @@ export default function AvatarMesh({
   cues,
   phase,
   facingRotationY = 0,
+  emotion,
   onRigError,
 }: AvatarMeshProps) {
   const { scene } = useGLTF(modelUrl);
@@ -234,7 +241,8 @@ export default function AvatarMesh({
     const motion = sampleAvatarMotion(
       phase,
       clock.getElapsedTime(),
-      reducedMotionRef.current
+      reducedMotionRef.current,
+      emotion
     );
     scene.position.y = rig.rootBindY + motion.rootY;
     scene.scale.copy(rig.rootBindScale).multiplyScalar(motion.rootScale);
@@ -255,6 +263,42 @@ export default function AvatarMesh({
     applyMotionBone(rig.motionBones.chest, motion.chestPitch, 0, 0);
     applyMotionBone(rig.motionBones.spine, motion.chestPitch * 0.45, 0, 0);
 
+    // ── Blink animation ──────────────────────────────────
+    if (motion.blinkWeight > 0) {
+      for (const mesh of rig.morphMeshes) {
+        for (const target of BLINK_TARGETS) {
+          const idx = mesh.morphTargetDictionary[target];
+          if (idx !== undefined) {
+            mesh.morphTargetInfluences[idx] = motion.blinkWeight;
+          }
+        }
+      }
+    } else {
+      for (const mesh of rig.morphMeshes) {
+        for (const target of BLINK_TARGETS) {
+          const idx = mesh.morphTargetDictionary[target];
+          if (idx !== undefined) {
+            mesh.morphTargetInfluences[idx] = 0;
+          }
+        }
+      }
+    }
+
+    // ── Micro-expressions (additive, after blink) ────────
+    for (const [target, weight] of Object.entries(motion.microExpressions)) {
+      if (!weight) continue;
+      for (const mesh of rig.morphMeshes) {
+        const idx = mesh.morphTargetDictionary[target];
+        if (idx !== undefined) {
+          // Additive: max of existing (from lip-sync) and micro-expression
+          mesh.morphTargetInfluences[idx] = Math.min(
+            1,
+            Math.max(mesh.morphTargetInfluences[idx] ?? 0, weight)
+          );
+        }
+      }
+    }
+
     const started = startedAtRef.current;
     const elapsed = started === null ? 0 : (performance.now() - started) / 1000;
 
@@ -263,6 +307,19 @@ export default function AvatarMesh({
 
     if (cues && cues.length > 0) {
       visemeWeights = getVisemeWeights(cues, elapsed);
+      // Speech-energy head nod: derive energy from total viseme openness
+      const energy = visemeWeights
+        ? Object.values(visemeWeights).reduce((sum, w) => sum + w, 0) / RHUBARB_SHAPES.length
+        : 0;
+      if (energy > 0.05) {
+        const nod = speechEnergyNod(energy);
+        applyMotionBone(
+          rig.motionBones.head,
+          motion.headPitch + nod,
+          motion.headYaw,
+          motion.headRoll
+        );
+      }
     } else {
       jawWeight = approximateTalkingJawWeight(clock.getElapsedTime(), talking);
     }
