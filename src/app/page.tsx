@@ -4,7 +4,7 @@ import Dashboard from '@/components/Dashboard';
 import { isAvatarAdminEmail } from '@/lib/avatar/adminAccess';
 import { getCurrentAvatar } from '@/lib/avatar/avatarStorage';
 
-const BUNDLED_AVATAR_MODEL_URL = '/models/judyface.glb';
+const BUNDLED_AVATAR_MODEL_URL = '/Judynoplip.glb';
 
 export default async function Home() {
   const session = await auth();
