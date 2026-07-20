@@ -43,7 +43,7 @@ import { detectEmotion, type EmotionPreset } from "@/lib/avatar/emotion";
 import { splitSentences, currentSentenceIndex } from "@/lib/avatar/sentenceSplit";
 
 /** Bundled fallback used until an administrator activates an uploaded model. */
-export const GLB_AVATAR_MODEL_URL = "/Judynoplip.glb";
+export const GLB_AVATAR_MODEL_URL = "/judysync.glb";
 
 interface ChatTranslation {
   original: string;

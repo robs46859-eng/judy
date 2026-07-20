@@ -313,30 +313,6 @@ export default function Dashboard({
           >
             <LogOut size={20} />
           </button>
-          <div className="dropdown-container">
-            <button
-              className="affiliate-btn"
-              onClick={() => setDropdownOpen(!dropdownOpen)}
-            >
-              <Compass size={18} /> Affiliate Links <ChevronDown size={14} />
-            </button>
-            {dropdownOpen && (
-              <div className="dropdown-menu affiliate-menu">
-                {affiliates.map((aff, i) => (
-                  <a
-                    key={i}
-                    href={aff.url}
-                    className="dropdown-item"
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    {aff.icon}
-                    <span>{aff.name}</span>
-                  </a>
-                ))}
-              </div>
-            )}
-          </div>
         </div>
       </header>
 
@@ -351,144 +327,9 @@ export default function Dashboard({
       </section>
 
       {/* Scrollable Content Pane */}
-      <section className="immersive-dashboard-content">
-        {/* Content Area — main content with Judy dock alongside */}
-
-        <main className="content-area">
-          {activeTab === "dashboard" && (
-            <div className="dashboard-widgets">
-              {/* Countdown */}
-              <div className="widget countdown-widget">
-                <div className="countdown-label">
-                  <Timer size={16} /> Trip Countdown
-                </div>
-                {trip && countdown ? (
-                  <>
-                    <div className="countdown-display">
-                      <div className="countdown-unit">
-                        <span className="countdown-number">
-                          {countdown.days}
-                        </span>
-                        <span className="countdown-unit-label">Days</span>
-                      </div>
-                      <span className="countdown-sep">:</span>
-                      <div className="countdown-unit">
-                        <span className="countdown-number">
-                          {countdown.hours}
-                        </span>
-                        <span className="countdown-unit-label">Hrs</span>
-                      </div>
-                      <span className="countdown-sep">:</span>
-                      <div className="countdown-unit">
-                        <span className="countdown-number">
-                          {countdown.mins}
-                        </span>
-                        <span className="countdown-unit-label">Min</span>
-                      </div>
-                    </div>
-                    <div className="countdown-dest">{trip.destinationName}</div>
-                  </>
-                ) : (
-                  <div className="countdown-empty">
-                    {trip
-                      ? "Calculating your countdown…"
-                      : "No upcoming trip yet — add one to start your countdown."}
-                  </div>
-                )}
-              </div>
-
-              {/* Weather */}
-              <div className="widget">
-                <div className="widget-header">
-                  <ThermometerSun size={20} /> Weather
-                  {trip && (
-                    <span className="widget-badge">{trip.destinationName}</span>
-                  )}
-                </div>
-                <div className="widget-content">
-                  {trip ? (
-                    weatherLoading ? (
-                      <div className="weather-display">
-                        <Cloud size={32} />
-                        <div>
-                          <div className="weather-temp">Loading weather...</div>
-                          <div className="weather-note">
-                            Fetching real-time data
-                          </div>
-                        </div>
-                      </div>
-                    ) : weather ? (
-                      weather.error ? (
-                        <div className="weather-display">
-                          <Cloud size={32} />
-                          <div>
-                            <div className="weather-temp">
-                              Weather unavailable
-                            </div>
-                            <div className="weather-note">{weather.error}</div>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          <div className="weather-display">
-                            {getWeatherIcon(weather.condition)}
-                            <div>
-                              <div className="weather-temp">
-                                {weather.temperature !== undefined
-                                  ? `${Math.round(weather.temperature)}°F`
-                                  : weather.isHistorical
-                                    ? "Historical Avg"
-                                    : "—"}
-                                {weather.condition
-                                  ? `, ${weather.condition}`
-                                  : ""}
-                              </div>
-                              <div className="weather-note">
-                                {weather.isHistorical
-                                  ? weather.historicalNote ||
-                                    "Showing historical averages"
-                                  : weather.daysUntilDeparture !== null &&
-                                      weather.daysUntilDeparture !== undefined
-                                    ? `Real-time forecast • ${weather.daysUntilDeparture} days until departure`
-                                    : "Real-time forecast"}
-                              </div>
-                            </div>
-                          </div>
-                          {weather.humidity !== undefined && (
-                            <div className="weather-details">
-                              <span className="weather-detail">
-                                <Droplets size={14} /> {weather.humidity}%
-                                humidity
-                              </span>
-                              {weather.windSpeed !== undefined && (
-                                <span className="weather-detail">
-                                  <Wind size={14} /> {weather.windSpeed} mph
-                                </span>
-                              )}
-                            </div>
-                          )}
-                        </>
-                      )
-                    ) : (
-                      <div className="weather-display">
-                        <Cloud size={32} />
-                        <div>
-                          <div className="weather-temp">
-                            Weather unavailable
-                          </div>
-                          <div className="weather-note">
-                            Add coordinates to see weather
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  ) : (
-                    <p>Add a trip to see weather for your destination.</p>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
+      {activeTab !== "dashboard" && (
+        <section className="immersive-dashboard-content">
+          <main className="content-area">
 
           {activeTab === "itinerary" && (
             <div className="full-width-content">
@@ -689,7 +530,28 @@ export default function Dashboard({
             </div>
           )}
         </main>
-      </section>
+        </section>
+      )}
+
+      {/* Bottom Global Shell */}
+      <div className="bottom-global-shell">
+        <div className="bottom-shell-icons">
+          {trip && countdown && (
+            <div className="bottom-shell-icon" title="Countdown to departure">
+              <Timer size={20} />
+              <span>{countdown.days}d {countdown.hours}h</span>
+            </div>
+          )}
+          {trip && weather && !weatherLoading && !weather.error && (
+            <div className="bottom-shell-icon" title={weather.condition || "Weather"}>
+              {getWeatherIcon(weather.condition)}
+              {weather.temperature !== undefined && (
+                <span>{Math.round(weather.temperature)}°F</span>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Modals */}
       <UserProfileModal
