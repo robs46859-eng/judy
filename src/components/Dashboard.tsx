@@ -1,11 +1,30 @@
 "use client";
 import React, { useState, useEffect, useCallback } from "react";
 import {
-  Sun, Moon, Settings, Map, Calendar,
-  CreditCard, Compass, Cloud, ThermometerSun,
-  PlaneTakeoff, Shield, Dog, Baby, Car, Banknote,
-  ChevronDown, Timer,
-  Eye, Mail, User, Droplets, Wind, LogOut, Upload
+  Sun,
+  Moon,
+  Settings,
+  Map,
+  Calendar,
+  CreditCard,
+  Compass,
+  Cloud,
+  ThermometerSun,
+  PlaneTakeoff,
+  Shield,
+  Dog,
+  Baby,
+  Car,
+  Banknote,
+  ChevronDown,
+  Timer,
+  Eye,
+  Mail,
+  User,
+  Droplets,
+  Wind,
+  LogOut,
+  Upload,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import Image from "next/image";
@@ -25,19 +44,40 @@ interface AffiliateLink {
 }
 
 const affiliates: AffiliateLink[] = [
-  { name: "Flight Info", url: "https://www.flightaware.com/", icon: <PlaneTakeoff size={16} /> },
-  { name: "Travel Insurance", url: "https://www.travelers.com/", icon: <Shield size={16} /> },
+  {
+    name: "Flight Info",
+    url: "https://www.flightaware.com/",
+    icon: <PlaneTakeoff size={16} />,
+  },
+  {
+    name: "Travel Insurance",
+    url: "https://www.travelers.com/",
+    icon: <Shield size={16} />,
+  },
   { name: "Pet Sitter", url: "https://www.rover.com", icon: <Dog size={16} /> },
-  { name: "Child Sitter", url: "https://www.care.com", icon: <Baby size={16} /> },
-  { name: "Transportation", url: "https://www.uber.com", icon: <Car size={16} /> },
-  { name: "Currency Exchange", url: "https://www.westernunion.com", icon: <Banknote size={16} /> },
+  {
+    name: "Child Sitter",
+    url: "https://www.care.com",
+    icon: <Baby size={16} />,
+  },
+  {
+    name: "Transportation",
+    url: "https://www.uber.com",
+    icon: <Car size={16} />,
+  },
+  {
+    name: "Currency Exchange",
+    url: "https://www.westernunion.com",
+    icon: <Banknote size={16} />,
+  },
 ];
 
 // Weather condition to icon mapping
 function getWeatherIcon(condition?: string) {
   if (!condition) return <Cloud size={32} />;
   const c = condition.toLowerCase();
-  if (c.includes("rain") || c.includes("drizzle")) return <Droplets size={32} />;
+  if (c.includes("rain") || c.includes("drizzle"))
+    return <Droplets size={32} />;
   if (c.includes("wind")) return <Wind size={32} />;
   if (c.includes("sun") || c.includes("clear")) return <Sun size={32} />;
   if (c.includes("cloud") || c.includes("overcast")) return <Cloud size={32} />;
@@ -74,7 +114,11 @@ export default function Dashboard({
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("dashboard");
   const [trip, setTrip] = useState<any>(null);
-  const [countdown, setCountdown] = useState<{ days: number; hours: number; mins: number } | null>(null);
+  const [countdown, setCountdown] = useState<{
+    days: number;
+    hours: number;
+    mins: number;
+  } | null>(null);
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [weatherLoading, setWeatherLoading] = useState(false);
 
@@ -159,7 +203,8 @@ export default function Dashboard({
       } catch {
         setWeather({
           isHistorical: false,
-          error: "Weather is temporarily unavailable. Showing the last known layout — try again shortly.",
+          error:
+            "Weather is temporarily unavailable. Showing the last known layout — try again shortly.",
         });
       } finally {
         setWeatherLoading(false);
@@ -198,12 +243,12 @@ export default function Dashboard({
   ];
 
   return (
-    <div className="dashboard-container">
+    <div className="judy-immersive-layout">
       <div className="bg-skyline" />
       <div className="bg-gradient-overlay" />
 
-      {/* Top Panel */}
-      <header className="top-panel">
+      {/* Floating Top Nav Header */}
+      <header className="immersive-top-header">
         <div className="logo-section">
           <Image
             src="/brand/judy-logo.png"
@@ -215,75 +260,7 @@ export default function Dashboard({
           />
         </div>
 
-        <div className="top-actions">
-          {avatarAdmin && (
-            <a
-              className="icon-button"
-              href="/admin/avatar"
-              title="Avatar Manager"
-              aria-label="Open Avatar Manager"
-            >
-              <Upload size={20} aria-hidden="true" />
-            </a>
-          )}
-
-          {/* User Profile */}
-          <button
-            className="icon-button"
-            onClick={() => setProfileOpen(true)}
-            title="Profile"
-            aria-label="Open profile"
-          >
-            <User size={20} aria-hidden="true" />
-          </button>
-
-          {/* Theme Toggle */}
-          <button
-            className="icon-button"
-            onClick={toggleTheme}
-            title="Toggle Theme"
-            aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-          >
-            {theme === "dark" ? <Sun size={20} aria-hidden="true" /> : <Moon size={20} aria-hidden="true" />}
-          </button>
-
-          {/* Sign Out */}
-          <button
-            className="icon-button"
-            onClick={() => signOut({ callbackUrl: "/login" })}
-            title="Sign Out"
-            aria-label="Sign out"
-          >
-            <LogOut size={20} aria-hidden="true" />
-          </button>
-
-          {/* Affiliate Links */}
-          <div className="dropdown-container">
-            <button
-              className="affiliate-btn"
-              onClick={() => setDropdownOpen(!dropdownOpen)}
-              aria-expanded={dropdownOpen}
-              aria-haspopup="true"
-            >
-              <Compass size={18} aria-hidden="true" /> Affiliate Links <ChevronDown size={14} aria-hidden="true" />
-            </button>
-            {dropdownOpen && (
-              <div className="dropdown-menu affiliate-menu">
-                {affiliates.map((aff, i) => (
-                  <a key={i} href={aff.url} className="dropdown-item" target="_blank" rel="noreferrer">
-                    {aff.icon}
-                    <span>{aff.name}</span>
-                  </a>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </header>
-
-      <div className="main-body">
-        {/* Left Panel */}
-        <aside className="left-panel">
+        <nav className="immersive-nav-bar">
           {navItems.map((item) => (
             <button
               key={item.key}
@@ -302,300 +279,417 @@ export default function Dashboard({
               <span className="nav-label">{item.label}</span>
             </button>
           ))}
-        </aside>
+        </nav>
 
+        <div className="top-actions">
+          {avatarAdmin && (
+            <a
+              className="icon-button"
+              href="/admin/avatar"
+              title="Avatar Manager"
+              aria-label="Open Avatar Manager"
+            >
+              <Upload size={20} aria-hidden="true" />
+            </a>
+          )}
+          <button
+            className="icon-button"
+            onClick={() => setProfileOpen(true)}
+            title="Profile"
+          >
+            <User size={20} aria-hidden="true" />
+          </button>
+          <button
+            className="icon-button"
+            onClick={toggleTheme}
+            title="Toggle Theme"
+          >
+            {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
+          </button>
+          <button
+            className="icon-button"
+            onClick={() => signOut({ callbackUrl: "/login" })}
+            title="Sign Out"
+          >
+            <LogOut size={20} />
+          </button>
+          <div className="dropdown-container">
+            <button
+              className="affiliate-btn"
+              onClick={() => setDropdownOpen(!dropdownOpen)}
+            >
+              <Compass size={18} /> Affiliate Links <ChevronDown size={14} />
+            </button>
+            {dropdownOpen && (
+              <div className="dropdown-menu affiliate-menu">
+                {affiliates.map((aff, i) => (
+                  <a
+                    key={i}
+                    href={aff.url}
+                    className="dropdown-item"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {aff.icon}
+                    <span>{aff.name}</span>
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </header>
+
+      {/* Hero Avatar Stage */}
+      <section className="immersive-avatar-stage">
+        <JudyDock
+          tripContext={trip}
+          userName={userName}
+          userEmail={userEmail}
+          avatarModelUrl={avatarModelUrl}
+        />
+      </section>
+
+      {/* Scrollable Content Pane */}
+      <section className="immersive-dashboard-content">
         {/* Content Area — main content with Judy dock alongside */}
-        <div className="content-with-dock">
-          <main className="content-area">
-            {activeTab === "dashboard" && (
-              <div className="dashboard-widgets">
-                {/* Countdown */}
-                <div className="widget countdown-widget">
-                  <div className="countdown-label">
-                    <Timer size={16} /> Trip Countdown
-                  </div>
-                  {trip && countdown ? (
-                    <>
-                      <div className="countdown-display">
-                        <div className="countdown-unit">
-                          <span className="countdown-number">{countdown.days}</span>
-                          <span className="countdown-unit-label">Days</span>
-                        </div>
-                        <span className="countdown-sep">:</span>
-                        <div className="countdown-unit">
-                          <span className="countdown-number">{countdown.hours}</span>
-                          <span className="countdown-unit-label">Hrs</span>
-                        </div>
-                        <span className="countdown-sep">:</span>
-                        <div className="countdown-unit">
-                          <span className="countdown-number">{countdown.mins}</span>
-                          <span className="countdown-unit-label">Min</span>
-                        </div>
-                      </div>
-                      <div className="countdown-dest">{trip.destinationName}</div>
-                    </>
-                  ) : (
-                    <div className="countdown-empty">
-                      {trip
-                        ? "Calculating your countdown…"
-                        : "No upcoming trip yet — add one to start your countdown."}
-                    </div>
-                  )}
+
+        <main className="content-area">
+          {activeTab === "dashboard" && (
+            <div className="dashboard-widgets">
+              {/* Countdown */}
+              <div className="widget countdown-widget">
+                <div className="countdown-label">
+                  <Timer size={16} /> Trip Countdown
                 </div>
-
-                {/* Weather */}
-                <div className="widget">
-                  <div className="widget-header">
-                    <ThermometerSun size={20} /> Weather
-                    {trip && <span className="widget-badge">{trip.destinationName}</span>}
-                  </div>
-                  <div className="widget-content">
-                    {trip ? (
-                      weatherLoading ? (
-                        <div className="weather-display">
-                          <Cloud size={32} />
-                          <div>
-                            <div className="weather-temp">Loading weather...</div>
-                            <div className="weather-note">Fetching real-time data</div>
-                          </div>
-                        </div>
-                      ) : weather ? (
-                        weather.error ? (
-                          <div className="weather-display">
-                            <Cloud size={32} />
-                            <div>
-                              <div className="weather-temp">Weather unavailable</div>
-                              <div className="weather-note">{weather.error}</div>
-                            </div>
-                          </div>
-                        ) : (
-                          <>
-                            <div className="weather-display">
-                              {getWeatherIcon(weather.condition)}
-                              <div>
-                                <div className="weather-temp">
-                                  {weather.temperature !== undefined
-                                    ? `${Math.round(weather.temperature)}°F`
-                                    : weather.isHistorical
-                                      ? "Historical Avg"
-                                      : "—"}
-                                  {weather.condition ? `, ${weather.condition}` : ""}
-                                </div>
-                                <div className="weather-note">
-                                  {weather.isHistorical
-                                    ? weather.historicalNote || "Showing historical averages"
-                                    : weather.daysUntilDeparture !== null && weather.daysUntilDeparture !== undefined
-                                      ? `Real-time forecast • ${weather.daysUntilDeparture} days until departure`
-                                      : "Real-time forecast"}
-                                </div>
-                              </div>
-                            </div>
-                            {weather.humidity !== undefined && (
-                              <div className="weather-details">
-                                <span className="weather-detail">
-                                  <Droplets size={14} /> {weather.humidity}% humidity
-                                </span>
-                                {weather.windSpeed !== undefined && (
-                                  <span className="weather-detail">
-                                    <Wind size={14} /> {weather.windSpeed} mph
-                                  </span>
-                                )}
-                              </div>
-                            )}
-                          </>
-                        )
-                      ) : (
-                        <div className="weather-display">
-                          <Cloud size={32} />
-                          <div>
-                            <div className="weather-temp">Weather unavailable</div>
-                            <div className="weather-note">Add coordinates to see weather</div>
-                          </div>
-                        </div>
-                      )
-                    ) : (
-                      <p>Add a trip to see weather for your destination.</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === "itinerary" && (
-              <div className="full-width-content">
-                <ItineraryBuilder onTripCreated={handleTripCreated} />
-              </div>
-            )}
-
-            {activeTab === "viewer" && (
-              <div className="full-width-content">
-                {trip ? (
-                  <div className="viewer-placeholder">
-                    <div className="widget" style={{ maxWidth: 800, margin: "0 auto" }}>
-                      <div className="widget-header">
-                        <Eye size={20} /> Trip Viewer — {trip.name || trip.destinationName}
+                {trip && countdown ? (
+                  <>
+                    <div className="countdown-display">
+                      <div className="countdown-unit">
+                        <span className="countdown-number">
+                          {countdown.days}
+                        </span>
+                        <span className="countdown-unit-label">Days</span>
                       </div>
-                      <div className="widget-content">
-                        <div className="stat-row">
-                          <span>Destination</span>
-                          <span className="stat-value">{trip.destinationName}</span>
-                        </div>
-                        <div className="stat-row">
-                          <span>Departure</span>
-                          <span className="stat-value">
-                            {new Date(trip.departureDate).toLocaleDateString()}
-                          </span>
-                        </div>
-                        <div className="stat-row">
-                          <span>Return</span>
-                          <span className="stat-value">
-                            {new Date(trip.returnDate).toLocaleDateString()}
-                          </span>
-                        </div>
-                        {trip.notes && (
-                          <div className="stat-row">
-                            <span>Notes</span>
-                            <span className="stat-value">{trip.notes}</span>
-                          </div>
-                        )}
+                      <span className="countdown-sep">:</span>
+                      <div className="countdown-unit">
+                        <span className="countdown-number">
+                          {countdown.hours}
+                        </span>
+                        <span className="countdown-unit-label">Hrs</span>
                       </div>
-                      {trip.itineraryItems?.length > 0 && (
-                        <div style={{ marginTop: "1rem" }}>
-                          <div className="widget-header" style={{ marginBottom: "0.75rem" }}>
-                            <Calendar size={18} /> Itinerary ({trip.itineraryItems.length} items)
-                          </div>
-                          {trip.itineraryItems.map((item: any, idx: number) => (
-                            <div key={item.id || idx} className="stat-row">
-                              <span>
-                                <span className="item-time">{item.time || "—"}</span> {item.title}
-                              </span>
-                              <span className="stat-value">
-                                {item.cost ? `$${item.cost}` : "—"}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                      <span className="countdown-sep">:</span>
+                      <div className="countdown-unit">
+                        <span className="countdown-number">
+                          {countdown.mins}
+                        </span>
+                        <span className="countdown-unit-label">Min</span>
+                      </div>
                     </div>
-                  </div>
+                    <div className="countdown-dest">{trip.destinationName}</div>
+                  </>
                 ) : (
-                  <div className="widget" style={{ maxWidth: 600, margin: "2rem auto", textAlign: "center" }}>
-                    <div className="widget-header">
-                      <Eye size={20} /> Trip Viewer
-                    </div>
-                    <div className="widget-content">
-                      <p>Create a trip first to view it here.</p>
-                      <button className="widget-action-btn" onClick={() => setActiveTab("itinerary")}>
-                        Build Itinerary
-                      </button>
-                    </div>
+                  <div className="countdown-empty">
+                    {trip
+                      ? "Calculating your countdown…"
+                      : "No upcoming trip yet — add one to start your countdown."}
                   </div>
                 )}
               </div>
-            )}
 
-            {activeTab === "budget" && trip && (
-              <div className="full-width-content">
-                <div className="budget-page">
-                  <h2>
-                    <CreditCard size={24} /> Budget Breakdown
-                  </h2>
-                  <div className="budget-summary-grid">
-                    <div className="budget-card total">
-                      <span>Total Budget</span>
-                      <strong>${trip.totalBudget?.toFixed(2)}</strong>
-                    </div>
-                    <div className="budget-card">
-                      <span>Airfare</span>
-                      <strong>${trip.airfareCost?.toFixed(2)}</strong>
-                    </div>
-                    <div className="budget-card">
-                      <span>Hotel</span>
-                      <strong>${trip.hotelCost?.toFixed(2)}</strong>
-                    </div>
-                    <div className="budget-card accent">
-                      <span>Spending Budget</span>
-                      <strong>${trip.spendingBudget?.toFixed(2)}</strong>
-                    </div>
-                  </div>
-
-                  <BudgetAutoAllocate tripId={trip.id} onApplied={loadTrip} />
-
-                  {trip.budgetItems?.length > 0 && (
-                    <div className="budget-allocations">
-                      <h3>Allocations</h3>
-                      {trip.budgetItems.map((bi: any) => (
-                        <div key={bi.id} className="allocation-row">
-                          <span className="alloc-label">{bi.label}</span>
-                          <div className="alloc-bar-container">
-                            <div
-                              className="alloc-bar"
-                              style={{ width: `${(bi.amount / trip.spendingBudget) * 100}%` }}
-                            />
+              {/* Weather */}
+              <div className="widget">
+                <div className="widget-header">
+                  <ThermometerSun size={20} /> Weather
+                  {trip && (
+                    <span className="widget-badge">{trip.destinationName}</span>
+                  )}
+                </div>
+                <div className="widget-content">
+                  {trip ? (
+                    weatherLoading ? (
+                      <div className="weather-display">
+                        <Cloud size={32} />
+                        <div>
+                          <div className="weather-temp">Loading weather...</div>
+                          <div className="weather-note">
+                            Fetching real-time data
                           </div>
-                          <span className="alloc-amount">${bi.amount?.toFixed(2)}</span>
                         </div>
-                      ))}
-                    </div>
+                      </div>
+                    ) : weather ? (
+                      weather.error ? (
+                        <div className="weather-display">
+                          <Cloud size={32} />
+                          <div>
+                            <div className="weather-temp">
+                              Weather unavailable
+                            </div>
+                            <div className="weather-note">{weather.error}</div>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="weather-display">
+                            {getWeatherIcon(weather.condition)}
+                            <div>
+                              <div className="weather-temp">
+                                {weather.temperature !== undefined
+                                  ? `${Math.round(weather.temperature)}°F`
+                                  : weather.isHistorical
+                                    ? "Historical Avg"
+                                    : "—"}
+                                {weather.condition
+                                  ? `, ${weather.condition}`
+                                  : ""}
+                              </div>
+                              <div className="weather-note">
+                                {weather.isHistorical
+                                  ? weather.historicalNote ||
+                                    "Showing historical averages"
+                                  : weather.daysUntilDeparture !== null &&
+                                      weather.daysUntilDeparture !== undefined
+                                    ? `Real-time forecast • ${weather.daysUntilDeparture} days until departure`
+                                    : "Real-time forecast"}
+                              </div>
+                            </div>
+                          </div>
+                          {weather.humidity !== undefined && (
+                            <div className="weather-details">
+                              <span className="weather-detail">
+                                <Droplets size={14} /> {weather.humidity}%
+                                humidity
+                              </span>
+                              {weather.windSpeed !== undefined && (
+                                <span className="weather-detail">
+                                  <Wind size={14} /> {weather.windSpeed} mph
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </>
+                      )
+                    ) : (
+                      <div className="weather-display">
+                        <Cloud size={32} />
+                        <div>
+                          <div className="weather-temp">
+                            Weather unavailable
+                          </div>
+                          <div className="weather-note">
+                            Add coordinates to see weather
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  ) : (
+                    <p>Add a trip to see weather for your destination.</p>
                   )}
                 </div>
               </div>
-            )}
+            </div>
+          )}
 
-            {activeTab === "budget" && !trip && (
-              <div className="full-width-content">
-                <div className="widget" style={{ maxWidth: 600, margin: "2rem auto", textAlign: "center" }}>
+          {activeTab === "itinerary" && (
+            <div className="full-width-content">
+              <ItineraryBuilder onTripCreated={handleTripCreated} />
+            </div>
+          )}
+
+          {activeTab === "viewer" && (
+            <div className="full-width-content">
+              {trip ? (
+                <div className="viewer-placeholder">
+                  <div
+                    className="widget"
+                    style={{ maxWidth: 800, margin: "0 auto" }}
+                  >
+                    <div className="widget-header">
+                      <Eye size={20} /> Trip Viewer —{" "}
+                      {trip.name || trip.destinationName}
+                    </div>
+                    <div className="widget-content">
+                      <div className="stat-row">
+                        <span>Destination</span>
+                        <span className="stat-value">
+                          {trip.destinationName}
+                        </span>
+                      </div>
+                      <div className="stat-row">
+                        <span>Departure</span>
+                        <span className="stat-value">
+                          {new Date(trip.departureDate).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <div className="stat-row">
+                        <span>Return</span>
+                        <span className="stat-value">
+                          {new Date(trip.returnDate).toLocaleDateString()}
+                        </span>
+                      </div>
+                      {trip.notes && (
+                        <div className="stat-row">
+                          <span>Notes</span>
+                          <span className="stat-value">{trip.notes}</span>
+                        </div>
+                      )}
+                    </div>
+                    {trip.itineraryItems?.length > 0 && (
+                      <div style={{ marginTop: "1rem" }}>
+                        <div
+                          className="widget-header"
+                          style={{ marginBottom: "0.75rem" }}
+                        >
+                          <Calendar size={18} /> Itinerary (
+                          {trip.itineraryItems.length} items)
+                        </div>
+                        {trip.itineraryItems.map((item: any, idx: number) => (
+                          <div key={item.id || idx} className="stat-row">
+                            <span>
+                              <span className="item-time">
+                                {item.time || "—"}
+                              </span>{" "}
+                              {item.title}
+                            </span>
+                            <span className="stat-value">
+                              {item.cost ? `$${item.cost}` : "—"}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div
+                  className="widget"
+                  style={{
+                    maxWidth: 600,
+                    margin: "2rem auto",
+                    textAlign: "center",
+                  }}
+                >
                   <div className="widget-header">
-                    <CreditCard size={20} /> Budget
+                    <Eye size={20} /> Trip Viewer
                   </div>
                   <div className="widget-content">
-                    <p>Create a trip first to see your budget breakdown.</p>
-                    <button className="widget-action-btn" onClick={() => setActiveTab("itinerary")}>
+                    <p>Create a trip first to view it here.</p>
+                    <button
+                      className="widget-action-btn"
+                      onClick={() => setActiveTab("itinerary")}
+                    >
                       Build Itinerary
                     </button>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
+          )}
 
-            {activeTab === "settings" && (
-              <div className="full-width-content">
-                <div className="settings-page">
-                  <h2>
-                    <Settings size={24} /> Settings
-                  </h2>
-                  <div className="settings-group">
-                    <label>Theme</label>
-                    <button className="theme-toggle-btn" onClick={toggleTheme}>
-                      {theme === "dark" ? (
-                        <>
-                          <Sun size={16} /> Switch to Light Mode
-                        </>
-                      ) : (
-                        <>
-                          <Moon size={16} /> Switch to Dark Mode
-                        </>
-                      )}
-                    </button>
+          {activeTab === "budget" && trip && (
+            <div className="full-width-content">
+              <div className="budget-page">
+                <h2>
+                  <CreditCard size={24} /> Budget Breakdown
+                </h2>
+                <div className="budget-summary-grid">
+                  <div className="budget-card total">
+                    <span>Total Budget</span>
+                    <strong>${trip.totalBudget?.toFixed(2)}</strong>
                   </div>
-                  <VoiceSettings />
+                  <div className="budget-card">
+                    <span>Airfare</span>
+                    <strong>${trip.airfareCost?.toFixed(2)}</strong>
+                  </div>
+                  <div className="budget-card">
+                    <span>Hotel</span>
+                    <strong>${trip.hotelCost?.toFixed(2)}</strong>
+                  </div>
+                  <div className="budget-card accent">
+                    <span>Spending Budget</span>
+                    <strong>${trip.spendingBudget?.toFixed(2)}</strong>
+                  </div>
+                </div>
+
+                <BudgetAutoAllocate tripId={trip.id} onApplied={loadTrip} />
+
+                {trip.budgetItems?.length > 0 && (
+                  <div className="budget-allocations">
+                    <h3>Allocations</h3>
+                    {trip.budgetItems.map((bi: any) => (
+                      <div key={bi.id} className="allocation-row">
+                        <span className="alloc-label">{bi.label}</span>
+                        <div className="alloc-bar-container">
+                          <div
+                            className="alloc-bar"
+                            style={{
+                              width: `${(bi.amount / trip.spendingBudget) * 100}%`,
+                            }}
+                          />
+                        </div>
+                        <span className="alloc-amount">
+                          ${bi.amount?.toFixed(2)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {activeTab === "budget" && !trip && (
+            <div className="full-width-content">
+              <div
+                className="widget"
+                style={{
+                  maxWidth: 600,
+                  margin: "2rem auto",
+                  textAlign: "center",
+                }}
+              >
+                <div className="widget-header">
+                  <CreditCard size={20} /> Budget
+                </div>
+                <div className="widget-content">
+                  <p>Create a trip first to see your budget breakdown.</p>
+                  <button
+                    className="widget-action-btn"
+                    onClick={() => setActiveTab("itinerary")}
+                  >
+                    Build Itinerary
+                  </button>
                 </div>
               </div>
-            )}
-          </main>
+            </div>
+          )}
 
-          {/* Persistent Judy Dock — visible across all tabs */}
-          <aside className="judy-dock-column" aria-label="Judy Pierre assistant">
-            <JudyDock
-              tripContext={trip}
-              userName={userName}
-              userEmail={userEmail}
-              avatarModelUrl={avatarModelUrl}
-              docked
-            />
-          </aside>
-        </div>
-      </div>
+          {activeTab === "settings" && (
+            <div className="full-width-content">
+              <div className="settings-page">
+                <h2>
+                  <Settings size={24} /> Settings
+                </h2>
+                <div className="settings-group">
+                  <label>Theme</label>
+                  <button className="theme-toggle-btn" onClick={toggleTheme}>
+                    {theme === "dark" ? (
+                      <>
+                        <Sun size={16} /> Switch to Light Mode
+                      </>
+                    ) : (
+                      <>
+                        <Moon size={16} /> Switch to Dark Mode
+                      </>
+                    )}
+                  </button>
+                </div>
+                <VoiceSettings />
+              </div>
+            </div>
+          )}
+        </main>
+      </section>
 
       {/* Modals */}
       <UserProfileModal
