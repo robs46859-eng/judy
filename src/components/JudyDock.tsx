@@ -92,6 +92,7 @@ const TRANSLATE_LANGUAGES = [
 
 export const JUDY_CONVERSATION_WELCOME =
   localizedJudyWelcome("en-US");
+export const LIPSYNC_STARTUP_TIMEOUT_MS = 4_500;
 
 function audioBlobFromBase64(audio: string, mimeType: string): Blob {
   const decoded = window.atob(audio);
@@ -320,12 +321,24 @@ export default function JudyDock({
     stopLocalSpeech();
     speechFinishedRef.current = onFinished ?? null;
     const requestId = speechRequestRef.current;
+    const controller = new AbortController();
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
     try {
-      const response = await fetch("/api/avatar/lipsync", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, ...(language ? { language } : {}) }),
-      });
+      const response = await Promise.race([
+        fetch("/api/avatar/lipsync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text, ...(language ? { language } : {}) }),
+          signal: controller.signal,
+        }),
+        new Promise<Response>((_, reject) => {
+          timeoutId = setTimeout(() => {
+            controller.abort();
+            reject(new Error("Lip sync startup timed out"));
+          }, LIPSYNC_STARTUP_TIMEOUT_MS);
+        }),
+      ]);
+      if (timeoutId) clearTimeout(timeoutId);
       if (!response.ok) throw new Error("Lip sync unavailable");
 
       const payload = (await response.json()) as LipSyncResponse;
@@ -366,6 +379,7 @@ export default function JudyDock({
       };
       await audio.play();
     } catch {
+      if (timeoutId) clearTimeout(timeoutId);
       if (speechRequestRef.current === requestId) {
         speechFinishedRef.current = null;
         speakWithBrowser(text, language, onFinished);

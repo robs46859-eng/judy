@@ -100,6 +100,24 @@ describe('synthesizeSpeech', () => {
       expect(JSON.parse(requestInit.body).model_id).toBe('eleven_flash_v2_5');
     });
 
+    it('upgrades the former multilingual default to the low-latency model', async () => {
+      process.env.ELEVENLABS_API_KEY = 'test-key';
+      process.env.ELEVENLABS_VOICE_ID = 'voice-123';
+      process.env.ELEVENLABS_MODEL_ID = 'eleven_multilingual_v2';
+
+      const fetchMock = vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        arrayBuffer: async () => new ArrayBuffer(0),
+      }));
+      vi.stubGlobal('fetch', fetchMock);
+
+      await synthesizeSpeech({ text: 'hi', language: 'en-US' });
+
+      const [, requestInit] = fetchMock.mock.calls[0];
+      expect(JSON.parse(requestInit.body).model_id).toBe('eleven_flash_v2_5');
+    });
+
     it('uses a configured catalog voice before the global provider fallback', async () => {
       process.env.ELEVENLABS_API_KEY = 'test-key';
       process.env.ELEVENLABS_VOICE_ID = 'default-voice';

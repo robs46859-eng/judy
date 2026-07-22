@@ -36,6 +36,18 @@ export class TtsNotConfiguredError extends Error {
 
 const ELEVENLABS_SAMPLE_RATE = 24_000;
 const ELEVENLABS_DEFAULT_MODEL = 'eleven_flash_v2_5';
+const ELEVENLABS_LEGACY_MODEL = 'eleven_multilingual_v2';
+
+function configuredElevenLabsModel(): string {
+  const configured = process.env.ELEVENLABS_MODEL_ID?.trim();
+  // Existing Hostinger installations may still carry the former documented
+  // default. Upgrade that legacy value automatically so the latency fix is
+  // effective without requiring a control-panel edit.
+  if (!configured || configured === ELEVENLABS_LEGACY_MODEL) {
+    return ELEVENLABS_DEFAULT_MODEL;
+  }
+  return configured;
+}
 
 /**
  * ElevenLabs Text-to-Speech (https://elevenlabs.io/docs/api-reference/text-to-speech).
@@ -48,7 +60,7 @@ async function synthesizeWithElevenLabs(input: SynthesizeSpeechInput): Promise<S
   const apiKey = process.env.ELEVENLABS_API_KEY;
   const selectedVoice = selectVoiceForLanguage(input.voiceId, input.language);
   const voiceId = process.env[getElevenLabsVoiceEnvKey(selectedVoice.id)] || process.env.ELEVENLABS_VOICE_ID;
-  const modelId = process.env.ELEVENLABS_MODEL_ID || ELEVENLABS_DEFAULT_MODEL;
+  const modelId = configuredElevenLabsModel();
 
   if (!apiKey || !voiceId) {
     throw new TtsNotConfiguredError(
