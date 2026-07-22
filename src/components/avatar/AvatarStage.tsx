@@ -118,7 +118,9 @@ export default function AvatarStage({
       <Canvas
         camera={{ position: [0, 0, 2.4], fov: 28, near: 0.05, far: 100 }}
         gl={{ alpha: true, antialias: true }}
+        style={{ background: "transparent" }}
         onCreated={({ gl }) => {
+          gl.setClearColor(0x000000, 0);
           // WebGL context creation can silently fail on some devices/CI
           // sandboxes; a null context means there's nothing usable to render.
           if (!gl.getContext()) onUnavailable?.();
@@ -141,4 +143,3 @@ export default function AvatarStage({
     </AvatarErrorBoundary>
   );
 }
-

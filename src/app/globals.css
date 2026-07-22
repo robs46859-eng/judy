@@ -41,6 +41,10 @@
   --shadow-md: 0 10px 30px rgba(48, 39, 58, 0.12);
   --shadow-lg: 0 24px 70px rgba(48, 39, 58, 0.18);
   --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  --judy-scene-background: url('/backgrounds/judy-network-light.webp');
+  --judy-scene-overlay:
+    radial-gradient(ellipse at 50% 46%, rgba(255, 255, 255, 0.08) 0%, transparent 52%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, transparent 55%, rgba(246, 241, 249, 0.18) 100%);
 }
 
 html {
@@ -71,6 +75,10 @@ html {
   --shadow-sm: 0 2px 8px rgba(0,0,0,0.3);
   --shadow-md: 0 4px 20px rgba(0,0,0,0.35);
   --shadow-lg: 0 8px 40px rgba(0,0,0,0.45);
+  --judy-scene-background: url('/backgrounds/judy-network-dark.webp');
+  --judy-scene-overlay:
+    radial-gradient(ellipse at 50% 46%, rgba(35, 23, 52, 0.06) 0%, transparent 52%),
+    linear-gradient(180deg, rgba(9, 7, 14, 0.06) 0%, transparent 48%, rgba(8, 6, 13, 0.28) 100%);
 }
 
 /* ═══════════════════════════════════════════
@@ -127,11 +135,11 @@ h1, h2, h3, h4,
   position: fixed;
   top: 0; left: 0;
   width: 100vw; height: 100vh;
-  background:
-    radial-gradient(circle at 50% 36%, rgba(255, 255, 255, 0.92) 0 12%, transparent 42%),
-    radial-gradient(circle at 18% 22%, rgba(184, 154, 204, 0.2), transparent 34%),
-    radial-gradient(circle at 82% 68%, rgba(113, 139, 86, 0.12), transparent 30%),
-    linear-gradient(145deg, #e7e5ea 0%, #f5f3f6 48%, #dedbe2 100%);
+  background-color: var(--bg-color);
+  background-image: var(--judy-scene-background);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
   opacity: 1;
   z-index: 0;
   animation: skylineDrift 40s ease-in-out infinite alternate;
@@ -146,9 +154,7 @@ h1, h2, h3, h4,
   position: fixed;
   top: 0; left: 0;
   width: 100vw; height: 100vh;
-  background:
-    radial-gradient(ellipse at 50% 48%, rgba(255, 255, 255, 0.28) 0%, transparent 52%),
-    linear-gradient(180deg, rgba(236, 235, 238, 0.34) 0%, transparent 42%, rgba(225, 222, 231, 0.72) 100%);
+  background: var(--judy-scene-overlay);
   z-index: 1;
   pointer-events: none;
 }
@@ -442,6 +448,7 @@ h1, h2, h3, h4,
 
 .judy-glb-avatar canvas {
   border-radius: inherit;
+  background: transparent !important;
 }
 
 .judy-static-avatar.is-talking {

@@ -10,7 +10,7 @@ import {
 } from '@/lib/voice/catalog';
 
 /** Speech must not hold an otherwise-ready reply for the full Hermes job budget. */
-export const SPEECH_TRANSLATION_BUDGET_MS = 6_000;
+export const SPEECH_TRANSLATION_BUDGET_MS = 1_500;
 
 export interface SpeechPreparationInput {
   text: string;

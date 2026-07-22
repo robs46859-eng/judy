@@ -41,6 +41,7 @@ import { normalizeVoiceLocale } from "@/lib/voice/catalog";
 import { detectEmotion, type EmotionPreset } from "@/lib/avatar/emotion";
 import { splitSentences, currentSentenceIndex } from "@/lib/avatar/sentenceSplit";
 import { BUNDLED_AVATAR_MODEL_URL } from "@/lib/avatar/model";
+import { localizedJudyWelcome } from "@/lib/avatar/welcome";
 
 /** Bundled fallback used until an administrator activates an uploaded model. */
 export const GLB_AVATAR_MODEL_URL = BUNDLED_AVATAR_MODEL_URL;
@@ -90,7 +91,7 @@ const TRANSLATE_LANGUAGES = [
 ];
 
 export const JUDY_CONVERSATION_WELCOME =
-  "Hi, I'm Judy Pierre, your travel translator and guide. Ask me about your trip, say a phrase to translate, or ask what to do nearby. I'll listen after I finish speaking; tap Stop whenever you want to edit what I heard.";
+  localizedJudyWelcome("en-US");
 
 function audioBlobFromBase64(audio: string, mimeType: string): Blob {
   const decoded = window.atob(audio);
@@ -435,6 +436,7 @@ export default function JudyDock({
       // SSE streaming path
       if (res.headers.get("content-type")?.includes("text/event-stream") && res.body) {
         let fullReply = "";
+        let replyLanguage: string | null = null;
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
         // Add a placeholder message that we'll update as tokens arrive
@@ -454,6 +456,9 @@ export default function JudyDock({
             if (!line.startsWith("data: ")) continue;
             try {
               const data = JSON.parse(line.slice(6));
+              if (typeof data.replyLanguage === "string") {
+                replyLanguage = data.replyLanguage;
+              }
               if (data.token) {
                 fullReply += data.token;
                 setMessages((prev) => {
@@ -475,7 +480,11 @@ export default function JudyDock({
         setMessages((prev) => {
           const updated = [...prev];
           if (updated.length > judyMsgIndex) {
-            updated[judyMsgIndex] = { ...updated[judyMsgIndex], text: reply };
+            updated[judyMsgIndex] = {
+              ...updated[judyMsgIndex],
+              text: reply,
+              replyLanguage,
+            };
           }
           return updated;
         });
@@ -491,7 +500,11 @@ export default function JudyDock({
           : undefined;
 
         if (speechEnabled || conversation.sessionActive) {
-          void speakWithLipSync(reply, undefined, finishConversationSpeech);
+          void speakWithLipSync(
+            reply,
+            replyLanguage ?? undefined,
+            finishConversationSpeech
+          );
         } else {
           showEstimatedTalking(reply, finishConversationSpeech);
         }
@@ -507,7 +520,7 @@ export default function JudyDock({
               targetLanguage: data.translation.targetLanguage,
             }
           : undefined;
-        const replyLanguage = replyTranslation?.targetLanguage ?? null;
+        const replyLanguage = data.replyLanguage ?? replyTranslation?.targetLanguage ?? null;
 
         setMessages((prev) => [
           ...prev,
@@ -769,8 +782,8 @@ export default function JudyDock({
           if (typeof window !== "undefined") {
             window.localStorage.setItem(SPEECH_SYNTHESIS_STORAGE_KEY, "true");
           }
-          void speakWithLipSync(
-            JUDY_CONVERSATION_WELCOME,
+          speakWithBrowser(
+            localizedJudyWelcome(spokenLanguage),
             spokenLanguage,
             () => dispatchConversation({ type: "WELCOME_FINISHED" })
           );
@@ -1030,7 +1043,11 @@ export default function JudyDock({
                             {(msg.translation.sourceLanguage ?? "Detected")} → {msg.translation.targetLanguage}
                           </div>
                           <div className="judy-translation-original">{msg.translation.original}</div>
-                          <div className="judy-translation-translated">{msg.translation.translatedText}</div>
+                          {msg.translation.translatedText !== msg.text && (
+                            <div className="judy-translation-translated">
+                              {msg.translation.translatedText}
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>

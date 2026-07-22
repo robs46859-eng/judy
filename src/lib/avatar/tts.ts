@@ -35,15 +35,14 @@ export class TtsNotConfiguredError extends Error {
 }
 
 const ELEVENLABS_SAMPLE_RATE = 24_000;
-const ELEVENLABS_DEFAULT_MODEL = 'eleven_multilingual_v2';
+const ELEVENLABS_DEFAULT_MODEL = 'eleven_flash_v2_5';
 
 /**
  * ElevenLabs Text-to-Speech (https://elevenlabs.io/docs/api-reference/text-to-speech).
  * Requests raw 16-bit PCM (output_format=pcm_24000) rather than the default
  * MP3 — Rhubarb needs an uncompressed waveform, and this avoids pulling in
- * an MP3 decoder/ffmpeg just to get audio Rhubarb can read. The multilingual
- * model handles non-English "dubbed" replies (Swarm J4/J5's target-language
- * TTS) without needing a per-language voice.
+ * an MP3 decoder/ffmpeg just to get audio Rhubarb can read. Flash v2.5 keeps
+ * Judy's multilingual speech path while minimizing interactive TTS latency.
  */
 async function synthesizeWithElevenLabs(input: SynthesizeSpeechInput): Promise<SynthesizedSpeech> {
   const apiKey = process.env.ELEVENLABS_API_KEY;

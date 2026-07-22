@@ -80,7 +80,7 @@ describe('POST /api/avatar/chat conversation history', () => {
           expect.stringContaining('Judy Pierre'),
         ]),
       }),
-      8_000
+      1_500
     );
   });
 
@@ -126,9 +126,58 @@ describe('POST /api/avatar/chat conversation history', () => {
       expect.any(Headers),
       'user-a',
       expect.objectContaining({ targetLanguage: 'Spanish' }),
-      8_000
+      1_500
     );
     expect(mocks.runTravelKnowledge).not.toHaveBeenCalled();
     expect(mocks.generateContent).toHaveBeenCalledOnce();
+  });
+
+  it('returns a completed Hermes translation as Judy\'s speakable reply', async () => {
+    mocks.detectTranslationIntent.mockReturnValue({
+      reason: 'explicit',
+      textToTranslate: 'Where is the train station?',
+      sourceLanguage: 'English',
+      targetLanguage: 'Spanish',
+    });
+    mocks.runTravelTranslation.mockResolvedValue({
+      translatedText: '¿Dónde está la estación de tren?',
+      sourceLanguage: 'English',
+      targetLanguage: 'Spanish',
+    });
+
+    const response = await POST(
+      jsonRequest({ message: "Translate 'Where is the train station?' into Spanish." })
+    );
+
+    await expect(response.json()).resolves.toMatchObject({
+      reply: '¿Dónde está la estación de tren?',
+      replyLanguage: 'es',
+      source: 'hermes-translate',
+    });
+    expect(mocks.runTravelKnowledge).not.toHaveBeenCalled();
+  });
+
+  it('asks Gemini to answer directly in the saved spoken language and labels the reply', async () => {
+    mocks.findUnique.mockResolvedValue({
+      nativeLanguage: 'English',
+      translationLanguage: 'Mandarin Chinese',
+      spokenLanguage: 'zh-CN',
+      travelRoute: null,
+      preTravelTasks: null,
+      helpPreference: null,
+    });
+    mocks.runTravelKnowledge.mockResolvedValue(null);
+    mocks.generateContent.mockResolvedValue({ text: '记得带上充电器。' });
+    process.env.GEMINI_API_KEY = 'test-key';
+
+    const response = await POST(jsonRequest({ message: 'What should I pack?' }));
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      reply: '记得带上充电器。',
+      replyLanguage: 'zh-CN',
+    });
+
+    const prompt = mocks.generateContent.mock.calls[0][0].contents[0].parts[0].text;
+    expect(prompt).toContain('respond directly and entirely in Mandarin Chinese (zh-CN)');
   });
 });

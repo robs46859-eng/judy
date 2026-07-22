@@ -14,10 +14,14 @@ import {
   createGeminiClient,
 } from '@/lib/gemini/config';
 import { createStripePackageLink } from '@/lib/stripe/client';
+import {
+  getTranslationLanguageName,
+  normalizeVoiceLocale,
+} from '@/lib/voice/catalog';
 import type { FunctionDeclaration, Tool } from '@google/genai';
 
 export const runtime = 'nodejs';
-const INLINE_HERMES_BUDGET_MS = 8_000;
+const INLINE_HERMES_BUDGET_MS = 1_500;
 
 /**
  * POST /api/avatar/chat
@@ -77,6 +81,7 @@ ${tripContext.itineraryItems?.length ? `- Itinerary: ${tripContext.itineraryItem
     let preferences: {
       nativeLanguage: string | null;
       translationLanguage: string | null;
+      spokenLanguage: string | null;
       travelRoute: string | null;
       preTravelTasks: string | null;
       helpPreference: string | null;
@@ -87,6 +92,7 @@ ${tripContext.itineraryItems?.length ? `- Itinerary: ${tripContext.itineraryItem
         select: {
           nativeLanguage: true,
           translationLanguage: true,
+          spokenLanguage: true,
           travelRoute: true,
           preTravelTasks: true,
           helpPreference: true,
@@ -96,6 +102,13 @@ ${tripContext.itineraryItems?.length ? `- Itinerary: ${tripContext.itineraryItem
       preferences = null;
     }
 
+    const intent = detectTranslationIntent(message, preferences?.nativeLanguage ?? null);
+    const replyLocale =
+      normalizeVoiceLocale(intent?.targetLanguage) ??
+      normalizeVoiceLocale(preferences?.spokenLanguage ?? preferences?.nativeLanguage) ??
+      'en-US';
+    const replyLanguageName = getTranslationLanguageName(replyLocale) ?? 'English';
+
     let preferencesInfo = '';
     if (preferences) {
       const bits: string[] = [];
@@ -103,6 +116,7 @@ ${tripContext.itineraryItems?.length ? `- Itinerary: ${tripContext.itineraryItem
       if (preferences.translationLanguage) {
         bits.push(`Prefers translating to/from: ${preferences.translationLanguage}`);
       }
+      if (preferences.spokenLanguage) bits.push(`Spoken reply language: ${replyLanguageName}`);
       if (preferences.travelRoute) bits.push(`Travel route: ${preferences.travelRoute}`);
       if (preferences.preTravelTasks) bits.push(`Before-travel notes: ${preferences.preTravelTasks}`);
       if (preferences.helpPreference) bits.push(`Wants help with: ${preferences.helpPreference}`);
@@ -117,9 +131,10 @@ ${tripContext.itineraryItems?.length ? `- Itinerary: ${tripContext.itineraryItem
 - You are proudly part of the LGBTQ+ community and speak to gay travelers as a trusted friend
 - You converse naturally in every approved Judy voice language: English, Spanish, French, German, Italian, Portuguese, Japanese, Korean, Mandarin Chinese, Arabic, Hindi, and Dutch
 - Respond in the user's requested or spoken language, while keeping names, addresses, and safety details accurate
+- For this reply, respond directly and entirely in ${replyLanguageName} (${replyLocale}). This exact language instruction overrides the default language but never overrides safety or accuracy
 - You give practical, specific travel advice grounded in real knowledge
 - You know LGBTQ+-friendly destinations, safety, nightlife, culture, dining, and experiences
-- Keep responses concise (2-4 sentences) unless the user asks for detailed information
+- Keep responses concise (1-3 sentences) unless the user asks for detailed information
 - You care deeply about the user's safety and joy
 - You address the user warmly as "darling," "traveler," or "friend"
 
@@ -135,7 +150,6 @@ You also have the ability to create and sell custom travel experience packages t
     // message's script not matching the user's stored native language. Runs
     // before the normal reply — safe fallback means a null result here just
     // falls through to Gemma/Gemini below instead of surfacing an error.
-    const intent = detectTranslationIntent(message, preferences?.nativeLanguage ?? null);
     if (intent) {
       const translated = await runTravelTranslation(request.headers, userId, {
         text: intent.textToTranslate,
@@ -146,10 +160,9 @@ You also have the ability to create and sell custom travel experience packages t
         // Telemetry: routing decision only — never message content.
         console.info('[avatar-chat] routed', { userId, route: 'translation', reason: intent.reason });
         return NextResponse.json({
-          reply:
-            intent.reason === 'explicit'
-              ? `Here you go, friend — translated to ${translated.targetLanguage}:`
-              : `Looks like that's ${translated.sourceLanguage ?? 'a different language'} — here it is in ${translated.targetLanguage}:`,
+          reply: translated.translatedText,
+          replyLanguage:
+            normalizeVoiceLocale(translated.targetLanguage) ?? replyLocale,
           source: 'hermes-translate',
           translation: {
             original: intent.textToTranslate,
@@ -193,7 +206,7 @@ You also have the ability to create and sell custom travel experience packages t
         );
     if (gemmaReply) {
       console.info('[avatar-chat] routed', { userId, route: 'gemma' });
-      return NextResponse.json({ reply: gemmaReply, source: 'gemma' });
+      return NextResponse.json({ reply: gemmaReply, replyLanguage: replyLocale, source: 'gemma' });
     }
 
     // Fallback: Gemini.
@@ -236,7 +249,7 @@ You also have the ability to create and sell custom travel experience packages t
     ];
     const judyGenerationConfig = {
       tools: judyTools,
-      maxOutputTokens: 700,
+      maxOutputTokens: 360,
       temperature: 0.55,
     };
 
@@ -314,7 +327,9 @@ You also have the ability to create and sell custom travel experience packages t
             }
 
             controller.enqueue(
-              encoder.encode(`data: ${JSON.stringify({ token: '', done: true })}\n\n`)
+              encoder.encode(
+                `data: ${JSON.stringify({ token: '', done: true, replyLanguage: replyLocale })}\n\n`
+              )
             );
           } catch (err) {
             console.error('[avatar-chat] stream error:', err);
@@ -324,6 +339,7 @@ You also have the ability to create and sell custom travel experience packages t
                   token: "Hmm, my signal got a little fuzzy there, darling. Try asking me again!",
                   done: true,
                   error: true,
+                  replyLanguage: replyLocale,
                 })}\n\n`
               )
             );
@@ -392,7 +408,7 @@ You also have the ability to create and sell custom travel experience packages t
     const text = response.text || "Sorry darling, my mind wandered off for a second there — ask me again!";
 
     console.info('[avatar-chat] routed', { userId, route: 'gemini' });
-    return NextResponse.json({ reply: text });
+    return NextResponse.json({ reply: text, replyLanguage: replyLocale });
   } catch (error: any) {
     console.error('Avatar chat error:', error);
     return NextResponse.json(

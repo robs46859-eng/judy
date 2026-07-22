@@ -37,7 +37,7 @@ See `.env.example` for the full annotated list. Summary:
 | `STRIPE_SECRET_KEY` | For package sales | Creates products, prices, and payment links when Judy sells a custom travel package. Without it the tool returns a mock link and logs a warning. |
 | `TTS_PROVIDER` | Optional | Set to `elevenlabs` for stage-2 lip sync. Unset stays on browser `speechSynthesis` with approximate jaw motion. |
 | `ELEVENLABS_API_KEY` | For voice | Server-side TTS and Scribe realtime transcription tokens. |
-| `ELEVENLABS_VOICE_ID` / `ELEVENLABS_MODEL_ID` | Optional | Default provider voice and model (`eleven_multilingual_v2` when unset). |
+| `ELEVENLABS_VOICE_ID` / `ELEVENLABS_MODEL_ID` | Optional | Default provider voice and model (`eleven_flash_v2_5` when unset). |
 | `HEYGEN_API_KEY` | Optional | Live streamed avatar; falls back to the local 3D avatar. |
 | `HEYGEN_AVATAR_ID` / `HEYGEN_VOICE_ID` | Optional | Streamed-avatar identity defaults. |
 | `AVATAR_ADMIN_EMAILS` | Avatar Manager | Comma-separated email allowlist; falls back to `ADMIN_EMAIL` when unset. |

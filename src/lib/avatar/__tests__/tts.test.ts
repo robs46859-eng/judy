@@ -79,7 +79,7 @@ describe('synthesizeSpeech', () => {
       expect(String(url)).toContain('output_format=pcm_24000');
       expect(requestInit.headers['xi-api-key']).toBe('test-key');
       expect(JSON.parse(requestInit.body).text).toBe('Pack a raincoat');
-      expect(JSON.parse(requestInit.body).model_id).toBe('eleven_multilingual_v2');
+      expect(JSON.parse(requestInit.body).model_id).toBe('eleven_flash_v2_5');
     });
 
     it('uses ELEVENLABS_MODEL_ID when set instead of the default', async () => {

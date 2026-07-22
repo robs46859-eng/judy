@@ -10,6 +10,13 @@ const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve,
 export const HERMES_KNOWLEDGE_BUDGET_MS = 30_000;
 export const HERMES_KNOWLEDGE_POLL_INTERVAL_MS = 5_000;
 
+function pollIntervalForBudget(budgetMs: number): number {
+  return Math.min(
+    HERMES_KNOWLEDGE_POLL_INTERVAL_MS,
+    Math.max(250, Math.floor(budgetMs / 3))
+  );
+}
+
 function retryAfterMs(error: unknown): number | null {
   if (error instanceof HermesClientError && error.httpStatus === 429) {
     return (error.retryAfterSeconds ?? 5) * 1_000;
@@ -64,10 +71,12 @@ export async function runTravelKnowledge(
     if (created.status === 'succeeded') return extractHermesText(created.result);
     if (created.status === 'failed') return null;
 
+    const pollIntervalMs = pollIntervalForBudget(budgetMs);
     while (Date.now() < deadline) {
       const remainingBeforeSleep = deadline - Date.now();
       if (remainingBeforeSleep <= 0) break;
-      await sleep(Math.min(HERMES_KNOWLEDGE_POLL_INTERVAL_MS, remainingBeforeSleep));
+      await sleep(Math.min(pollIntervalMs, remainingBeforeSleep));
+      if (Date.now() >= deadline) break;
 
       let polled;
       try {

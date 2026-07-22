@@ -58,11 +58,14 @@ function makeTrip(overrides: Record<string, unknown> = {}) {
 describe('Dashboard', () => {
   beforeEach(() => {
     signOutMock.mockClear();
+    window.localStorage.clear();
+    document.documentElement.setAttribute('data-theme', 'light');
   });
 
   afterEach(() => {
     cleanup();
     vi.unstubAllGlobals();
+    document.documentElement.removeAttribute('data-theme');
   });
 
   it('does not render the old top greeting', async () => {
@@ -98,6 +101,18 @@ describe('Dashboard', () => {
     for (const label of ['Dashboard', 'Itinerary', 'Trip Viewer', 'Budget', 'Contact', 'Settings']) {
       expect(screen.getByText(label)).toBeInTheDocument();
     }
+  });
+
+  it('switches between the supplied light and dark scene themes and remembers the choice', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse([])));
+    render(<Dashboard userName="Robert" userEmail="robs46859@gmail.com" />);
+
+    const themeButton = await screen.findByRole('button', { name: 'Switch to dark mode' });
+    fireEvent.click(themeButton);
+
+    expect(document.documentElement).toHaveAttribute('data-theme', 'dark');
+    expect(window.localStorage.getItem('judy-theme')).toBe('dark');
+    expect(screen.getByRole('button', { name: 'Switch to light mode' })).toBeInTheDocument();
   });
 
   it('shows the Avatar Manager only to admins and forwards the active model URL', async () => {

@@ -29,6 +29,9 @@ import VoiceSettings from "./VoiceSettings";
 import { selectTrip } from "@/lib/dashboard/selectTrip";
 import { computeCountdown } from "@/lib/dashboard/countdown";
 
+type Theme = "light" | "dark";
+const THEME_STORAGE_KEY = "judy-theme";
+
 // Weather condition to icon mapping
 function getWeatherIcon(condition?: string) {
   if (!condition) return <Cloud size={32} />;
@@ -67,7 +70,7 @@ export default function Dashboard({
   avatarModelUrl,
   avatarAdmin = false,
 }: DashboardProps) {
-  const [theme, setTheme] = useState("light");
+  const [theme, setTheme] = useState<Theme>("light");
   const [activeTab, setActiveTab] = useState("dashboard");
   const [trip, setTrip] = useState<any>(null);
   const [countdown, setCountdown] = useState<{
@@ -83,10 +86,21 @@ export default function Dashboard({
   const [contactOpen, setContactOpen] = useState(false);
 
   const toggleTheme = () => {
-    const newTheme = theme === "dark" ? "light" : "dark";
+    const newTheme: Theme = theme === "dark" ? "light" : "dark";
     setTheme(newTheme);
     document.documentElement.setAttribute("data-theme", newTheme);
+    window.localStorage.setItem(THEME_STORAGE_KEY, newTheme);
   };
+
+  useEffect(() => {
+    const activeTheme = document.documentElement.getAttribute("data-theme");
+    if (activeTheme === "light" || activeTheme === "dark") {
+      const frame = window.requestAnimationFrame(() => setTheme(activeTheme));
+      return () => window.cancelAnimationFrame(frame);
+    }
+    document.documentElement.setAttribute("data-theme", "light");
+    return undefined;
+  }, []);
 
   // Load trip from API
   const loadTrip = useCallback(async () => {
@@ -259,6 +273,7 @@ export default function Dashboard({
             className="icon-button"
             onClick={toggleTheme}
             title="Toggle Theme"
+            aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
           >
             {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
           </button>
