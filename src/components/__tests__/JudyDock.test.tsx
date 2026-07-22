@@ -128,7 +128,7 @@ describe('JudyDock avatar fallback (Swarm J7)', () => {
     expect(await screen.findByTestId('avatar-stage-stub')).toBeInTheDocument();
     expect(screen.getByTestId('avatar-stage-stub')).toHaveAttribute(
       'data-model-url',
-      '/models/judyface-runtime/judyface.gltf'
+      '/models/agreejudy.glb'
     );
     expect(screen.queryByAltText(AVATAR_ALT)).not.toBeInTheDocument();
 

@@ -17,6 +17,7 @@ import {
   ArrowLeftRight,
   Image as ImageIcon,
   Bell,
+  ScanLine,
   ChevronUp,
   ChevronDown,
 } from "lucide-react";
@@ -42,6 +43,7 @@ import { detectEmotion, type EmotionPreset } from "@/lib/avatar/emotion";
 import { splitSentences, currentSentenceIndex } from "@/lib/avatar/sentenceSplit";
 import { BUNDLED_AVATAR_MODEL_URL } from "@/lib/avatar/model";
 import { localizedJudyWelcome } from "@/lib/avatar/welcome";
+import MobileARViewer from "./avatar/MobileARViewer";
 
 /** Bundled fallback used until an administrator activates an uploaded model. */
 export const GLB_AVATAR_MODEL_URL = BUNDLED_AVATAR_MODEL_URL;
@@ -111,6 +113,7 @@ export default function JudyDock({
 }: JudyDockProps) {
   const [chatOpen, setChatOpen] = useState(docked);
   const [activeTool, setActiveTool] = useState<JudyTool | null>(null);
+  const [arOpen, setArOpen] = useState(false);
   const [translateText, setTranslateText] = useState("");
   const [sourceLang, setSourceLang] = useState("Auto-detect");
   const [targetLang, setTargetLang] = useState("Spanish");
@@ -877,8 +880,26 @@ export default function JudyDock({
           <Bell size={16} aria-hidden="true" />
           <span>Alerts</span>
         </button>
+        <button
+          className="judy-quick-btn judy-mobile-ar-btn"
+          onClick={() => {
+            setActiveTool(null);
+            setArOpen(true);
+          }}
+          title="Place Judy in your space"
+          aria-label="Open Judy in augmented reality"
+        >
+          <ScanLine size={16} aria-hidden="true" />
+          <span>AR</span>
+        </button>
         </nav>
       </div>
+
+      <MobileARViewer
+        modelUrl={avatarModelUrl}
+        open={arOpen}
+        onClose={() => setArOpen(false)}
+      />
 
       {/* Panels */}
       <ExperiencesPanel

@@ -23,7 +23,12 @@ import type { EmotionPreset } from "@/lib/avatar/emotion";
 import type { ConversationPhase } from "./conversationMachine";
 
 /** Morph target names for eye blink (ARKit convention). */
-const BLINK_TARGETS = ['eyeBlink_L', 'eyeBlink_R'] as const;
+const BLINK_TARGETS = [
+  'eyeBlink_L',
+  'eyeBlink_R',
+  'eyeBlinkLeft',
+  'eyeBlinkRight',
+] as const;
 
 export interface AvatarMeshProps {
   /** Path under /public to the rigged GLB. */
@@ -392,6 +397,14 @@ export default function AvatarMesh({
 
   return (
     <group rotation={[0, facingRotationY, 0]}>
+      <mesh position={[0, -0.024, 0]} receiveShadow>
+        <cylinderGeometry args={[0.54, 0.58, 0.048, 64]} />
+        <meshStandardMaterial
+          color="#5f486f"
+          roughness={0.92}
+          metalness={0.04}
+        />
+      </mesh>
       <primitive object={scene} />
     </group>
   );

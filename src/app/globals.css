@@ -4034,6 +4034,98 @@ h1, h2, h3, h4,
   border-color: color-mix(in srgb, var(--lilac) 32%, transparent);
 }
 
+.judy-mobile-ar-btn {
+  display: none;
+}
+
+.judy-ar-overlay {
+  position: fixed;
+  z-index: 140;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  color: var(--text-primary);
+  background: var(--bg-color);
+}
+
+.judy-ar-header {
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: max(0.85rem, env(safe-area-inset-top)) 1rem 0.8rem;
+  background: color-mix(in srgb, var(--panel-bg-solid) 92%, transparent);
+  border-bottom: 1px solid var(--panel-border);
+  backdrop-filter: blur(var(--glass-blur));
+}
+
+.judy-ar-header div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.judy-ar-header strong {
+  font-size: 1rem;
+}
+
+.judy-ar-header span,
+.judy-ar-privacy,
+.judy-ar-status {
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+
+.judy-ar-header button {
+  display: grid;
+  flex: 0 0 42px;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  color: var(--text-primary);
+  background: var(--bg-surface);
+  border: 1px solid var(--panel-border);
+  border-radius: 50%;
+}
+
+.judy-ar-model {
+  width: 100%;
+  min-height: 0;
+  flex: 1 1 auto;
+  background: transparent;
+}
+
+.judy-ar-place-button {
+  position: absolute;
+  right: 50%;
+  bottom: max(1.25rem, env(safe-area-inset-bottom));
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 48px;
+  padding: 0.75rem 1rem;
+  transform: translateX(50%);
+  color: #fff;
+  background: linear-gradient(135deg, var(--lilac), var(--accent-hover));
+  border: 0;
+  border-radius: 999px;
+  box-shadow: 0 8px 28px var(--accent-glow);
+  font: 750 0.84rem/1 var(--font-sans);
+  white-space: nowrap;
+}
+
+.judy-ar-status,
+.judy-ar-privacy {
+  margin: 0;
+  padding: 0.5rem 1rem;
+  text-align: center;
+}
+
+.judy-ar-status.is-error {
+  color: var(--danger);
+}
+
 .bottom-global-shell {
   left: 50%;
   bottom: 0.6rem;
@@ -4159,6 +4251,10 @@ h1, h2, h3, h4,
 }
 
 @media (max-width: 720px) {
+  .judy-mobile-ar-btn {
+    display: inline-flex;
+  }
+
   .immersive-top-header {
     top: 0.4rem;
     left: 0.4rem;

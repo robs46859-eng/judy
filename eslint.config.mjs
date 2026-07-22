@@ -14,6 +14,8 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Generated Prisma client
     "src/generated/**",
+    // Vendored browser-only web component used by the mobile AR viewer
+    "public/vendor/**",
     // CommonJS Passenger entry point (not part of the TS app)
     "server.js",
   ]),
