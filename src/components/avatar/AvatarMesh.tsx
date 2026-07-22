@@ -18,7 +18,11 @@ import {
   clearMorphTargetInfluences,
   restoreJawBindRotation,
 } from "@/lib/avatar/rigRuntime";
-import { sampleAvatarMotion, speechEnergyNod } from "@/lib/avatar/motion";
+import {
+  getAvatarHeadPitchOffset,
+  sampleAvatarMotion,
+  speechEnergyNod,
+} from "@/lib/avatar/motion";
 import type { EmotionPreset } from "@/lib/avatar/emotion";
 import type { ConversationPhase } from "./conversationMachine";
 
@@ -191,6 +195,7 @@ export default function AvatarMesh({
   // lives in a ref rather than memoized state.
   const rigRef = useRef<Rig | null>(null);
   const reducedMotionRef = useRef(false);
+  const cameraFacingHeadPitch = getAvatarHeadPitchOffset(modelUrl);
 
   useEffect(() => {
     rigRef.current = buildRig(scene, onRigError);
@@ -253,13 +258,13 @@ export default function AvatarMesh({
     scene.scale.copy(rig.rootBindScale).multiplyScalar(motion.rootScale);
     applyMotionBone(
       rig.motionBones.head,
-      motion.headPitch,
+      motion.headPitch + cameraFacingHeadPitch,
       motion.headYaw,
       motion.headRoll
     );
     applyMotionBone(
       rig.motionBones.neck,
-      motion.headPitch * 0.35,
+      motion.headPitch * 0.35 + cameraFacingHeadPitch * 0.2,
       motion.headYaw * 0.35,
       motion.headRoll * 0.25
     );
@@ -320,7 +325,7 @@ export default function AvatarMesh({
         const nod = speechEnergyNod(energy);
         applyMotionBone(
           rig.motionBones.head,
-          motion.headPitch + nod,
+          motion.headPitch + cameraFacingHeadPitch + nod,
           motion.headYaw,
           motion.headRoll
         );

@@ -899,6 +899,9 @@ export default function JudyDock({
         modelUrl={avatarModelUrl}
         open={arOpen}
         onClose={() => setArOpen(false)}
+        messages={messages}
+        isSending={isLoading}
+        onSendMessage={(text) => void sendMessage(text)}
       />
 
       {/* Panels */}

@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { getAvatarFacingRotation, sampleAvatarMotion } from '../motion';
+import {
+  getAvatarFacingRotation,
+  getAvatarHeadPitchOffset,
+  sampleAvatarMotion,
+} from '../motion';
 
 describe('sampleAvatarMotion', () => {
   it('is deterministic and keeps every phase restrained', () => {
@@ -49,5 +53,11 @@ describe('sampleAvatarMotion', () => {
     expect(getAvatarFacingRotation('/models/judyface.glb')).toBe(-Math.PI / 2);
     expect(getAvatarFacingRotation('/models/judyface-runtime/judyface.gltf')).toBe(-Math.PI / 2);
     expect(getAvatarFacingRotation('/api/avatar/model?v=uploaded')).toBe(0);
+  });
+
+  it('cancels agreejudy authoring offsets so she looks into the camera', () => {
+    expect(getAvatarFacingRotation('/models/agreejudy.glb')).toBeCloseTo(0.0046);
+    expect(getAvatarHeadPitchOffset('/models/agreejudy.glb')).toBeCloseTo(0.035);
+    expect(getAvatarHeadPitchOffset('/api/avatar/model?v=uploaded')).toBe(0);
   });
 });

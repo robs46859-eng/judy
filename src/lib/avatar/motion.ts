@@ -32,7 +32,15 @@ const STILL: AvatarMotionSample = {
 
 export function getAvatarFacingRotation(modelUrl: string): number {
   const pathname = modelUrl.split('?', 1)[0].toLowerCase();
+  // Cancel the tiny yaw baked into agreejudy's exported root transform.
+  if (/\/agreejudy\.glb$/.test(pathname)) return 0.0046;
   return /\/judyface\.(?:glb|gltf)$/.test(pathname) ? -Math.PI / 2 : 0;
+}
+
+/** Correct the slight chin-up bind pose on the current Judy rig. */
+export function getAvatarHeadPitchOffset(modelUrl: string): number {
+  const pathname = modelUrl.split('?', 1)[0].toLowerCase();
+  return /\/agreejudy\.glb$/.test(pathname) ? 0.035 : 0;
 }
 
 /* ── Blink cycle ──────────────────────────────────────────────────────── */

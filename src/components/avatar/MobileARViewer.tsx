@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { ScanLine, X } from "lucide-react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { Loader2, MessageCircle, ScanLine, Send, X } from "lucide-react";
 
 const MODEL_VIEWER_SCRIPT_ID = "judy-model-viewer-script";
 const MODEL_VIEWER_SCRIPT_SRC = "/vendor/model-viewer-4.3.1.min.js";
@@ -10,6 +10,9 @@ interface MobileARViewerProps {
   modelUrl: string;
   open: boolean;
   onClose: () => void;
+  messages: ReadonlyArray<{ role: "user" | "judy"; text: string }>;
+  isSending: boolean;
+  onSendMessage: (text: string) => void;
 }
 
 interface ModelViewerElement extends HTMLElement {
@@ -24,10 +27,23 @@ export default function MobileARViewer({
   modelUrl,
   open,
   onClose,
+  messages,
+  isSending,
+  onSendMessage,
 }: MobileARViewerProps) {
   const viewerRef = useRef<ModelViewerElement | null>(null);
   const [viewerReady, setViewerReady] = useState(false);
   const [arError, setArError] = useState<string | null>(null);
+  const [chatOpen, setChatOpen] = useState(true);
+  const [chatInput, setChatInput] = useState("");
+
+  const submitChat = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const text = chatInput.trim();
+    if (!text || isSending) return;
+    onSendMessage(text);
+    setChatInput("");
+  };
 
   useEffect(() => {
     if (!open || typeof window === "undefined") return;
@@ -123,8 +139,6 @@ export default function MobileARViewer({
         ar-scale="auto"
         camera-controls
         touch-action="pan-y"
-        auto-rotate
-        autoplay
         shadow-intensity="1.2"
         shadow-softness="0.8"
         exposure="1"
@@ -133,6 +147,44 @@ export default function MobileARViewer({
           <ScanLine size={20} aria-hidden="true" />
           Place Judy in my space
         </button>
+
+        <section className={`judy-ar-chat${chatOpen ? " is-open" : ""}`} aria-label="Chat with Judy in AR">
+          <button
+            type="button"
+            className="judy-ar-chat-toggle"
+            onClick={() => setChatOpen((current) => !current)}
+            aria-expanded={chatOpen}
+          >
+            <MessageCircle size={18} aria-hidden="true" />
+            Chat with Judy
+          </button>
+
+          {chatOpen && (
+            <div className="judy-ar-chat-body">
+              <div className="judy-ar-chat-messages" aria-live="polite">
+                {messages.slice(-4).map((message, index) => (
+                  <p key={`${message.role}-${index}`} className={`is-${message.role}`}>
+                    <strong>{message.role === "judy" ? "Judy" : "You"}</strong>
+                    <span>{message.text || (message.role === "judy" && isSending ? "Thinking…" : "")}</span>
+                  </p>
+                ))}
+              </div>
+              <form onSubmit={submitChat}>
+                <label className="sr-only" htmlFor="judy-ar-chat-input">Message Judy</label>
+                <input
+                  id="judy-ar-chat-input"
+                  value={chatInput}
+                  onChange={(event) => setChatInput(event.target.value)}
+                  placeholder="Ask Judy while you explore…"
+                  autoComplete="off"
+                />
+                <button type="submit" disabled={!chatInput.trim() || isSending} aria-label="Send message to Judy">
+                  {isSending ? <Loader2 size={18} className="spin" aria-hidden="true" /> : <Send size={18} aria-hidden="true" />}
+                </button>
+              </form>
+            </div>
+          )}
+        </section>
       </model-viewer>
 
       {!viewerReady && !arError && <p className="judy-ar-status">Preparing the live AR viewer…</p>}

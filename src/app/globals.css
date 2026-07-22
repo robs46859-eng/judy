@@ -3776,6 +3776,12 @@ h1, h2, h3, h4,
   height: 100%;
 }
 
+/* Keep Judy's feet/platform in the lower visual third instead of letting the
+   automatic 3D bounds center her too high behind the app chrome. */
+.immersive-avatar-stage .judy-glb-avatar canvas {
+  transform: translateY(clamp(28px, 5vh, 56px));
+}
+
 .immersive-avatar-stage .judy-chat-inline {
   position: absolute;
   bottom: 0;
@@ -4113,6 +4119,112 @@ h1, h2, h3, h4,
   box-shadow: 0 8px 28px var(--accent-glow);
   font: 750 0.84rem/1 var(--font-sans);
   white-space: nowrap;
+}
+
+.judy-ar-chat {
+  position: absolute;
+  z-index: 4;
+  right: 0.75rem;
+  bottom: max(5rem, calc(env(safe-area-inset-bottom) + 4.5rem));
+  left: 0.75rem;
+  display: grid;
+  gap: 0.4rem;
+  pointer-events: none;
+}
+
+.judy-ar-chat-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  justify-self: end;
+  min-height: 42px;
+  padding: 0.6rem 0.85rem;
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--panel-bg-solid) 92%, transparent);
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  box-shadow: var(--shadow-sm);
+  font: 700 0.78rem/1 var(--font-sans);
+  pointer-events: auto;
+  backdrop-filter: blur(var(--glass-blur));
+}
+
+.judy-ar-chat-body {
+  display: grid;
+  gap: 0.5rem;
+  max-height: min(40vh, 18rem);
+  padding: 0.65rem;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--panel-bg-solid) 92%, transparent);
+  border: 1px solid var(--panel-border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-md);
+  pointer-events: auto;
+  backdrop-filter: blur(var(--glass-blur));
+}
+
+.judy-ar-chat-messages {
+  display: grid;
+  gap: 0.35rem;
+  max-height: 9rem;
+  overflow-y: auto;
+}
+
+.judy-ar-chat-messages p {
+  display: grid;
+  gap: 0.15rem;
+  max-width: 88%;
+  margin: 0;
+  padding: 0.45rem 0.55rem;
+  color: var(--text-primary);
+  background: var(--bg-surface);
+  border-radius: 11px;
+  font-size: 0.73rem;
+  line-height: 1.35;
+}
+
+.judy-ar-chat-messages p.is-user {
+  justify-self: end;
+  background: var(--lilac-soft);
+}
+
+.judy-ar-chat-messages strong {
+  color: var(--accent-deep);
+  font-size: 0.65rem;
+}
+
+.judy-ar-chat-body form {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.judy-ar-chat-body input {
+  min-width: 0;
+  flex: 1;
+  min-height: 42px;
+  padding: 0 0.75rem;
+  color: var(--text-primary);
+  background: var(--bg-surface);
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  font: 0.8rem/1.2 var(--font-sans);
+}
+
+.judy-ar-chat-body form button {
+  display: grid;
+  flex: 0 0 42px;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  color: #fff;
+  background: var(--lilac);
+  border: 0;
+  border-radius: 12px;
+}
+
+.judy-ar-chat-body form button:disabled {
+  opacity: 0.48;
 }
 
 .judy-ar-status,

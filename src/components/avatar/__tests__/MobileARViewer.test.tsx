@@ -12,12 +12,16 @@ afterEach(() => {
 });
 
 describe("MobileARViewer", () => {
-  it("renders the Judy model with cross-platform AR modes and privacy guidance", () => {
+  it("renders cross-platform AR with Judy chat and privacy guidance", () => {
+    const onSendMessage = vi.fn();
     render(
       <MobileARViewer
         modelUrl="/models/agreejudy.glb"
         open
         onClose={() => undefined}
+        messages={[{ role: "judy", text: "Where are we headed?" }]}
+        isSending={false}
+        onSendMessage={onSendMessage}
       />
     );
 
@@ -26,6 +30,12 @@ describe("MobileARViewer", () => {
     expect(viewer).toHaveAttribute("src", "/models/agreejudy.glb");
     expect(viewer).toHaveAttribute("ar-modes", "webxr scene-viewer quick-look");
     expect(screen.getByText("Place Judy in my space")).toBeInTheDocument();
+    expect(screen.getByText("Where are we headed?")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Message Judy"), {
+      target: { value: "Find dinner nearby" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send message to Judy" }));
+    expect(onSendMessage).toHaveBeenCalledWith("Find dinner nearby");
     expect(screen.getByText(/camera view stays on your phone/i)).toBeInTheDocument();
     expect(document.getElementById("judy-model-viewer-script")).toHaveAttribute(
       "src",
@@ -36,14 +46,28 @@ describe("MobileARViewer", () => {
   it("closes without rendering the viewer when requested", () => {
     const onClose = vi.fn();
     const { rerender } = render(
-      <MobileARViewer modelUrl="/models/agreejudy.glb" open onClose={onClose} />
+      <MobileARViewer
+        modelUrl="/models/agreejudy.glb"
+        open
+        onClose={onClose}
+        messages={[]}
+        isSending={false}
+        onSendMessage={() => undefined}
+      />
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Close AR viewer" }));
     expect(onClose).toHaveBeenCalledOnce();
 
     rerender(
-      <MobileARViewer modelUrl="/models/agreejudy.glb" open={false} onClose={onClose} />
+      <MobileARViewer
+        modelUrl="/models/agreejudy.glb"
+        open={false}
+        onClose={onClose}
+        messages={[]}
+        isSending={false}
+        onSendMessage={() => undefined}
+      />
     );
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
