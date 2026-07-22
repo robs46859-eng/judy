@@ -14,6 +14,26 @@ export interface MorphTargetController {
   morphTargetInfluences: number[];
 }
 
+function morphNameCandidates(name: string): string[] {
+  return [
+    name,
+    name.replace(/_L\b/, 'Left').replace(/_R\b/, 'Right'),
+    name.replace(/Left\b/, '_L').replace(/Right\b/, '_R'),
+  ];
+}
+
+/** Resolve ARKit/Blender left-right naming variants without rig-specific code. */
+export function resolveMorphTargetIndex(
+  dictionary: Record<string, number>,
+  name: string
+): number | undefined {
+  for (const candidate of morphNameCandidates(name)) {
+    const index = dictionary[candidate];
+    if (index !== undefined) return index;
+  }
+  return undefined;
+}
+
 /**
  * Clears only the named targets, leaving unrelated expressions and body
  * morphs untouched. This must run before each new ARKit frame so a target
@@ -25,7 +45,7 @@ export function clearMorphTargetInfluences(
 ): void {
   for (const mesh of meshes) {
     for (const name of names) {
-      const index = mesh.morphTargetDictionary[name];
+      const index = resolveMorphTargetIndex(mesh.morphTargetDictionary, name);
       if (index !== undefined) mesh.morphTargetInfluences[index] = 0;
     }
   }

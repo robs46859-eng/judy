@@ -16,6 +16,7 @@ import {
   ARKIT_CONTROLLED_MORPH_TARGETS,
   applyJawOpenRotation,
   clearMorphTargetInfluences,
+  resolveMorphTargetIndex,
   restoreJawBindRotation,
 } from "@/lib/avatar/rigRuntime";
 import {
@@ -24,6 +25,11 @@ import {
   speechEnergyNod,
 } from "@/lib/avatar/motion";
 import type { EmotionPreset } from "@/lib/avatar/emotion";
+import {
+  samplePlatformWalk,
+  selectAvatarBehavior,
+  type AvatarWeatherContext,
+} from "@/lib/avatar/behavior";
 import type { ConversationPhase } from "./conversationMachine";
 
 /** Morph target names for eye blink (ARKit convention). */
@@ -32,6 +38,12 @@ const BLINK_TARGETS = [
   'eyeBlink_R',
   'eyeBlinkLeft',
   'eyeBlinkRight',
+] as const;
+
+const EXPRESSION_TARGETS = [
+  'mouthSmile_L', 'mouthSmile_R', 'mouthFrown_L', 'mouthFrown_R',
+  'cheekSquint_L', 'cheekSquint_R', 'browInnerUp', 'browDown_L',
+  'browDown_R', 'mouthPucker',
 ] as const;
 
 export interface AvatarMeshProps {
@@ -50,6 +62,8 @@ export interface AvatarMeshProps {
   facingRotationY?: number;
   /** Emotion preset detected from the current reply text. */
   emotion?: EmotionPreset | null;
+  /** Current destination weather, used only for ambient body language. */
+  weather?: AvatarWeatherContext | null;
   /** Reported once, if the GLTF fails to parse after loading. */
   onRigError?: (message: string) => void;
 }
@@ -184,9 +198,15 @@ export default function AvatarMesh({
   phase,
   facingRotationY = 0,
   emotion,
+  weather,
   onRigError,
 }: AvatarMeshProps) {
-  const { scene } = useGLTF(modelUrl);
+  const { scene, animations } = useGLTF(modelUrl);
+  const avatarRootRef = useRef<THREE.Group | null>(null);
+  const mixerRef = useRef<THREE.AnimationMixer | null>(null);
+  const actionsRef = useRef<Map<string, THREE.AnimationAction>>(new Map());
+  const currentActionRef = useRef<THREE.AnimationAction | null>(null);
+  const currentActionNameRef = useRef<string | null>(null);
   const startedAtRef = useRef<number | null>(null);
   const cuesRef = useRef<RhubarbCue[] | null | undefined>(cues);
   // The rig is inspected once per loaded scene and then mutated every frame
@@ -212,6 +232,35 @@ export default function AvatarMesh({
       restoreMotionRig(scene, rig);
     };
   }, [scene, onRigError]);
+
+  useEffect(() => {
+    const avatarRoot = avatarRootRef.current;
+    const mixer = new THREE.AnimationMixer(scene);
+    const actions = new Map<string, THREE.AnimationAction>();
+    for (const clip of animations) actions.set(clip.name, mixer.clipAction(clip));
+    mixerRef.current = mixer;
+    actionsRef.current = actions;
+
+    const idle = actions.get('Idle') ?? null;
+    if (idle) {
+      idle.reset().play();
+      currentActionRef.current = idle;
+      currentActionNameRef.current = 'Idle';
+    }
+
+    return () => {
+      mixer.stopAllAction();
+      mixer.uncacheRoot(scene);
+      mixerRef.current = null;
+      actionsRef.current = new Map();
+      currentActionRef.current = null;
+      currentActionNameRef.current = null;
+      if (avatarRoot) {
+        avatarRoot.position.set(0, 0, 0);
+        avatarRoot.rotation.set(0, 0, 0);
+      }
+    };
+  }, [animations, scene]);
 
   useEffect(() => {
     if (typeof window === "undefined" || !window.matchMedia) return;
@@ -244,13 +293,41 @@ export default function AvatarMesh({
   // rule can't distinguish that from an accidental mutation of a hook
   // value, so it's disabled for this block specifically.
   /* eslint-disable react-hooks/immutability */
-  useFrame(({ clock }) => {
+  useFrame(({ clock }, delta) => {
     const rig = rigRef.current;
     if (!rig) return;
 
+    const elapsed = clock.getElapsedTime();
+    const behavior = selectAvatarBehavior({
+      phase,
+      talking,
+      elapsedSeconds: elapsed,
+      emotionName: emotion?.name,
+      weather,
+      reducedMotion: reducedMotionRef.current,
+    });
+    const actions = actionsRef.current;
+    const requestedName = actions.has(behavior.animationName) ? behavior.animationName : 'Idle';
+    if (requestedName !== currentActionNameRef.current) {
+      const next = actions.get(requestedName) ?? null;
+      if (next) {
+        currentActionRef.current?.fadeOut(0.24);
+        next.reset().fadeIn(0.24).play();
+        currentActionRef.current = next;
+        currentActionNameRef.current = requestedName;
+      }
+    }
+    mixerRef.current?.update(Math.min(delta, 0.05));
+
+    if (avatarRootRef.current) {
+      const walk = behavior.walking ? samplePlatformWalk(elapsed) : { x: 0, z: 0, yaw: 0 };
+      avatarRootRef.current.position.set(walk.x, 0, walk.z);
+      avatarRootRef.current.rotation.set(0, walk.yaw, 0);
+    }
+
     const motion = sampleAvatarMotion(
       phase,
-      clock.getElapsedTime(),
+      elapsed,
       reducedMotionRef.current,
       emotion
     );
@@ -277,7 +354,7 @@ export default function AvatarMesh({
     if (motion.blinkWeight > 0) {
       for (const mesh of rig.morphMeshes) {
         for (const target of BLINK_TARGETS) {
-          const idx = mesh.morphTargetDictionary[target];
+          const idx = resolveMorphTargetIndex(mesh.morphTargetDictionary, target);
           if (idx !== undefined) {
             mesh.morphTargetInfluences[idx] = motion.blinkWeight;
           }
@@ -286,7 +363,7 @@ export default function AvatarMesh({
     } else {
       for (const mesh of rig.morphMeshes) {
         for (const target of BLINK_TARGETS) {
-          const idx = mesh.morphTargetDictionary[target];
+          const idx = resolveMorphTargetIndex(mesh.morphTargetDictionary, target);
           if (idx !== undefined) {
             mesh.morphTargetInfluences[idx] = 0;
           }
@@ -294,29 +371,14 @@ export default function AvatarMesh({
       }
     }
 
-    // ── Micro-expressions (additive, after blink) ────────
-    for (const [target, weight] of Object.entries(motion.microExpressions)) {
-      if (!weight) continue;
-      for (const mesh of rig.morphMeshes) {
-        const idx = mesh.morphTargetDictionary[target];
-        if (idx !== undefined) {
-          // Additive: max of existing (from lip-sync) and micro-expression
-          mesh.morphTargetInfluences[idx] = Math.min(
-            1,
-            Math.max(mesh.morphTargetInfluences[idx] ?? 0, weight)
-          );
-        }
-      }
-    }
-
     const started = startedAtRef.current;
-    const elapsed = started === null ? 0 : (performance.now() - started) / 1000;
+    const speechElapsed = started === null ? 0 : (performance.now() - started) / 1000;
 
     let jawWeight = 0;
     let visemeWeights: Record<string, number> | null = null;
 
     if (cues && cues.length > 0) {
-      visemeWeights = getVisemeWeights(cues, elapsed);
+      visemeWeights = getVisemeWeights(cues, speechElapsed);
       // Speech-energy head nod: derive energy from total viseme openness
       const energy = visemeWeights
         ? Object.values(visemeWeights).reduce((sum, w) => sum + w, 0) / RHUBARB_SHAPES.length
@@ -331,13 +393,14 @@ export default function AvatarMesh({
         );
       }
     } else {
-      jawWeight = approximateTalkingJawWeight(clock.getElapsedTime(), talking);
+      jawWeight = approximateTalkingJawWeight(elapsed, talking);
     }
 
     // Reset all ARKit targets before choosing this frame's animation path.
     // Without this, targets that are absent from the next viseme retain their
     // previous weight, and switching to dedicated visemes can leave an old
     // ARKit mouth shape stuck on the face.
+    clearMorphTargetInfluences(rig.morphMeshes, EXPRESSION_TARGETS);
     if (rig.hasArkitTargets) {
       clearMorphTargetInfluences(rig.morphMeshes, ARKIT_CONTROLLED_MORPH_TARGETS);
     }
@@ -358,10 +421,7 @@ export default function AvatarMesh({
           }
         }
       }
-      return;
-    }
-
-    if (rig.hasArkitTargets) {
+    } else if (rig.hasArkitTargets) {
       const weightSource: Record<string, number> = visemeWeights
         ? Object.fromEntries(
             RHUBARB_SHAPES.map((shape) => [shape, visemeWeights![shape] ?? 0])
@@ -382,14 +442,11 @@ export default function AvatarMesh({
           combined.jawOpen = Math.max(combined.jawOpen ?? 0, jawWeight);
         }
         for (const [target, weight] of Object.entries(combined)) {
-          const idx = mesh.morphTargetDictionary[target];
+          const idx = resolveMorphTargetIndex(mesh.morphTargetDictionary, target);
           if (idx !== undefined) mesh.morphTargetInfluences[idx] = weight;
         }
       }
-      return;
-    }
-
-    if (rig.jawBone && rig.jawBindRotation) {
+    } else if (rig.jawBone && rig.jawBindRotation) {
       // Simple bone-rotation fallback for rigs with no facial morph targets
       // at all — open around the local X axis, small enough to stay
       // believable rather than unhinged. The delta is relative to the GLB's
@@ -397,20 +454,37 @@ export default function AvatarMesh({
       const weight = visemeWeights ? 1 - (visemeWeights.X ?? 0) : jawWeight;
       applyJawOpenRotation(rig.jawBone, rig.jawBindRotation, weight);
     }
+
+    // Expressions are applied last so ARKit mouth resets and Rhubarb visemes
+    // cannot immediately erase Judy's smile/frown on compatible rigs.
+    for (const [target, weight] of Object.entries(motion.microExpressions)) {
+      if (!weight) continue;
+      for (const mesh of rig.morphMeshes) {
+        const idx = resolveMorphTargetIndex(mesh.morphTargetDictionary, target);
+        if (idx !== undefined) {
+          mesh.morphTargetInfluences[idx] = Math.min(
+            1,
+            Math.max(mesh.morphTargetInfluences[idx] ?? 0, weight)
+          );
+        }
+      }
+    }
   });
   /* eslint-enable react-hooks/immutability */
 
   return (
     <group rotation={[0, facingRotationY, 0]}>
-      <mesh position={[0, -0.024, 0]} receiveShadow>
-        <cylinderGeometry args={[0.54, 0.58, 0.048, 64]} />
+      <mesh position={[0, -0.03, 0]} receiveShadow>
+        <cylinderGeometry args={[0.8, 0.86, 0.06, 64]} />
         <meshStandardMaterial
           color="#5f486f"
           roughness={0.92}
           metalness={0.04}
         />
       </mesh>
-      <primitive object={scene} />
+      <group ref={avatarRootRef}>
+        <primitive object={scene} />
+      </group>
     </group>
   );
 }

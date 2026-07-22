@@ -383,7 +383,7 @@ describe('JudyDock caption overlay (Swarm J6)', () => {
 });
 
 describe('JudyDock synchronized local speech', () => {
-  it('starts no audio on mount, then uses the immediate browser welcome and keeps the microphone off until it ends', async () => {
+  it('starts no audio on mount, then uses synchronized Judy speech and keeps the microphone off until it ends', async () => {
     const utterances: Array<{
       text: string;
       lang: string;
@@ -457,15 +457,18 @@ describe('JudyDock synchronized local speech', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Talk with Judy' }));
-    await waitFor(() => expect(utterances).toHaveLength(1));
-    expect(audioInstances).toHaveLength(0);
+    await waitFor(() => expect(audioInstances).toHaveLength(1));
+    expect(utterances).toHaveLength(0);
     expect(screen.getByRole('status')).toHaveTextContent('Judy is getting ready');
     expect(recognitionMock.start).not.toHaveBeenCalled();
-    expect(speechSynthesis.speak).toHaveBeenCalledOnce();
-    expect(utterances[0].text).toContain("Hi, I'm Judy Pierre");
-    expect(fetchMock).not.toHaveBeenCalledWith('/api/avatar/lipsync', expect.anything());
+    expect(speechSynthesis.speak).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/avatar/lipsync',
+      expect.objectContaining({ body: expect.stringContaining("Hi, I'm Judy Pierre") })
+    );
 
-    act(() => utterances[0].onend?.());
+    act(() => audioInstances[0].onplay?.());
+    act(() => audioInstances[0].onended?.());
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Listening'));
     expect(recognitionMock.start).toHaveBeenCalled();
     expect(window.localStorage.getItem('judy-speech-synthesis-enabled')).toBe('true');
@@ -523,10 +526,12 @@ describe('JudyDock synchronized local speech', () => {
 
     render(<JudyDock userName="Robert" />);
     fireEvent.click(await screen.findByRole('button', { name: 'Talk with Judy' }));
+    await waitFor(() => expect(audioInstances).toHaveLength(1));
+    act(() => audioInstances[0].onended?.());
     await waitFor(() => expect(recognitionMock.start).toHaveBeenCalled());
 
     act(() => recognitionMock.options?.onFinal('What should I wear?'));
-    await waitFor(() => expect(audioInstances).toHaveLength(1));
+    await waitFor(() => expect(audioInstances).toHaveLength(2));
   });
 
   it('pauses listening while an explicitly requested translation speaks, then resumes', async () => {
@@ -585,6 +590,8 @@ describe('JudyDock synchronized local speech', () => {
 
     render(<JudyDock userName="Robert" />);
     fireEvent.click(await screen.findByRole('button', { name: 'Talk with Judy' }));
+    await waitFor(() => expect(audioInstances).toHaveLength(1));
+    act(() => audioInstances[0].onended?.());
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Listening'));
     const startsBeforeTranslation = recognitionMock.start.mock.calls.length;
 
@@ -595,11 +602,11 @@ describe('JudyDock synchronized local speech', () => {
     await screen.findByText('Hola, puedo ayudarte con tu viaje.');
     fireEvent.click(screen.getByRole('button', { name: 'Speak translation' }));
 
-    await waitFor(() => expect(audioInstances).toHaveLength(1));
+    await waitFor(() => expect(audioInstances).toHaveLength(2));
     expect(screen.getByLabelText('Conversation paused')).toBeInTheDocument();
     expect(recognitionMock.start).toHaveBeenCalledTimes(startsBeforeTranslation);
 
-    act(() => audioInstances[0].onended?.());
+    act(() => audioInstances[1].onended?.());
     await waitFor(() => expect(screen.getByLabelText('Judy is listening')).toBeInTheDocument());
     expect(recognitionMock.start.mock.calls.length).toBeGreaterThan(startsBeforeTranslation);
   });
@@ -727,15 +734,17 @@ describe('JudyDock synchronized local speech', () => {
 
     render(<JudyDock userName="Robert" />);
     fireEvent.click(await screen.findByRole('button', { name: 'Talk with Judy' }));
+    await waitFor(() => expect(audioInstances).toHaveLength(1));
+    act(() => audioInstances[0].onended?.());
     await waitFor(() => expect(recognitionMock.start).toHaveBeenCalled());
     const startsBeforeReply = recognitionMock.start.mock.calls.length;
 
     act(() => recognitionMock.options?.onFinal('Which train should I take?'));
-    await waitFor(() => expect(audioInstances).toHaveLength(1));
+    await waitFor(() => expect(audioInstances).toHaveLength(2));
     expect(screen.getByRole('status')).toHaveTextContent('Judy is speaking');
     expect(recognitionMock.start).toHaveBeenCalledTimes(startsBeforeReply);
 
-    act(() => audioInstances[0].onended?.());
+    act(() => audioInstances[1].onended?.());
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Listening'));
     expect(recognitionMock.start.mock.calls.length).toBeGreaterThan(startsBeforeReply);
   });

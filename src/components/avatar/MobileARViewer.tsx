@@ -2,6 +2,11 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Loader2, MessageCircle, ScanLine, Send, X } from "lucide-react";
+import {
+  selectAvatarBehavior,
+  type AvatarWeatherContext,
+} from "@/lib/avatar/behavior";
+import type { ConversationPhase } from "./conversationMachine";
 
 const MODEL_VIEWER_SCRIPT_ID = "judy-model-viewer-script";
 const MODEL_VIEWER_SCRIPT_SRC = "/vendor/model-viewer-4.3.1.min.js";
@@ -12,11 +17,26 @@ interface MobileARViewerProps {
   onClose: () => void;
   messages: ReadonlyArray<{ role: "user" | "judy"; text: string }>;
   isSending: boolean;
+  talking: boolean;
+  phase: ConversationPhase;
+  emotionName?: string | null;
+  weather?: AvatarWeatherContext | null;
   onSendMessage: (text: string) => void;
 }
 
 interface ModelViewerElement extends HTMLElement {
   canActivateAR?: boolean;
+  availableAnimations?: string[];
+  appendedAnimations?: string[];
+  animationName?: string;
+  currentTime?: number;
+  updateComplete?: Promise<unknown>;
+  play?: (options?: { repetitions?: number; pingpong?: boolean }) => void;
+  appendAnimation?: (
+    name: string,
+    options?: { repetitions?: number; weight?: number; fade?: boolean | number }
+  ) => void;
+  detachAnimation?: (name: string, options?: { fade?: boolean | number }) => void;
 }
 
 interface ARStatusEvent extends Event {
@@ -29,6 +49,10 @@ export default function MobileARViewer({
   onClose,
   messages,
   isSending,
+  talking,
+  phase,
+  emotionName,
+  weather,
   onSendMessage,
 }: MobileARViewerProps) {
   const viewerRef = useRef<ModelViewerElement | null>(null);
@@ -36,6 +60,16 @@ export default function MobileARViewer({
   const [arError, setArError] = useState<string | null>(null);
   const [chatOpen, setChatOpen] = useState(true);
   const [chatInput, setChatInput] = useState("");
+  const [animationClock, setAnimationClock] = useState(0);
+  const mainAnimationRef = useRef<string | null>(null);
+
+  const behavior = selectAvatarBehavior({
+    phase,
+    talking,
+    elapsedSeconds: animationClock,
+    emotionName,
+    weather,
+  });
 
   const submitChat = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -103,6 +137,15 @@ export default function MobileARViewer({
   }, [onClose, open]);
 
   useEffect(() => {
+    if (!open) return;
+    const startedAt = performance.now();
+    const interval = window.setInterval(() => {
+      setAnimationClock((performance.now() - startedAt) / 1000);
+    }, 1000);
+    return () => window.clearInterval(interval);
+  }, [open]);
+
+  useEffect(() => {
     const viewer = viewerRef.current;
     if (!open || !viewer) return;
     const handleStatus = (event: Event) => {
@@ -113,6 +156,40 @@ export default function MobileARViewer({
     viewer.addEventListener("ar-status", handleStatus);
     return () => viewer.removeEventListener("ar-status", handleStatus);
   }, [open, viewerReady]);
+
+  useEffect(() => {
+    const viewer = viewerRef.current;
+    if (!open || !viewer) return;
+
+    const configureAnimations = async () => {
+      const available = viewer.availableAnimations ?? [];
+      if (available.length === 0) return;
+      const desired = available.includes(behavior.animationName) ? behavior.animationName : 'Idle';
+      if (desired && desired !== mainAnimationRef.current) {
+        viewer.animationName = desired;
+        mainAnimationRef.current = desired;
+        await viewer.updateComplete;
+        viewer.currentTime = 0;
+        viewer.play?.({ repetitions: Infinity });
+      }
+
+      const appended = viewer.appendedAnimations ?? [];
+      if (available.includes('Blink') && !appended.includes('Blink')) {
+        viewer.appendAnimation?.('Blink', { repetitions: Infinity, weight: 1, fade: 0.15 });
+      }
+      const isTalkingAppended = appended.includes('Judy_Talk');
+      if (talking && available.includes('Judy_Talk') && !isTalkingAppended) {
+        viewer.appendAnimation?.('Judy_Talk', { repetitions: Infinity, weight: 1, fade: 0.08 });
+      } else if (!talking && isTalkingAppended) {
+        viewer.detachAnimation?.('Judy_Talk', { fade: 0.12 });
+      }
+    };
+
+    const handleLoad = () => void configureAnimations();
+    viewer.addEventListener('load', handleLoad);
+    void configureAnimations();
+    return () => viewer.removeEventListener('load', handleLoad);
+  }, [behavior.animationName, open, talking, viewerReady]);
 
   if (!open) return null;
 
@@ -139,6 +216,10 @@ export default function MobileARViewer({
         ar-scale="auto"
         camera-controls
         touch-action="pan-y"
+        autoplay
+        animation-name={behavior.animationName}
+        animation-crossfade-duration="240"
+        orientation="0deg 0deg 0deg"
         shadow-intensity="1.2"
         shadow-softness="0.8"
         exposure="1"

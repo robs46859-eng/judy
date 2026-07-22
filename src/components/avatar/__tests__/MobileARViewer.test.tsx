@@ -21,6 +21,8 @@ describe("MobileARViewer", () => {
         onClose={() => undefined}
         messages={[{ role: "judy", text: "Where are we headed?" }]}
         isSending={false}
+        talking={false}
+        phase="idle"
         onSendMessage={onSendMessage}
       />
     );
@@ -29,6 +31,8 @@ describe("MobileARViewer", () => {
     expect(screen.getByRole("dialog", { name: "Judy in your space" })).toBeInTheDocument();
     expect(viewer).toHaveAttribute("src", "/models/agreejudy.glb");
     expect(viewer).toHaveAttribute("ar-modes", "webxr scene-viewer quick-look");
+    expect(viewer).toHaveAttribute("animation-name", "Idle");
+    expect(viewer).toHaveAttribute("autoplay");
     expect(screen.getByText("Place Judy in my space")).toBeInTheDocument();
     expect(screen.getByText("Where are we headed?")).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Message Judy"), {
@@ -52,6 +56,8 @@ describe("MobileARViewer", () => {
         onClose={onClose}
         messages={[]}
         isSending={false}
+        talking={false}
+        phase="idle"
         onSendMessage={() => undefined}
       />
     );
@@ -66,6 +72,8 @@ describe("MobileARViewer", () => {
         onClose={onClose}
         messages={[]}
         isSending={false}
+        talking={false}
+        phase="idle"
         onSendMessage={() => undefined}
       />
     );

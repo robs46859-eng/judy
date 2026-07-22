@@ -44,6 +44,8 @@ import { splitSentences, currentSentenceIndex } from "@/lib/avatar/sentenceSplit
 import { BUNDLED_AVATAR_MODEL_URL } from "@/lib/avatar/model";
 import { localizedJudyWelcome } from "@/lib/avatar/welcome";
 import MobileARViewer from "./avatar/MobileARViewer";
+import type { AvatarWeatherContext } from "@/lib/avatar/behavior";
+import { selectBrowserVoice } from "@/lib/avatar/browserVoice";
 
 /** Bundled fallback used until an administrator activates an uploaded model. */
 export const GLB_AVATAR_MODEL_URL = BUNDLED_AVATAR_MODEL_URL;
@@ -70,6 +72,7 @@ interface JudyDockProps {
   userName?: string;
   userEmail?: string;
   avatarModelUrl?: string;
+  weather?: AvatarWeatherContext | null;
   /** When true, renders as a persistent sidebar/drawer instead of overlay. */
   docked?: boolean;
 }
@@ -109,6 +112,7 @@ export default function JudyDock({
   userName,
   userEmail,
   avatarModelUrl = GLB_AVATAR_MODEL_URL,
+  weather,
   docked = false,
 }: JudyDockProps) {
   const [chatOpen, setChatOpen] = useState(docked);
@@ -282,14 +286,10 @@ export default function JudyDock({
       const utterance = new SpeechSynthesisUtterance(text);
       if (language) {
         utterance.lang = language;
-        const normalized = language.toLowerCase();
-        const baseLanguage = normalized.split("-")[0];
-        const availableVoice = window.speechSynthesis
-          .getVoices()
-          .find((voice) => voice.lang.toLowerCase() === normalized)
-          ?? window.speechSynthesis
-            .getVoices()
-            .find((voice) => voice.lang.toLowerCase().split("-")[0] === baseLanguage);
+        const availableVoice = selectBrowserVoice(
+          window.speechSynthesis.getVoices(),
+          language
+        );
         if (availableVoice) utterance.voice = availableVoice;
       }
       utterance.onstart = () => {
@@ -746,6 +746,7 @@ export default function JudyDock({
               phase={conversation.phase}
               cues={visemeCues}
               emotion={emotion}
+              weather={weather}
               onUnavailable={() => setGlbAvatarFailed(true)}
             />
           </div>
@@ -788,7 +789,7 @@ export default function JudyDock({
           if (typeof window !== "undefined") {
             window.localStorage.setItem(SPEECH_SYNTHESIS_STORAGE_KEY, "true");
           }
-          speakWithBrowser(
+          void speakWithLipSync(
             localizedJudyWelcome(spokenLanguage),
             spokenLanguage,
             () => dispatchConversation({ type: "WELCOME_FINISHED" })
@@ -901,6 +902,10 @@ export default function JudyDock({
         onClose={() => setArOpen(false)}
         messages={messages}
         isSending={isLoading}
+        talking={isTalking}
+        phase={conversation.phase}
+        emotionName={emotion?.name}
+        weather={weather}
         onSendMessage={(text) => void sendMessage(text)}
       />
 

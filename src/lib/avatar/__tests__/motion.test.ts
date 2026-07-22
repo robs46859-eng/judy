@@ -57,7 +57,7 @@ describe('sampleAvatarMotion', () => {
 
   it('cancels agreejudy authoring offsets so she looks into the camera', () => {
     expect(getAvatarFacingRotation('/models/agreejudy.glb')).toBeCloseTo(0.0046);
-    expect(getAvatarHeadPitchOffset('/models/agreejudy.glb')).toBeCloseTo(0.035);
+    expect(getAvatarHeadPitchOffset('/models/agreejudy.glb')).toBeCloseTo(Math.PI / 18);
     expect(getAvatarHeadPitchOffset('/api/avatar/model?v=uploaded')).toBe(0);
   });
 });

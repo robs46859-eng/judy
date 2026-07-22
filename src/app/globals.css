@@ -3779,7 +3779,7 @@ h1, h2, h3, h4,
 /* Keep Judy's feet/platform in the lower visual third instead of letting the
    automatic 3D bounds center her too high behind the app chrome. */
 .immersive-avatar-stage .judy-glb-avatar canvas {
-  transform: translateY(clamp(28px, 5vh, 56px));
+  transform: translateY(15%);
 }
 
 .immersive-avatar-stage .judy-chat-inline {

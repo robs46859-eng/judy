@@ -5,10 +5,17 @@ import {
   ARKIT_CONTROLLED_MORPH_TARGETS,
   applyJawOpenRotation,
   clearMorphTargetInfluences,
+  resolveMorphTargetIndex,
   restoreJawBindRotation,
 } from '../rigRuntime';
 
 describe('clearMorphTargetInfluences', () => {
+  it('resolves Blender and ARKit left/right morph naming variants', () => {
+    const dictionary = { mouthSmileLeft: 2, eyeBlinkRight: 5 };
+    expect(resolveMorphTargetIndex(dictionary, 'mouthSmile_L')).toBe(2);
+    expect(resolveMorphTargetIndex(dictionary, 'eyeBlink_R')).toBe(5);
+  });
+
   it('clears every ARKit target while preserving unrelated morphs', () => {
     const mesh = {
       morphTargetDictionary: {

@@ -40,7 +40,7 @@ export function getAvatarFacingRotation(modelUrl: string): number {
 /** Correct the slight chin-up bind pose on the current Judy rig. */
 export function getAvatarHeadPitchOffset(modelUrl: string): number {
   const pathname = modelUrl.split('?', 1)[0].toLowerCase();
-  return /\/agreejudy\.glb$/.test(pathname) ? 0.035 : 0;
+  return /\/agreejudy\.glb$/.test(pathname) ? Math.PI / 18 : 0;
 }
 
 /* ── Blink cycle ──────────────────────────────────────────────────────── */

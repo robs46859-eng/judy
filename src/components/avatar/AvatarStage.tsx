@@ -7,6 +7,7 @@ import AvatarMesh from "./AvatarMesh";
 import type { RhubarbCue } from "@/lib/avatar/visemeTimeline";
 import { getAvatarFacingRotation } from "@/lib/avatar/motion";
 import type { EmotionPreset } from "@/lib/avatar/emotion";
+import type { AvatarWeatherContext } from "@/lib/avatar/behavior";
 import type { ConversationPhase } from "./conversationMachine";
 
 export interface AvatarStageProps {
@@ -16,6 +17,7 @@ export interface AvatarStageProps {
   cues?: RhubarbCue[] | null;
   /** Emotion preset derived from reply text (blended into avatar motion). */
   emotion?: EmotionPreset | null;
+  weather?: AvatarWeatherContext | null;
   /**
    * Called at most once if the GLB fails to load or render (missing file,
    * malformed GLTF, WebGL unavailable, ...). The caller (JudyDock) should
@@ -109,6 +111,7 @@ export default function AvatarStage({
   phase,
   cues,
   emotion,
+  weather,
   onUnavailable,
 }: AvatarStageProps) {
   const facingRotation = useMemo(() => getAvatarFacingRotation(modelUrl), [modelUrl]);
@@ -135,6 +138,7 @@ export default function AvatarStage({
               phase={phase}
               cues={cues}
               emotion={emotion}
+              weather={weather}
               facingRotationY={facingRotation}
             />
           </Bounds>

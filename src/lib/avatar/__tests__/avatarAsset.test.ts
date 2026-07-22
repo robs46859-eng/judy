@@ -25,6 +25,7 @@ interface GlbJson {
   nodes?: GlbNode[];
   skins?: GlbSkin[];
   meshes?: GlbMesh[];
+  animations?: Array<{ name?: string }>;
 }
 
 function readGlbJson(filePath: string): GlbJson {
@@ -68,5 +69,23 @@ describe('Judy production avatar asset', () => {
     expect(report.visemeTargets).toEqual([...REQUIRED_VISEME_TARGETS]);
     expect(report.missingVisemeTargets).toEqual([]);
     expect(report.arkitMouthTargets).toContain('jawOpen');
+  });
+
+  it('preserves the 22 source clips and adds portable AR behavior clips', () => {
+    const glb = readGlbJson(join(process.cwd(), 'public/models/agreejudy.glb'));
+    const animationNames = (glb.animations ?? []).map((animation) => animation.name);
+
+    expect(animationNames).toHaveLength(26);
+    expect(animationNames).toEqual(expect.arrayContaining([
+      'Idle',
+      'Walk_Forward_InPlace',
+      'Fidget_WeightShift',
+      'Fidget_LookAround',
+      'Blink',
+      'Judy_Talk',
+      'Judy_Shiver',
+      'Judy_CoolDown',
+      'Judy_Wave',
+    ]));
   });
 });

@@ -294,6 +294,10 @@ export default function Dashboard({
           userName={userName}
           userEmail={userEmail}
           avatarModelUrl={avatarModelUrl}
+          weather={{
+            temperatureF: weather?.temperature,
+            condition: weather?.condition,
+          }}
         />
       </section>
 

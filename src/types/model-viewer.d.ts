@@ -14,6 +14,10 @@ declare module "react" {
         "touch-action"?: string;
         "auto-rotate"?: boolean;
         autoplay?: boolean;
+        "animation-name"?: string;
+        "animation-crossfade-duration"?: string;
+        orientation?: string;
+        scale?: string;
         "shadow-intensity"?: string;
         "shadow-softness"?: string;
         exposure?: string;
