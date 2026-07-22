@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { NextRequest, NextResponse } from 'next/server';
 
 import { readCurrentAvatar, type StoredAvatar } from '@/lib/avatar/avatarStorage';
+import { BUNDLED_AVATAR_MODEL_URL } from '@/lib/avatar/model';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -29,10 +30,14 @@ function modelResponse(
 }
 
 async function bundledFallback(): Promise<NextResponse> {
-  const facePath = join(process.cwd(), 'public', 'models', 'judyface.glb');
-  if (existsSync(facePath)) {
+  const preferredPath = join(
+    process.cwd(),
+    'public',
+    BUNDLED_AVATAR_MODEL_URL.replace(/^\/+/, '')
+  );
+  if (existsSync(preferredPath)) {
     try {
-      const bytes = await readFile(facePath);
+      const bytes = await readFile(preferredPath);
       const sha256 = createHash('sha256').update(bytes).digest('hex');
       return modelResponse(bytes, sha256, 'no-cache');
     } catch {

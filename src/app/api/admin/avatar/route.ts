@@ -11,6 +11,7 @@ import {
   type JsonValue,
 } from '@/lib/avatar/avatarStorage';
 import { rateLimit } from '@/lib/rate-limit';
+import { BUNDLED_AVATAR_MODEL_URL } from '@/lib/avatar/model';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -56,8 +57,12 @@ async function authorizedAdminEmail(
 }
 
 function bundledModelUrl(): string {
-  const facePath = join(process.cwd(), 'public', 'models', 'judyface.glb');
-  return existsSync(facePath) ? '/models/judyface.glb' : '/models/judyrig.glb';
+  const preferredPath = join(
+    process.cwd(),
+    'public',
+    BUNDLED_AVATAR_MODEL_URL.replace(/^\/+/, '')
+  );
+  return existsSync(preferredPath) ? BUNDLED_AVATAR_MODEL_URL : '/models/judyrig.glb';
 }
 
 export async function GET(request: NextRequest) {

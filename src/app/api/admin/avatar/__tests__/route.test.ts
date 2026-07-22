@@ -95,7 +95,7 @@ describe('GET /api/admin/avatar', () => {
 
     mocks.existsSync.mockReturnValue(true);
     const withFace = await GET(getRequest());
-    expect((await withFace.json()).bundled.modelUrl).toBe('/models/judyface.glb');
+    expect((await withFace.json()).bundled.modelUrl).toBe('/models/agreejudy.glb');
   });
 });
 
