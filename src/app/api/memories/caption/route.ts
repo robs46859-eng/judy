@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { getSessionUserId } from '@/lib/auth';
 import { enforceRateLimit } from '@/lib/rate-limit';
 import { configuredGeminiTextModel, createGeminiClient } from '@/lib/gemini/config';
+import { validateBase64Image } from '@/lib/images/base64';
 
 export const runtime = 'nodejs';
 
@@ -17,6 +18,7 @@ export const runtime = 'nodejs';
 
 // ~8 MB of base64 ≈ ~6 MB image.
 const MAX_BASE64_CHARS = 8 * 1024 * 1024;
+const MAX_IMAGE_BYTES = 6 * 1024 * 1024;
 
 const bodySchema = z
   .object({
@@ -88,6 +90,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid caption request.' }, { status: 400 });
   }
   const { imageBase64, mimeType, location, context } = parsed.data;
+  const validatedImage = validateBase64Image(imageBase64, mimeType, {
+    maxBytes: MAX_IMAGE_BYTES,
+  });
+  if (!validatedImage) {
+    return NextResponse.json({ error: 'The uploaded image data is invalid.' }, { status: 400 });
+  }
 
   const key = process.env.GEMINI_API_KEY;
   if (!key) {
@@ -114,10 +122,30 @@ export async function POST(request: NextRequest) {
           role: 'user',
           parts: [
             { text: prompt },
-            { inlineData: { mimeType, data: imageBase64 } },
+            {
+              inlineData: {
+                mimeType: validatedImage.mimeType,
+                data: validatedImage.data,
+              },
+            },
           ],
         },
       ],
+      config: {
+        responseMimeType: 'application/json',
+        responseJsonSchema: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['caption', 'altText', 'tags'],
+          properties: {
+            caption: { type: 'string' },
+            altText: { type: 'string' },
+            tags: { type: 'array', items: { type: 'string' }, minItems: 5, maxItems: 10 },
+          },
+        },
+        maxOutputTokens: 500,
+        temperature: 0.35,
+      },
     });
 
     const captioned = normalize(extractJson(result.text ?? null));

@@ -55,9 +55,23 @@ export const contactSchema = z.object({
   message: z.string().trim().min(1, 'Message is required').max(5000),
 });
 
+const chatTripContextSchema = z.object({
+  name: z.string().trim().max(200).optional(),
+  destinationName: z.string().trim().max(200).optional(),
+  departureDate: z.string().trim().max(80).optional(),
+  returnDate: z.string().trim().max(80).optional(),
+  totalBudget: z.number().finite().min(0).max(100_000_000).optional(),
+  spendingBudget: z.number().finite().min(0).max(100_000_000).optional(),
+  itineraryItems: z
+    .array(z.object({ title: z.string().trim().min(1).max(300) }))
+    .max(100)
+    .optional(),
+});
+
 export const chatSchema = z.object({
   message: z.string().trim().min(1, 'message is required').max(2000),
-  tripContext: z.unknown().optional().nullable(),
+  // Zod objects strip unlisted database fields before they can reach a model.
+  tripContext: chatTripContextSchema.optional().nullable(),
   history: z
     .array(
       z

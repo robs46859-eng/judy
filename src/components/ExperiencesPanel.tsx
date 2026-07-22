@@ -78,14 +78,14 @@ export default function ExperiencesPanel({
   if (!open) return null;
 
   return (
-    <div className="td-chat-panel td-experiences-panel">
-      <div className="td-chat-header">
-        <div className="td-chat-title">
+    <div className="judy-chat-panel judy-experiences-panel">
+      <div className="judy-chat-header">
+        <div className="judy-chat-title">
           <Compass size={16} aria-hidden="true" />
           <span>Experiences{destinationName ? ` · ${destinationName}` : ""}</span>
         </div>
         <button
-          className="td-chat-close"
+          className="judy-chat-close"
           onClick={onClose}
           aria-label="Close experiences panel"
         >
@@ -93,11 +93,11 @@ export default function ExperiencesPanel({
         </button>
       </div>
 
-      <div className="td-exp-cats">
+      <div className="judy-exp-cats">
         {CATEGORIES.map((c) => (
           <button
             key={c}
-            className={`td-exp-cat${category === c ? " active" : ""}`}
+            className={`judy-exp-cat${category === c ? " active" : ""}`}
             onClick={() => setCategory(c)}
           >
             {c}
@@ -105,40 +105,40 @@ export default function ExperiencesPanel({
         ))}
       </div>
 
-      <div className="td-exp-list">
+      <div className="judy-exp-list">
         {loading && (
-          <div className="td-exp-hint">
+          <div className="judy-exp-hint">
             <Loader2 size={16} className="spinner" aria-hidden="true" /> Finding experiences…
           </div>
         )}
-        {error && !loading && <div className="td-exp-error">{error}</div>}
+        {error && !loading && <div className="judy-exp-error">{error}</div>}
         {!loading && !error && experiences.length === 0 && (
-          <div className="td-exp-hint">No experiences yet for this filter.</div>
+          <div className="judy-exp-hint">No experiences yet for this filter.</div>
         )}
         {!loading &&
           !error &&
           experiences.map((exp) => (
-            <div key={exp.id} className="td-exp-card">
-              <div className="td-exp-card-head">
-                <span className="td-exp-cat-tag">{exp.category}</span>
+            <div key={exp.id} className="judy-exp-card">
+              <div className="judy-exp-card-head">
+                <span className="judy-exp-cat-tag">{exp.category}</span>
                 {(exp.city || exp.country) && (
-                  <span className="td-exp-loc">
+                  <span className="judy-exp-loc">
                     <MapPin size={12} aria-hidden="true" />
                     {[exp.city, exp.country].filter(Boolean).join(", ")}
                   </span>
                 )}
               </div>
-              <strong className="td-exp-title">{exp.title}</strong>
-              <p className="td-exp-desc">{exp.description}</p>
-              <div className="td-exp-meta">
+              <strong className="judy-exp-title">{exp.title}</strong>
+              <p className="judy-exp-desc">{exp.description}</p>
+              <div className="judy-exp-meta">
                 {typeof exp.priceFrom === "number" && (
-                  <span className="td-exp-price">
+                  <span className="judy-exp-price">
                     from {exp.currency ?? "$"}
                     {exp.priceFrom}
                   </span>
                 )}
                 {typeof exp.durationHours === "number" && (
-                  <span className="td-exp-dur">{exp.durationHours}h</span>
+                  <span className="judy-exp-dur">{exp.durationHours}h</span>
                 )}
               </div>
             </div>

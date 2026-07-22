@@ -5,6 +5,7 @@ import { getSessionUserId } from '@/lib/auth';
 import { enforceRateLimit } from '@/lib/rate-limit';
 import { presetById } from '@/lib/memories/edit-presets';
 import { configuredGeminiImageModel, createGeminiClient } from '@/lib/gemini/config';
+import { validateBase64Image } from '@/lib/images/base64';
 
 export const runtime = 'nodejs';
 
@@ -19,6 +20,8 @@ export const runtime = 'nodejs';
  */
 
 const MAX_BASE64_CHARS = 8 * 1024 * 1024;
+const MAX_IMAGE_BYTES = 6 * 1024 * 1024;
+const EDITABLE_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
 const bodySchema = z
   .object({
     imageBase64: z.string().min(16).max(MAX_BASE64_CHARS),
@@ -54,6 +57,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid edit request.' }, { status: 400 });
   }
   const { imageBase64, mimeType, preset, prompt } = parsed.data;
+  const validatedInput = validateBase64Image(imageBase64, mimeType, {
+    maxBytes: MAX_IMAGE_BYTES,
+    allowedMimeTypes: EDITABLE_IMAGE_TYPES,
+  });
+  if (!validatedInput) {
+    return NextResponse.json({ error: 'The uploaded image data is invalid.' }, { status: 400 });
+  }
 
   const instruction =
     (preset ? presetById(preset)?.prompt : undefined) ||
@@ -72,7 +82,10 @@ export async function POST(request: NextRequest) {
       contents: [
         {
           role: 'user',
-          parts: [{ text: instruction }, { inlineData: { mimeType, data: imageBase64 } }],
+          parts: [
+            { text: instruction },
+            { inlineData: { mimeType: validatedInput.mimeType, data: validatedInput.data } },
+          ],
         },
       ],
       config: { responseModalities: [Modality.IMAGE, Modality.TEXT] },
@@ -81,10 +94,18 @@ export async function POST(request: NextRequest) {
     const parts = (result.candidates?.[0]?.content?.parts ?? []) as InlineDataPart[];
     const imagePart = parts.find((p) => p.inlineData?.data);
     if (imagePart?.inlineData?.data) {
+      const validatedOutput = validateBase64Image(
+        imagePart.inlineData.data,
+        imagePart.inlineData.mimeType ?? '',
+        { maxBytes: MAX_IMAGE_BYTES, allowedMimeTypes: EDITABLE_IMAGE_TYPES }
+      );
+      if (!validatedOutput) {
+        throw new Error('Image model returned an invalid image payload.');
+      }
       return NextResponse.json(
         {
-          imageBase64: imagePart.inlineData.data,
-          mimeType: imagePart.inlineData.mimeType ?? 'image/png',
+          imageBase64: validatedOutput.data,
+          mimeType: validatedOutput.mimeType,
         },
         { headers: { 'Cache-Control': 'no-store' } }
       );

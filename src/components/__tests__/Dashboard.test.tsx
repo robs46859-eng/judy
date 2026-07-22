@@ -79,7 +79,7 @@ describe('Dashboard', () => {
     expect(screen.queryByText(/Hello, Robert/i)).not.toBeInTheDocument();
   });
 
-  it('keeps the logo, top action controls, and left navigation', async () => {
+  it('keeps the logo, top action controls, primary navigation, and compact Judy toolbar', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => jsonResponse([]))
@@ -92,7 +92,8 @@ describe('Dashboard', () => {
     expect(screen.getByTitle('Profile')).toBeInTheDocument();
     expect(screen.getByTitle('Toggle Theme')).toBeInTheDocument();
     expect(screen.getByTitle('Sign Out')).toBeInTheDocument();
-    expect(screen.getByText('Affiliate Links')).toBeInTheDocument();
+    expect(screen.getByLabelText('Trip context toolbar')).toBeInTheDocument();
+    expect(screen.getByLabelText('Judy Pierre status')).toHaveTextContent('Judy Pierre is ready');
 
     for (const label of ['Dashboard', 'Itinerary', 'Trip Viewer', 'Budget', 'Contact', 'Settings']) {
       expect(screen.getByText(label)).toBeInTheDocument();
@@ -140,8 +141,7 @@ describe('Dashboard', () => {
 
     render(<Dashboard userName="Robert" userEmail="robs46859@gmail.com" />);
     await waitFor(() => expect(screen.getByTestId('judy-dock-stub')).toBeInTheDocument());
-    // "Lisbon" appears twice (countdown destination + weather badge) once
-    // the trip loads — wait for both rather than asserting a single match.
+    // Destination context belongs to the compact toolbar once the trip loads.
     await waitFor(() => expect(screen.getAllByText('Lisbon').length).toBeGreaterThan(0));
 
     expect(screen.getByText('Trip Countdown')).toBeInTheDocument();

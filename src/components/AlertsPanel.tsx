@@ -61,30 +61,30 @@ export default function AlertsPanel({ open, onClose, destinationName }: AlertsPa
   if (!open) return null;
 
   return (
-    <div className="td-chat-panel td-alerts-panel">
-      <div className="td-chat-header">
-        <div className="td-chat-title">
+    <div className="judy-chat-panel judy-alerts-panel">
+      <div className="judy-chat-header">
+        <div className="judy-chat-title">
           <Bell size={16} aria-hidden="true" />
           <span>Travel alerts{destinationName ? ` · ${destinationName}` : ""}</span>
         </div>
-        <button className="td-chat-close" onClick={onClose} aria-label="Close alerts panel">
+        <button className="judy-chat-close" onClick={onClose} aria-label="Close alerts panel">
           <X size={16} aria-hidden="true" />
         </button>
       </div>
 
-      <div className="td-alerts-list">
+      <div className="judy-alerts-list">
         {loading && (
-          <div className="td-alerts-hint">
+          <div className="judy-alerts-hint">
             <Loader2 size={14} className="spinner" aria-hidden="true" /> Checking alerts…
           </div>
         )}
-        {error && !loading && <div className="td-alerts-error">{error}</div>}
+        {error && !loading && <div className="judy-alerts-error">{error}</div>}
         {!loading &&
           !error &&
           alerts.map((a) => (
-            <div key={a.id} className={`td-alert td-alert-${a.severity}`}>
-              <span className="td-alert-icon">{severityIcon(a.severity)}</span>
-              <div className="td-alert-text">
+            <div key={a.id} className={`judy-alert judy-alert-${a.severity}`}>
+              <span className="judy-alert-icon">{severityIcon(a.severity)}</span>
+              <div className="judy-alert-text">
                 <strong>{a.title}</strong>
                 <p>{a.body}</p>
               </div>

@@ -158,6 +158,11 @@ async function askGeminiJson(prompt: string): Promise<unknown | null> {
     const result = await genAI.models.generateContent({
       model: configuredGeminiTextModel(),
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      config: {
+        responseMimeType: 'application/json',
+        maxOutputTokens: 1_200,
+        temperature: 0.4,
+      },
     });
     return extractJsonObject(result.text ?? null);
   } catch {

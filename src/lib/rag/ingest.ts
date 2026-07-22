@@ -13,6 +13,7 @@
  * (No `server-only` import — this runs under tsx/node, not in a request.)
  */
 
+import 'dotenv/config';
 import fs from 'node:fs';
 import path from 'node:path';
 import { embedTexts, embeddingsAvailable } from './embeddings';

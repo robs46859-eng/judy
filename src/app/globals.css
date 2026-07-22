@@ -1,65 +1,45 @@
-/* Free lookalike fonts (Google Fonts) standing in for the licensed set:
-   Pacifico → "Romantic Groovy" groovy display · Caveat → Fenway script
-   Yeseva One → "Exodus" vintage serif display · DM Sans → Knubi body    */
-@import url('https://fonts.googleapis.com/css2?family=Pacifico&family=Caveat:wght@500;600;700&family=Yeseva+One&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap');
-
-/* ─────────────────────────────────────────────────────────────
-   LICENSED FONT DROP-IN
-   When you have the real files, drop the .woff2s in /public/fonts
-   and uncomment the matching block below. Because the licensed
-   family name is listed FIRST in each --font-* stack, it takes
-   over automatically once the @font-face resolves — no other edits.
-   ─────────────────────────────────────────────────────────────
-@font-face { font-family:'Romantic Groovy'; src:url('/fonts/romantic-groovy.woff2') format('woff2'); font-display:swap; }
-@font-face { font-family:'Exodus';          src:url('/fonts/exodus-serif.woff2')     format('woff2'); font-display:swap; }
-@font-face { font-family:'Fenway';          src:url('/fonts/fenway-script.woff2')    format('woff2'); font-display:swap; }
-@font-face { font-family:'Retrofield';      src:url('/fonts/retrofield.woff2')       format('woff2'); font-display:swap; }
-@font-face { font-family:'Knubi';           src:url('/fonts/knubi.woff2')            format('woff2'); font-display:swap; }
-@font-face { font-family:'Baround';         src:url('/fonts/baround.woff2')          format('woff2'); font-display:swap; }
-   ───────────────────────────────────────────────────────────── */
-
 /* ═══════════════════════════════════════════
-   DESIGN TOKENS — Kodak Portra 400 / 1970s
-   Warm faded orange + pastel lilac, cream paper
+   DESIGN TOKENS — JUDY PIERRE
+   Pearl-gray space, lavender character accents, botanical green,
+   and charcoal details drawn from the supplied Judy artwork.
    ═══════════════════════════════════════════ */
 :root {
-  /* Font stacks — licensed name first, free lookalike second, system last */
-  --font-sans: 'Knubi', 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-serif: 'Exodus', 'Retrofield', 'Yeseva One', 'Baround', Georgia, 'Times New Roman', serif;
-  --font-display: 'Romantic Groovy', 'Fenway', 'Pacifico', 'Caveat', cursive;
+  --font-sans: 'Avenir Next', Avenir, 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-serif: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+  --font-display: var(--font-serif);
 
-  /* Palette: Warm Paper #f5ebdd · Faded Lilac #e7dcec · Sun Tan #e5d3c2
-     Portra Orange #cf8350 · Rust #8f4f2e · Dusty Lilac #a98fbd */
-  --bg-color: #f5ebdd;
-  --bg-surface: #e7dcec;
-  --surface-2: #e5d3c2;
-  --text-primary: #3a2c26;
-  --text-secondary: #715c50;
-  --text-muted: #a08c7d;
-  --panel-bg: rgba(248, 240, 228, 0.82);
-  --panel-bg-solid: #fbf4ea;
-  --panel-border: #d8c3ad;
-  --accent-color: #cf8350;
-  --accent-hover: #b96c3a;
-  --accent-deep: #8f4f2e;
-  --accent-glow: rgba(207, 131, 80, 0.22);
-  --lilac: #a98fbd;
-  --lilac-soft: rgba(169, 143, 189, 0.18);
-  --chat-daddy-bg: #ece0ec;
-  --chat-daddy-text: #3a2c26;
-  --chat-user-bg: #cf8350;
-  --chat-user-text: #fff7ee;
-  --success: #5b7f4e;
-  --warning: #b07a2e;
-  --danger: #b8503f;
-  --glass-blur: 18px;
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 20px;
-  --shadow-sm: 0 1px 4px rgba(90, 55, 35, 0.08);
-  --shadow-md: 0 4px 16px rgba(90, 55, 35, 0.12);
-  --shadow-lg: 0 12px 40px rgba(90, 55, 35, 0.18);
+  --bg-color: #ecebee;
+  --bg-surface: #f6f4f8;
+  --surface-2: #e3ddec;
+  --text-primary: #29272d;
+  --text-secondary: #5f5a67;
+  --text-muted: #817b89;
+  --panel-bg: rgba(250, 249, 252, 0.78);
+  --panel-bg-solid: #faf9fc;
+  --panel-border: rgba(69, 62, 79, 0.14);
+  --accent-color: #8d6aac;
+  --accent-hover: #765590;
+  --accent-deep: #503a62;
+  --accent-glow: rgba(158, 119, 188, 0.24);
+  --lilac: #9e77bc;
+  --lilac-soft: rgba(158, 119, 188, 0.14);
+  --botanical: #718b56;
+  --botanical-soft: rgba(113, 139, 86, 0.14);
+  --chat-daddy-bg: #f0eaf5;
+  --chat-daddy-text: #29272d;
+  --chat-user-bg: #765590;
+  --chat-user-text: #ffffff;
+  --success: #66814d;
+  --warning: #a16f32;
+  --danger: #b04c63;
+  --glass-blur: 24px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --shadow-sm: 0 2px 10px rgba(48, 39, 58, 0.08);
+  --shadow-md: 0 10px 30px rgba(48, 39, 58, 0.12);
+  --shadow-lg: 0 24px 70px rgba(48, 39, 58, 0.18);
   --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -69,26 +49,25 @@ html {
 }
 
 [data-theme='dark'] {
-  /* Warm faded night — like Portra pushed in low light */
-  --bg-color: #241b20;
-  --bg-surface: #30262e;
-  --surface-2: #3d3038;
-  --text-primary: #f2e6d8;
-  --text-secondary: #c3b0a2;
-  --text-muted: #8a7a6d;
-  --panel-bg: rgba(36, 27, 32, 0.8);
-  --panel-bg-solid: #2b2229;
-  --panel-border: rgba(216, 195, 173, 0.14);
-  --accent-color: #d98f5c;
-  --accent-hover: #e6a878;
-  --accent-deep: #e0c59a;
-  --accent-glow: rgba(217, 143, 92, 0.25);
-  --lilac: #c0a6d2;
-  --lilac-soft: rgba(192, 166, 210, 0.16);
-  --chat-daddy-bg: #3d3038;
-  --chat-daddy-text: #f2e6d8;
-  --chat-user-bg: #d98f5c;
-  --chat-user-text: #241b20;
+  --bg-color: #1f1c24;
+  --bg-surface: #2a2630;
+  --surface-2: #37313f;
+  --text-primary: #f6f1f8;
+  --text-secondary: #c8becf;
+  --text-muted: #968b9e;
+  --panel-bg: rgba(35, 31, 41, 0.82);
+  --panel-bg-solid: #29242f;
+  --panel-border: rgba(235, 224, 240, 0.14);
+  --accent-color: #ba91d3;
+  --accent-hover: #c9a5dd;
+  --accent-deep: #ddc8e8;
+  --accent-glow: rgba(186, 145, 211, 0.24);
+  --lilac: #ba91d3;
+  --lilac-soft: rgba(186, 145, 211, 0.16);
+  --chat-daddy-bg: #38313f;
+  --chat-daddy-text: #f6f1f8;
+  --chat-user-bg: #a679c1;
+  --chat-user-text: #ffffff;
   --shadow-sm: 0 2px 8px rgba(0,0,0,0.3);
   --shadow-md: 0 4px 20px rgba(0,0,0,0.35);
   --shadow-lg: 0 8px 40px rgba(0,0,0,0.45);
@@ -148,14 +127,14 @@ h1, h2, h3, h4,
   position: fixed;
   top: 0; left: 0;
   width: 100vw; height: 100vh;
-  background-image: url('https://images.unsplash.com/photo-1449844908441-8829872d2607?auto=format&fit=crop&q=80&w=2000');
-  background-size: cover;
-  background-position: center 70%;
-  opacity: 0.12;
+  background:
+    radial-gradient(circle at 50% 36%, rgba(255, 255, 255, 0.92) 0 12%, transparent 42%),
+    radial-gradient(circle at 18% 22%, rgba(184, 154, 204, 0.2), transparent 34%),
+    radial-gradient(circle at 82% 68%, rgba(113, 139, 86, 0.12), transparent 30%),
+    linear-gradient(145deg, #e7e5ea 0%, #f5f3f6 48%, #dedbe2 100%);
+  opacity: 1;
   z-index: 0;
-  /* Faded Portra grade — desaturated, warm, gently sepia */
-  filter: blur(1.5px) saturate(0.72) sepia(0.35) hue-rotate(-8deg) contrast(0.95);
-  animation: skylineDrift 60s ease-in-out infinite alternate;
+  animation: skylineDrift 40s ease-in-out infinite alternate;
 }
 
 @keyframes skylineDrift {
@@ -168,9 +147,8 @@ h1, h2, h3, h4,
   top: 0; left: 0;
   width: 100vw; height: 100vh;
   background:
-    radial-gradient(ellipse at 20% 40%, var(--accent-glow) 0%, transparent 55%),
-    radial-gradient(ellipse at 85% 15%, rgba(236, 229, 243, 0.5) 0%, transparent 50%),
-    linear-gradient(180deg, var(--bg-color) 0%, transparent 45%, var(--bg-color) 100%);
+    radial-gradient(ellipse at 50% 48%, rgba(255, 255, 255, 0.28) 0%, transparent 52%),
+    linear-gradient(180deg, rgba(236, 235, 238, 0.34) 0%, transparent 42%, rgba(225, 222, 231, 0.72) 100%);
   z-index: 1;
   pointer-events: none;
 }
@@ -1494,9 +1472,9 @@ h1, h2, h3, h4,
 }
 
 /* ═══════════════════════════════════════════
-   TRAVEL DADDY CHAT
+   JUDY PIERRE CHAT
    ═══════════════════════════════════════════ */
-.travel-daddy-wrapper {
+.judy-wrapper {
   position: relative;
   width: 100%;
   height: 100%;
@@ -3312,7 +3290,7 @@ h1, h2, h3, h4,
 }
 
 /* Screen-reader-only text — visually hidden but still announced. Used for
-   status text (e.g. "Travel Daddy is typing…") that has a visual-only
+   status text (e.g. "Judy Pierre is typing…") that has a visual-only
    equivalent (the bouncing dots). */
 .sr-only {
   position: absolute;
@@ -3839,4 +3817,487 @@ h1, h2, h3, h4,
   right: 1rem;
   flex-direction: column;
   z-index: 60;
+}
+
+/* ═══════════════════════════════════════════
+   CONSOLIDATED JUDY AVATAR HUB
+   One compact context toolbar at the viewport edge and one Judy command
+   surface above it. These final rules supersede the transitional immersive
+   styles above without changing the speech, transcript, or panel contracts.
+   ═══════════════════════════════════════════ */
+.judy-immersive-layout {
+  isolation: isolate;
+  background: var(--bg-color);
+}
+
+.immersive-top-header {
+  top: 0.75rem;
+  left: 0.75rem;
+  right: 0.75rem;
+  height: 60px;
+  padding: 0.35rem 0.55rem 0.35rem 0.7rem;
+  background: color-mix(in srgb, var(--panel-bg-solid) 80%, transparent);
+  border: 1px solid var(--panel-border);
+  border-radius: 18px;
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.1);
+}
+
+.immersive-top-header .logo-section {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 48px;
+  overflow: hidden;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.42);
+}
+
+.immersive-top-header .judy-logo {
+  width: 54px;
+  height: 48px;
+  object-fit: cover;
+  object-position: center;
+  transform: scale(1.22);
+}
+
+.immersive-nav-bar {
+  gap: 0.2rem;
+  padding: 0.25rem;
+  background: color-mix(in srgb, var(--surface-2) 58%, transparent);
+  border-color: var(--panel-border);
+  border-radius: 14px;
+  backdrop-filter: none;
+}
+
+.immersive-nav-bar .nav-item {
+  min-height: 40px;
+  gap: 0.4rem;
+  padding: 0.45rem 0.7rem;
+  color: var(--text-secondary);
+  border-radius: 11px;
+  font-size: 0.8rem;
+  font-weight: 650;
+}
+
+.immersive-nav-bar .nav-item:hover,
+.immersive-nav-bar .nav-item.active {
+  color: var(--accent-deep);
+  background: color-mix(in srgb, var(--panel-bg-solid) 88%, var(--lilac-soft));
+  box-shadow: 0 1px 8px rgba(69, 53, 82, 0.08);
+}
+
+.immersive-top-header .top-actions {
+  gap: 0.25rem;
+}
+
+.immersive-top-header .icon-button {
+  width: 40px;
+  height: 40px;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 12px;
+}
+
+.immersive-top-header .icon-button:hover,
+.immersive-top-header .icon-button:focus-visible {
+  color: var(--accent-deep);
+  background: var(--lilac-soft);
+  border-color: var(--panel-border);
+}
+
+.immersive-avatar-stage .judy-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.judy-command-surface {
+  position: absolute;
+  z-index: 55;
+  left: 50%;
+  bottom: 4.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  width: min(calc(100vw - 1.5rem), 960px);
+  min-height: 58px;
+  padding: 0.4rem;
+  transform: translateX(-50%);
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--panel-bg-solid) 86%, transparent);
+  border: 1px solid var(--panel-border);
+  border-radius: 18px;
+  box-shadow: var(--shadow-md);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.12);
+}
+
+.judy-command-surface .judy-conversation-dock {
+  position: static;
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+  padding: 0.25rem 0.35rem;
+  transform: none;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.judy-command-surface .judy-conversation-idle {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.judy-command-surface .judy-conversation-idle > p {
+  flex: 1 1 12rem;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+}
+
+.judy-command-surface .judy-conversation-actions {
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+}
+
+.judy-command-surface .judy-conversation-suggestions {
+  display: none;
+}
+
+.judy-command-surface .judy-talk-primary,
+.judy-command-surface .judy-conversation-secondary,
+.judy-command-surface .judy-conversation-end {
+  min-height: 40px;
+  white-space: nowrap;
+}
+
+.judy-command-surface .judy-talk-primary {
+  background: linear-gradient(135deg, var(--lilac), var(--accent-hover));
+  border-color: transparent;
+  box-shadow: 0 6px 18px var(--accent-glow);
+}
+
+.judy-command-surface:not(.is-idle) {
+  align-items: flex-start;
+  width: min(calc(100vw - 1.5rem), 700px);
+}
+
+.judy-command-surface:not(.is-idle) .judy-quick-actions {
+  display: none;
+}
+
+.judy-quick-actions,
+.immersive-avatar-stage .judy-quick-actions {
+  position: static;
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.2rem;
+  padding-left: 0.4rem;
+  border-left: 1px solid var(--panel-border);
+}
+
+.judy-quick-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-height: 40px;
+  padding: 0.45rem 0.58rem;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  font: 650 0.72rem/1 var(--font-sans);
+  cursor: pointer;
+  transition: color var(--transition), background var(--transition), border-color var(--transition);
+}
+
+.judy-quick-btn:hover,
+.judy-quick-btn:focus-visible,
+.judy-quick-btn.active {
+  color: var(--accent-deep);
+  background: var(--lilac-soft);
+  border-color: color-mix(in srgb, var(--lilac) 32%, transparent);
+}
+
+.bottom-global-shell {
+  left: 50%;
+  bottom: 0.6rem;
+  width: min(calc(100vw - 1.5rem), 960px);
+  height: 52px;
+  padding: 0.35rem 0.55rem;
+  transform: translateX(-50%);
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--panel-bg-solid) 84%, transparent);
+  border: 1px solid var(--panel-border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.1);
+  pointer-events: auto;
+}
+
+.bottom-shell-status {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0 0.55rem;
+  color: var(--text-secondary);
+  font-size: 0.73rem;
+  white-space: nowrap;
+}
+
+.bottom-shell-status strong {
+  color: var(--text-primary);
+}
+
+.bottom-shell-status-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--botanical);
+  border-radius: 50%;
+  box-shadow: 0 0 0 4px var(--botanical-soft);
+}
+
+.bottom-shell-icons {
+  gap: 0.3rem;
+  color: var(--text-primary);
+  text-shadow: none;
+}
+
+.bottom-shell-icon {
+  min-height: 38px;
+  gap: 0.38rem;
+  padding: 0.35rem 0.65rem;
+  background: color-mix(in srgb, var(--bg-surface) 72%, transparent);
+  border: 1px solid var(--panel-border);
+  border-radius: 11px;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.bottom-shell-icon svg {
+  width: 17px;
+  height: 17px;
+  color: var(--lilac);
+}
+
+.bottom-shell-icon.is-error svg {
+  color: var(--danger);
+}
+
+.bottom-shell-label {
+  color: var(--text-muted);
+  font-size: 0.64rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.bottom-shell-value {
+  color: var(--text-primary);
+}
+
+.immersive-avatar-stage .judy-wrapper > .judy-chat-panel {
+  right: max(0.75rem, calc((100vw - 960px) / 2));
+  bottom: 8.9rem;
+  left: auto;
+  width: min(calc(100vw - 1.5rem), 390px);
+  max-height: calc(100vh - 14.5rem);
+  z-index: 58;
+  border-radius: 18px;
+}
+
+.immersive-avatar-stage .judy-speech-caption,
+.immersive-avatar-stage .judy-speech-caption-docked {
+  bottom: 9.25rem;
+  max-width: min(82vw, 50rem);
+  padding: 0.65rem 1rem;
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--panel-bg-solid) 88%, transparent);
+  border-color: var(--panel-border);
+  border-radius: 14px;
+  box-shadow: var(--shadow-sm);
+  font-size: 0.95rem;
+  white-space: normal;
+}
+
+.immersive-dashboard-content {
+  top: 5.25rem;
+  max-height: calc(100vh - 14.75rem);
+  background: color-mix(in srgb, var(--panel-bg-solid) 90%, transparent);
+  border-radius: 22px;
+}
+
+@media (max-width: 1100px) {
+  .immersive-nav-bar .nav-label {
+    display: none;
+  }
+
+  .immersive-nav-bar .nav-item {
+    width: 40px;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .judy-command-surface .judy-conversation-idle > p,
+  .judy-quick-btn span {
+    display: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .immersive-top-header {
+    top: 0.4rem;
+    left: 0.4rem;
+    right: 0.4rem;
+    height: 54px;
+    flex-wrap: nowrap;
+    gap: 0.25rem;
+    padding: 0.25rem;
+    background: color-mix(in srgb, var(--panel-bg-solid) 88%, transparent);
+  }
+
+  .immersive-top-header .logo-section {
+    width: 44px;
+    height: 44px;
+  }
+
+  .immersive-top-header .judy-logo {
+    width: 44px;
+    height: 44px;
+  }
+
+  .immersive-nav-bar {
+    flex: 1;
+    width: auto;
+    min-width: 0;
+    overflow-x: auto;
+    padding: 0.15rem;
+  }
+
+  .immersive-nav-bar .nav-item {
+    flex: 0 0 36px;
+    width: 36px;
+    min-height: 36px;
+  }
+
+  .immersive-nav-bar .nav-item svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .immersive-top-header .top-actions {
+    flex: 0 0 auto;
+  }
+
+  .immersive-top-header .icon-button {
+    width: 34px;
+    height: 36px;
+  }
+
+  .immersive-top-header .top-actions .icon-button:nth-last-child(2) {
+    display: none;
+  }
+
+  .judy-command-surface {
+    bottom: 4.35rem;
+    width: calc(100vw - 0.8rem);
+    min-height: 54px;
+    gap: 0.2rem;
+    padding: 0.3rem;
+    border-radius: 16px;
+  }
+
+  .judy-command-surface .judy-conversation-dock {
+    padding: 0.15rem;
+  }
+
+  .judy-command-surface .judy-talk-primary,
+  .judy-command-surface .judy-conversation-secondary,
+  .judy-command-surface .judy-conversation-end {
+    min-height: 38px;
+    padding: 0.45rem 0.6rem;
+    font-size: 0.72rem;
+  }
+
+  .judy-command-surface .judy-conversation-idle .judy-conversation-secondary {
+    width: 38px;
+    padding: 0;
+    gap: 0;
+    overflow: hidden;
+    font-size: 0;
+  }
+
+  .judy-quick-actions,
+  .immersive-avatar-stage .judy-quick-actions {
+    gap: 0;
+    padding-left: 0.18rem;
+  }
+
+  .judy-quick-btn {
+    width: 36px;
+    min-height: 38px;
+    padding: 0;
+  }
+
+  .bottom-global-shell {
+    bottom: 0.35rem;
+    width: calc(100vw - 0.8rem);
+    height: 48px;
+    flex-direction: row;
+    gap: 0;
+    padding: 0.25rem;
+    border-radius: 14px;
+  }
+
+  .bottom-shell-status,
+  .bottom-shell-label {
+    display: none;
+  }
+
+  .bottom-shell-icons {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .bottom-shell-icon {
+    flex: 1;
+    min-width: 0;
+    justify-content: center;
+    padding: 0.25rem 0.4rem;
+  }
+
+  .bottom-shell-value {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .immersive-avatar-stage .judy-wrapper > .judy-chat-panel {
+    right: 0.4rem;
+    bottom: 8.2rem;
+    width: calc(100vw - 0.8rem);
+    max-height: calc(100vh - 12.5rem);
+  }
+
+  .immersive-avatar-stage .judy-speech-caption,
+  .immersive-avatar-stage .judy-speech-caption-docked {
+    bottom: 8.6rem;
+    max-width: calc(100vw - 1.25rem);
+    font-size: 0.82rem;
+  }
+
+  .immersive-dashboard-content {
+    top: 4.25rem;
+    width: calc(100vw - 0.8rem);
+    max-height: calc(100vh - 13rem);
+    padding: 0.8rem;
+    border-radius: 18px;
+  }
 }

@@ -1,5 +1,13 @@
 # Judy App — Codebase Review
 
+> **⚠️ HISTORICAL DOCUMENT — do not treat as current state.**
+> This audit describes the repo as of 2026-07-01. The repairs it recommends were
+> completed in commit `c07202a` and the dead predecessor app has been removed.
+> Since then the app has gained ElevenLabs voice, Stripe package checkout,
+> Memories, Experiences, alerts, SEO destination pages, and a Judy Pierre
+> purple-rhino rebrand (the "Travel Daddy" name below is obsolete).
+> **For current state, read `README.md`.** Kept for provenance only.
+
 **Reviewed:** `robs46859-eng/judy` @ `eac7bbf` ("Add custom server.js for Hostinger Passenger compatibility")
 **Date:** 2026-07-01
 **Method:** Full clone, dependency install, live `next build` attempt, static read-through of every server route and component, git history review, and SQLite inspection. Findings below are marked **Verified** (reproduced directly) or **Inferred** (established by reading code, not executed).

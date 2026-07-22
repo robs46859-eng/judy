@@ -254,7 +254,7 @@ export default function VoiceInputButton({
     <>
       <button
         type="button"
-        className="td-send-btn"
+        className="judy-send-btn"
         onClick={toggleListening}
         disabled={disabled || unavailable}
         aria-label={label}

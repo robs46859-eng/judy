@@ -31,7 +31,8 @@ const STILL: AvatarMotionSample = {
 };
 
 export function getAvatarFacingRotation(modelUrl: string): number {
-  return modelUrl === '/models/judyface.glb' ? -Math.PI / 2 : 0;
+  const pathname = modelUrl.split('?', 1)[0].toLowerCase();
+  return /\/judyface\.(?:glb|gltf)$/.test(pathname) ? -Math.PI / 2 : 0;
 }
 
 /* ── Blink cycle ──────────────────────────────────────────────────────── */

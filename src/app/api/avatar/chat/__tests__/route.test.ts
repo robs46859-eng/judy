@@ -98,7 +98,9 @@ describe('POST /api/avatar/chat conversation history', () => {
     const prompt = request.contents[0].parts[0].text;
     expect(prompt).toContain('Recent conversation:');
     expect(prompt).toContain('Traveler: I am visiting Madrid.');
-    expect(prompt).toContain('User says: Next weekend.');
+    expect(prompt).toContain('<USER_MESSAGE>');
+    expect(prompt).toContain('Next weekend.');
+    expect(prompt).toContain('</USER_MESSAGE>');
   });
 
   it('falls directly to Gemini after a bounded explicit-translation attempt', async () => {

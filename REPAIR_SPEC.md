@@ -1,5 +1,11 @@
 # Judy App — Phased Repair Spec
 
+> **⚠️ HISTORICAL DOCUMENT — this work is done.**
+> Written 2026-07-01 alongside `CODE_REVIEW.md`; all phases were completed in
+> commit `c07202a` ("Complete phased repairs from CODE_REVIEW.md / REPAIR_SPEC.md").
+> Nothing here is an open action item. **For current state, read `README.md`.**
+> Kept for provenance only.
+
 Companion to `CODE_REVIEW.md`. Each phase is ordered so later phases don't get rebuilt on top of a foundation that's about to change. Don't skip ahead to Phase 3 polish while Phase 1's data layer is still broken — it'll need redoing.
 
 ## Phase 0 — Decisions before writing any code

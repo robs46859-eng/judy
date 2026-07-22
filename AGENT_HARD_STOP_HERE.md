@@ -437,3 +437,4 @@ The deployment should not be considered fully closed until all of the following 
 - `src/lib/rag/embeddings.ts` — Gemini embedding integration
 - `src/lib/hermes/client.ts` — Judy-to-Hermes payload mapping
 - `prisma/migrations/20260718120000_add_user_spoken_language/migration.sql` — additive spoken-language migration
+x`x`

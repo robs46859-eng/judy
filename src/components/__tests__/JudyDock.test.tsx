@@ -125,11 +125,14 @@ describe('JudyDock avatar fallback (Swarm J7)', () => {
     render(<JudyDock userName="Robert" />);
 
     expect(await screen.findByTestId('avatar-stage-stub')).toBeInTheDocument();
-    expect(screen.getByTestId('avatar-stage-stub')).toHaveAttribute('data-model-url', '/models/judyface.glb');
+    expect(screen.getByTestId('avatar-stage-stub')).toHaveAttribute(
+      'data-model-url',
+      '/models/judyface-runtime/judyface.gltf'
+    );
     expect(screen.queryByAltText(AVATAR_ALT)).not.toBeInTheDocument();
 
-    // Chat + translation entry points must still be usable regardless of avatar mode.
-    expect(screen.getByTitle('Chat with Judy Pierre')).toBeInTheDocument();
+    // Text + translation entry points must still be usable regardless of avatar mode.
+    expect(screen.getByRole('button', { name: 'Type instead' })).toBeInTheDocument();
     expect(screen.getByTitle('Translate a phrase')).toBeInTheDocument();
   });
 
@@ -174,6 +177,28 @@ describe('JudyDock avatar fallback (Swarm J7)', () => {
     const avatarImg = await screen.findByAltText(AVATAR_ALT);
     expect(avatarImg).toHaveAttribute('src', '/avatars/robjudy.jpg');
     expect(screen.queryByTestId('avatar-stage-stub')).not.toBeInTheDocument();
+  });
+
+  it('uses one Judy tool surface and keeps only one intelligence drawer open', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        json: async () => ({ onboardingCompletedAt: new Date().toISOString(), experiences: [] }),
+        headers: { get: () => null },
+      }) as unknown as Response)
+    );
+
+    render(<JudyDock userName="Robert" />);
+    const tools = await screen.findByRole('navigation', { name: 'Judy tools' });
+
+    fireEvent.click(within(tools).getByRole('button', { name: 'Translate a phrase' }));
+    expect(screen.getByRole('button', { name: 'Close translate panel' })).toBeInTheDocument();
+
+    fireEvent.click(within(tools).getByRole('button', { name: 'Browse experiences' }));
+    expect(screen.queryByRole('button', { name: 'Close translate panel' })).not.toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Close experiences panel' })).toBeInTheDocument();
   });
 });
 
@@ -335,7 +360,7 @@ describe('JudyDock caption overlay (Swarm J6)', () => {
 
     render(<JudyDock userName="Robert" />);
 
-    fireEvent.click(await screen.findByTitle('Chat with Judy Pierre'));
+    fireEvent.click(await screen.findByRole('button', { name: 'Type instead' }));
     const input = await screen.findByPlaceholderText('Ask Judy Pierre anything...');
     fireEvent.change(input, { target: { value: 'What should I pack?' } });
     fireEvent.click(screen.getByTitle('Send message'));
@@ -547,7 +572,7 @@ describe('JudyDock synchronized local speech', () => {
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Listening'));
     const startsBeforeTranslation = recognitionMock.start.mock.calls.length;
 
-    fireEvent.click(screen.getByTitle('Chat with Judy Pierre'));
+    fireEvent.click(screen.getByRole('button', { name: 'Type instead' }));
     fireEvent.change(await screen.findByLabelText('Translate Judy’s reply'), {
       target: { value: 'es-MX' },
     });
@@ -607,7 +632,7 @@ describe('JudyDock synchronized local speech', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     render(<JudyDock userName="Robert" />);
-    fireEvent.click(await screen.findByTitle('Chat with Judy Pierre'));
+    fireEvent.click(await screen.findByRole('button', { name: 'Type instead' }));
     fireEvent.change(await screen.findByPlaceholderText('Ask Judy Pierre anything...'), {
       target: { value: 'When does my train leave?' },
     });

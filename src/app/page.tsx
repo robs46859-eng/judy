@@ -3,8 +3,7 @@ import { auth } from '@/lib/auth';
 import Dashboard from '@/components/Dashboard';
 import { isAvatarAdminEmail } from '@/lib/avatar/adminAccess';
 import { getCurrentAvatar } from '@/lib/avatar/avatarStorage';
-
-const BUNDLED_AVATAR_MODEL_URL = '/Judynoplip.glb';
+import { BUNDLED_AVATAR_MODEL_URL } from '@/lib/avatar/model';
 
 export default async function Home() {
   const session = await auth();

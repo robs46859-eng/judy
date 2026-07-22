@@ -28,7 +28,7 @@ const BLINK_TARGETS = ['eyeBlink_L', 'eyeBlink_R'] as const;
 export interface AvatarMeshProps {
   /** Path under /public to the rigged GLB. */
   modelUrl: string;
-  /** True while Travel Daddy is speaking (drives the stage-1 fallback). */
+  /** True while Judy Pierre is speaking (drives the stage-1 fallback). */
   talking: boolean;
   /**
    * Rhubarb mouth-cue timeline for the current utterance (stage 2). When

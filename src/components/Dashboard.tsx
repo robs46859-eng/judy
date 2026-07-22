@@ -7,16 +7,8 @@ import {
   Map,
   Calendar,
   CreditCard,
-  Compass,
   Cloud,
   ThermometerSun,
-  PlaneTakeoff,
-  Shield,
-  Dog,
-  Baby,
-  Car,
-  Banknote,
-  ChevronDown,
   Timer,
   Eye,
   Mail,
@@ -36,41 +28,6 @@ import ContactFormModal from "./ContactFormModal";
 import VoiceSettings from "./VoiceSettings";
 import { selectTrip } from "@/lib/dashboard/selectTrip";
 import { computeCountdown } from "@/lib/dashboard/countdown";
-
-interface AffiliateLink {
-  name: string;
-  url: string;
-  icon: React.ReactNode;
-}
-
-const affiliates: AffiliateLink[] = [
-  {
-    name: "Flight Info",
-    url: "https://www.flightaware.com/",
-    icon: <PlaneTakeoff size={16} />,
-  },
-  {
-    name: "Travel Insurance",
-    url: "https://www.travelers.com/",
-    icon: <Shield size={16} />,
-  },
-  { name: "Pet Sitter", url: "https://www.rover.com", icon: <Dog size={16} /> },
-  {
-    name: "Child Sitter",
-    url: "https://www.care.com",
-    icon: <Baby size={16} />,
-  },
-  {
-    name: "Transportation",
-    url: "https://www.uber.com",
-    icon: <Car size={16} />,
-  },
-  {
-    name: "Currency Exchange",
-    url: "https://www.westernunion.com",
-    icon: <Banknote size={16} />,
-  },
-];
 
 // Weather condition to icon mapping
 function getWeatherIcon(condition?: string) {
@@ -111,7 +68,6 @@ export default function Dashboard({
   avatarAdmin = false,
 }: DashboardProps) {
   const [theme, setTheme] = useState("light");
-  const [dropdownOpen, setDropdownOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("dashboard");
   const [trip, setTrip] = useState<any>(null);
   const [countdown, setCountdown] = useState<{
@@ -533,25 +489,49 @@ export default function Dashboard({
         </section>
       )}
 
-      {/* Bottom Global Shell */}
-      <div className="bottom-global-shell">
-        <div className="bottom-shell-icons">
-          {trip && countdown && (
-            <div className="bottom-shell-icon" title="Countdown to departure">
-              <Timer size={20} />
-              <span>{countdown.days}d {countdown.hours}h</span>
-            </div>
-          )}
-          {trip && weather && !weatherLoading && !weather.error && (
-            <div className="bottom-shell-icon" title={weather.condition || "Weather"}>
-              {getWeatherIcon(weather.condition)}
-              {weather.temperature !== undefined && (
-                <span>{Math.round(weather.temperature)}°F</span>
-              )}
-            </div>
-          )}
+      {/* Compact trip-context toolbar. Conversation controls live in JudyDock
+          directly above this shell, so the two layers never compete. */}
+      <footer className="bottom-global-shell" aria-label="Trip context toolbar">
+        <div className="bottom-shell-status" aria-label="Judy Pierre status">
+          <span className="bottom-shell-status-dot" aria-hidden="true" />
+          <span><strong>Judy Pierre</strong> is ready</span>
         </div>
-      </div>
+        <div className="bottom-shell-icons">
+          <div className="bottom-shell-icon" title="Trip Countdown">
+            <Timer size={18} aria-hidden="true" />
+            <span className="bottom-shell-label">Trip Countdown</span>
+            <span className="bottom-shell-value">
+              {trip && countdown
+                ? (
+                    <>
+                      <span className="bottom-shell-destination">{trip.destinationName}</span>
+                      {` · ${countdown.days}d ${countdown.hours}h`}
+                    </>
+                  )
+                : "No upcoming trip yet"}
+            </span>
+          </div>
+
+          <div
+            className={`bottom-shell-icon${weather?.error ? " is-error" : ""}`}
+            title="Weather"
+          >
+            {getWeatherIcon(weather?.condition)}
+            <span className="bottom-shell-label">Weather</span>
+            <span className="bottom-shell-value">
+              {!trip
+                ? "Add a trip to see weather"
+                : weatherLoading
+                  ? "Checking weather…"
+                  : weather?.error
+                    ? "Weather unavailable"
+                    : weather?.temperature !== undefined
+                      ? `${Math.round(weather.temperature)}°F${weather.condition ? ` · ${weather.condition}` : ""}`
+                      : "Forecast pending"}
+            </span>
+          </div>
+        </div>
+      </footer>
 
       {/* Modals */}
       <UserProfileModal

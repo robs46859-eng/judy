@@ -11,7 +11,6 @@ import {
 import {
   Send,
   Loader2,
-  MessageCircle,
   X,
   Compass,
   Languages,
@@ -41,9 +40,10 @@ import type { RhubarbCue } from "@/lib/avatar/visemeTimeline";
 import { normalizeVoiceLocale } from "@/lib/voice/catalog";
 import { detectEmotion, type EmotionPreset } from "@/lib/avatar/emotion";
 import { splitSentences, currentSentenceIndex } from "@/lib/avatar/sentenceSplit";
+import { BUNDLED_AVATAR_MODEL_URL } from "@/lib/avatar/model";
 
 /** Bundled fallback used until an administrator activates an uploaded model. */
-export const GLB_AVATAR_MODEL_URL = "/judysync.glb";
+export const GLB_AVATAR_MODEL_URL = BUNDLED_AVATAR_MODEL_URL;
 
 interface ChatTranslation {
   original: string;
@@ -81,6 +81,7 @@ interface LipSyncResponse {
 
 type OnboardingStatus = "loading" | "pending" | "complete";
 type RecognitionBackend = "browser" | "scribe";
+type JudyTool = "translate" | "experiences" | "memories" | "alerts";
 
 const TRANSLATE_LANGUAGES = [
   "Spanish", "French", "Portuguese", "Italian", "German",
@@ -108,10 +109,7 @@ export default function JudyDock({
   docked = false,
 }: JudyDockProps) {
   const [chatOpen, setChatOpen] = useState(docked);
-  const [translateOpen, setTranslateOpen] = useState(false);
-  const [experiencesOpen, setExperiencesOpen] = useState(false);
-  const [memoriesOpen, setMemoriesOpen] = useState(false);
-  const [alertsOpen, setAlertsOpen] = useState(false);
+  const [activeTool, setActiveTool] = useState<JudyTool | null>(null);
   const [translateText, setTranslateText] = useState("");
   const [sourceLang, setSourceLang] = useState("Auto-detect");
   const [targetLang, setTargetLang] = useState("Spanish");
@@ -155,6 +153,14 @@ export default function JudyDock({
   const inputRef = useRef<HTMLInputElement>(null);
 
   const userInitial = (userName || "You").trim().charAt(0).toUpperCase();
+  const translateOpen = activeTool === "translate";
+  const experiencesOpen = activeTool === "experiences";
+  const memoriesOpen = activeTool === "memories";
+  const alertsOpen = activeTool === "alerts";
+
+  const toggleTool = useCallback((tool: JudyTool) => {
+    setActiveTool((current) => (current === tool ? null : tool));
+  }, []);
 
   // Deterministic onboarding intake
   useEffect(() => {
@@ -684,8 +690,6 @@ export default function JudyDock({
     runTranslate(translatedText, newSource, newTarget);
   }, [translation.result, sourceLang, targetLang, runTranslate]);
 
-  const lastJudyMessage = [...messages].reverse().find((message) => message.role === "judy");
-
   // ── Render ────────────────────────────────────────────────────
   const wrapperClass = docked
     ? `judy-dock${mobileExpanded ? " judy-dock-expanded" : ""}`
@@ -753,8 +757,9 @@ export default function JudyDock({
         )}
       </div>
 
-      {/* Conversation dock controls */}
-      <ConversationDock
+      {/* One command surface owns voice, text, and intelligence tools. */}
+      <div className={`judy-command-surface is-${conversation.phase}`}>
+        <ConversationDock
         state={conversation}
         onStart={() => {
           dispatchConversation({ type: "START" });
@@ -802,7 +807,7 @@ export default function JudyDock({
         }}
         onSuggestion={(suggestion) => {
           if (suggestion === "translate") {
-            setTranslateOpen(true);
+            setActiveTool("translate");
             return;
           }
           setChatOpen(true);
@@ -813,66 +818,70 @@ export default function JudyDock({
           );
           window.setTimeout(() => inputRef.current?.focus(), 0);
         }}
-      />
+        />
 
-      {/* Quick-action bar */}
-      <div className="judy-quick-actions">
+        <nav className="judy-quick-actions" aria-label="Judy tools">
         <button
           className={`judy-quick-btn${translateOpen ? " active" : ""}`}
-          onClick={() => setTranslateOpen((v) => !v)}
+          onClick={() => toggleTool("translate")}
           title="Translate a phrase"
           aria-label="Translate a phrase"
           aria-pressed={translateOpen}
         >
           <Languages size={16} aria-hidden="true" />
+          <span>Translate</span>
         </button>
         <button
           className={`judy-quick-btn${experiencesOpen ? " active" : ""}`}
-          onClick={() => setExperiencesOpen((v) => !v)}
+          onClick={() => toggleTool("experiences")}
           title="Browse experiences"
           aria-label="Browse experiences"
           aria-pressed={experiencesOpen}
         >
           <Compass size={16} aria-hidden="true" />
+          <span>Explore</span>
         </button>
         <button
           className={`judy-quick-btn${memoriesOpen ? " active" : ""}`}
-          onClick={() => setMemoriesOpen((v) => !v)}
+          onClick={() => toggleTool("memories")}
           title="Travel memories"
           aria-label="Travel memories"
           aria-pressed={memoriesOpen}
         >
           <ImageIcon size={16} aria-hidden="true" />
+          <span>Memories</span>
         </button>
         <button
           className={`judy-quick-btn${alertsOpen ? " active" : ""}`}
-          onClick={() => setAlertsOpen((v) => !v)}
+          onClick={() => toggleTool("alerts")}
           title="Travel alerts"
           aria-label="Travel alerts"
           aria-pressed={alertsOpen}
         >
           <Bell size={16} aria-hidden="true" />
+          <span>Alerts</span>
         </button>
+        </nav>
       </div>
 
       {/* Panels */}
       <ExperiencesPanel
         open={experiencesOpen}
-        onClose={() => setExperiencesOpen(false)}
+        onClose={() => setActiveTool(null)}
         destinationName={
           (tripContext as { destinationName?: string } | null | undefined)?.destinationName ?? null
         }
       />
       <MemoriesPanel
         open={memoriesOpen}
-        onClose={() => setMemoriesOpen(false)}
+        onClose={() => setActiveTool(null)}
         destinationName={
           (tripContext as { destinationName?: string } | null | undefined)?.destinationName ?? null
         }
       />
       <AlertsPanel
         open={alertsOpen}
-        onClose={() => setAlertsOpen(false)}
+        onClose={() => setActiveTool(null)}
         destinationName={
           (tripContext as { destinationName?: string } | null | undefined)?.destinationName ?? null
         }
@@ -888,7 +897,7 @@ export default function JudyDock({
             </div>
             <button
               className="judy-chat-close"
-              onClick={() => setTranslateOpen(false)}
+              onClick={() => setActiveTool(null)}
               aria-label="Close translate panel"
             >
               <X size={16} aria-hidden="true" />
@@ -971,21 +980,6 @@ export default function JudyDock({
             )}
           </div>
         </div>
-      )}
-
-      {/* Chat toggle (non-docked only) */}
-      {!docked && !chatOpen && (
-        <button
-          className="judy-chat-toggle"
-          onClick={() => {
-            setChatOpen(true);
-            setTimeout(() => inputRef.current?.focus(), 100);
-          }}
-          title="Chat with Judy Pierre"
-        >
-          <MessageCircle size={20} aria-hidden="true" />
-          <span>Ask Judy Pierre</span>
-        </button>
       )}
 
       {/* Chat panel / inline chat */}

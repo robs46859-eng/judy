@@ -47,6 +47,7 @@ describe('sampleAvatarMotion', () => {
 
   it('front-faces only the bundled Judy model and preserves uploaded orientations', () => {
     expect(getAvatarFacingRotation('/models/judyface.glb')).toBe(-Math.PI / 2);
+    expect(getAvatarFacingRotation('/models/judyface-runtime/judyface.gltf')).toBe(-Math.PI / 2);
     expect(getAvatarFacingRotation('/api/avatar/model?v=uploaded')).toBe(0);
   });
 });

@@ -1,7 +1,8 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readFileSync, statSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { inspectGlb, REQUIRED_VISEME_TARGETS } from '../glbInspector';
+import { BUNDLED_AVATAR_MODEL_URL } from '../model';
 
 interface GlbNode {
   name?: string;
@@ -38,6 +39,43 @@ function readGlbJson(filePath: string): GlbJson {
 }
 
 describe('Judy production avatar asset', () => {
+  it('uses the optimized derivative of the verified facial rig at runtime', () => {
+    expect(BUNDLED_AVATAR_MODEL_URL).toBe('/models/judyface-runtime/judyface.gltf');
+    const runtimePath = join(process.cwd(), 'public', BUNDLED_AVATAR_MODEL_URL);
+    const runtimeDirectory = dirname(runtimePath);
+    const document = JSON.parse(readFileSync(runtimePath, 'utf8')) as {
+      buffers?: Array<{ uri?: string }>;
+      images?: Array<{ uri?: string }>;
+      meshes?: Array<{ extras?: { targetNames?: string[] } }>;
+      nodes?: Array<{ name?: string }>;
+      skins?: Array<{ joints?: number[] }>;
+    };
+    const dependencies = [
+      ...(document.buffers ?? []).map((buffer) => buffer.uri),
+      ...(document.images ?? []).map((image) => image.uri),
+    ].filter((uri): uri is string => Boolean(uri));
+
+    expect(dependencies.length).toBeGreaterThan(0);
+    for (const uri of dependencies) {
+      expect(resolve(runtimeDirectory, uri).startsWith(`${runtimeDirectory}/`)).toBe(true);
+      expect(existsSync(resolve(runtimeDirectory, uri))).toBe(true);
+    }
+    for (const image of document.images ?? []) {
+      if (image.uri) expect(statSync(resolve(runtimeDirectory, image.uri)).size).toBeLessThan(512_000);
+    }
+
+    const runtimeVisemes = new Set(
+      (document.meshes ?? []).flatMap((mesh) => mesh.extras?.targetNames ?? [])
+    );
+    const runtimeJoints = new Set(
+      (document.skins ?? []).flatMap((skin) =>
+        (skin.joints ?? []).map((jointIndex) => document.nodes?.[jointIndex]?.name)
+      )
+    );
+    expect([...REQUIRED_VISEME_TARGETS].every((target) => runtimeVisemes.has(target))).toBe(true);
+    expect(runtimeJoints.has('jaw')).toBe(true);
+  });
+
   it('ships a skinned GLB with the jaw joint expected by the avatar runtime', () => {
     const glb = readGlbJson(join(process.cwd(), 'public/models/judyface.glb'));
     const nodes = glb.nodes ?? [];

@@ -5,10 +5,12 @@ import { enforceRateLimit } from '@/lib/rate-limit';
 import { prisma } from '@/lib/prisma';
 import { saveMemoryImage } from '@/lib/memories/storage';
 import { runTravelTranslation } from '@/lib/hermes/translation-runner';
+import { validateBase64Image } from '@/lib/images/base64';
 
 export const runtime = 'nodejs';
 
 const MAX_BASE64_CHARS = 14 * 1024 * 1024; // ~10 MB image
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 
 const createSchema = z
   .object({
@@ -99,11 +101,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid memory request.' }, { status: 400 });
   }
   const { imageBase64, mimeType, caption, altText, tags, location, tripId } = parsed.data;
+  const validatedImage = validateBase64Image(imageBase64, mimeType, {
+    maxBytes: MAX_IMAGE_BYTES,
+  });
+  if (!validatedImage) {
+    return NextResponse.json({ error: 'The uploaded image data is invalid.' }, { status: 400 });
+  }
 
   // 1) Persist the image to disk.
   let imageUrl: string;
   try {
-    imageUrl = await saveMemoryImage(userId, imageBase64, mimeType);
+    imageUrl = await saveMemoryImage(userId, validatedImage.data, validatedImage.mimeType);
   } catch {
     return NextResponse.json({ error: 'Could not store the image.' }, { status: 400 });
   }

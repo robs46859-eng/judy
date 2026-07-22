@@ -67,6 +67,9 @@ export default function ConversationDock({
           <button type="button" className="judy-conversation-secondary" onClick={onStopListening}>
             <Pause size={17} aria-hidden="true" /> Stop listening
           </button>
+          <button type="button" className="judy-conversation-secondary" onClick={onTypeInstead}>
+            <Keyboard size={17} aria-hidden="true" /> Type instead
+          </button>
           <button type="button" className="judy-conversation-end" onClick={onEnd}>
             <Square size={16} aria-hidden="true" /> End conversation
           </button>

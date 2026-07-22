@@ -231,44 +231,44 @@ export default function MemoriesPanel({
   if (!open) return null;
 
   return (
-    <div className="td-chat-panel td-memories-panel">
-      <div className="td-chat-header">
-        <div className="td-chat-title">
+    <div className="judy-chat-panel judy-memories-panel">
+      <div className="judy-chat-header">
+        <div className="judy-chat-title">
           <ImageIcon size={16} aria-hidden="true" />
           <span>Memories</span>
         </div>
-        <button className="td-chat-close" onClick={onClose} aria-label="Close memories panel">
+        <button className="judy-chat-close" onClick={onClose} aria-label="Close memories panel">
           <X size={16} aria-hidden="true" />
         </button>
       </div>
 
-      <div className="td-mem-body">
+      <div className="judy-mem-body">
         {!preview ? (
-          <button className="td-mem-drop" onClick={() => fileRef.current?.click()}>
+          <button className="judy-mem-drop" onClick={() => fileRef.current?.click()}>
             <Upload size={18} aria-hidden="true" />
             <span>Add a travel photo</span>
           </button>
         ) : (
-          <div className="td-mem-compose">
+          <div className="judy-mem-compose">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img className="td-mem-preview" src={preview.dataUrl} alt="Selected travel photo preview" />
+            <img className="judy-mem-preview" src={preview.dataUrl} alt="Selected travel photo preview" />
 
             {/* AI photo edit (Gemini image model) */}
             {preview.mimeType !== "image/heic" && (
-              <div className="td-mem-edit">
-                <div className="td-mem-edit-head">
+              <div className="judy-mem-edit">
+                <div className="judy-mem-edit-head">
                   <Wand2 size={13} aria-hidden="true" /> AI edit
                   {originalPreview && (
-                    <button className="td-mem-revert" onClick={revertEdit} disabled={editing}>
+                    <button className="judy-mem-revert" onClick={revertEdit} disabled={editing}>
                       <Undo2 size={12} aria-hidden="true" /> revert
                     </button>
                   )}
                 </div>
-                <div className="td-mem-edit-chips">
+                <div className="judy-mem-edit-chips">
                   {EDIT_PRESETS.map((p) => (
                     <button
                       key={p.id}
-                      className="td-mem-editchip"
+                      className="judy-mem-editchip"
                       onClick={() => applyEdit(p.id)}
                       disabled={editing}
                     >
@@ -276,7 +276,7 @@ export default function MemoriesPanel({
                     </button>
                   ))}
                 </div>
-                <div className="td-mem-edit-custom">
+                <div className="judy-mem-edit-custom">
                   <input
                     type="text"
                     value={editPrompt}
@@ -285,7 +285,7 @@ export default function MemoriesPanel({
                     disabled={editing}
                   />
                   <button
-                    className="td-mem-editgo"
+                    className="judy-mem-editgo"
                     onClick={() => applyEdit()}
                     disabled={editing || !editPrompt.trim()}
                   >
@@ -293,14 +293,14 @@ export default function MemoriesPanel({
                   </button>
                 </div>
                 {editing && (
-                  <div className="td-mem-hint">
+                  <div className="judy-mem-hint">
                     <Loader2 size={13} className="spinner" aria-hidden="true" /> Judy's editing the photo…
                   </div>
                 )}
               </div>
             )}
 
-            <label className="td-mem-loc">
+            <label className="judy-mem-loc">
               <MapPin size={13} aria-hidden="true" />
               <input
                 type="text"
@@ -311,26 +311,26 @@ export default function MemoriesPanel({
             </label>
 
             {!draft ? (
-              <button className="td-mem-generate" onClick={generate} disabled={captioning}>
+              <button className="judy-mem-generate" onClick={generate} disabled={captioning}>
                 {captioning ? <Loader2 size={15} className="spinner" aria-hidden="true" /> : <Sparkles size={15} aria-hidden="true" />}
                 {captioning ? "Judy's writing…" : "Generate caption"}
               </button>
             ) : (
-              <div className="td-mem-draft">
+              <div className="judy-mem-draft">
                 <textarea
-                  className="td-mem-caption"
+                  className="judy-mem-caption"
                   value={draft.caption}
                   onChange={(e) => setDraft({ ...draft, caption: e.target.value })}
                   rows={2}
                 />
                 {draft.tags.length > 0 && (
-                  <div className="td-mem-tags">
+                  <div className="judy-mem-tags">
                     {draft.tags.map((t) => (
-                      <span key={t} className="td-mem-tag">#{t}</span>
+                      <span key={t} className="judy-mem-tag">#{t}</span>
                     ))}
                   </div>
                 )}
-                <button className="td-mem-add" onClick={save} disabled={saving}>
+                <button className="judy-mem-add" onClick={save} disabled={saving}>
                   {saving ? <Loader2 size={15} className="spinner" aria-hidden="true" /> : <Plus size={15} aria-hidden="true" />}
                   {saving ? "Saving…" : "Add to album"}
                 </button>
@@ -343,23 +343,23 @@ export default function MemoriesPanel({
           ref={fileRef}
           type="file"
           accept={ACCEPTED.join(",")}
-          className="td-mem-file"
+          className="judy-mem-file"
           onChange={(e) => pickFile(e.target.files?.[0])}
         />
 
-        {error && <div className="td-mem-error">{error}</div>}
+        {error && <div className="judy-mem-error">{error}</div>}
         {loadingAlbum && (
-          <div className="td-mem-hint">
+          <div className="judy-mem-hint">
             <Loader2 size={14} className="spinner" aria-hidden="true" /> Loading your album…
           </div>
         )}
 
         {album.length > 0 && (
-          <div className="td-mem-album">
+          <div className="judy-mem-album">
             {album.map((m) => (
-              <figure key={m.id} className="td-mem-card">
+              <figure key={m.id} className="judy-mem-card">
                 <button
-                  className="td-mem-del"
+                  className="judy-mem-del"
                   onClick={() => remove(m.id)}
                   aria-label="Delete memory"
                   title="Delete"
@@ -367,16 +367,16 @@ export default function MemoriesPanel({
                   <Trash2 size={12} aria-hidden="true" />
                 </button>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={m.imageUrl} alt={m.altText ?? m.caption} className="td-mem-thumb" />
-                <figcaption className="td-mem-figcap">
+                <img src={m.imageUrl} alt={m.altText ?? m.caption} className="judy-mem-thumb" />
+                <figcaption className="judy-mem-figcap">
                   {m.location && (
-                    <span className="td-mem-figloc">
+                    <span className="judy-mem-figloc">
                       <MapPin size={11} aria-hidden="true" /> {m.location}
                     </span>
                   )}
                   {m.caption}
                   {m.translatedCaption && (
-                    <span className="td-mem-figtrans">{m.translatedCaption}</span>
+                    <span className="judy-mem-figtrans">{m.translatedCaption}</span>
                   )}
                 </figcaption>
               </figure>

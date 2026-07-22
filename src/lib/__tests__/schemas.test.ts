@@ -130,7 +130,14 @@ describe('contactSchema', () => {
 
 describe('chatSchema', () => {
   it('accepts a message with optional trip context', () => {
-    expect(chatSchema.safeParse({ message: 'Hi daddy', tripContext: { any: 'thing' } }).success).toBe(true);
+    const parsed = chatSchema.safeParse({
+      message: 'Hi Judy',
+      tripContext: { destinationName: 'Lisbon', passwordHash: 'must-not-reach-the-model' },
+    });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.tripContext).toEqual({ destinationName: 'Lisbon' });
+    }
   });
 
   it('rejects empty and oversized messages', () => {

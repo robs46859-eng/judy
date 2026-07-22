@@ -179,8 +179,8 @@ export default function OnboardingIntake({ userEmail, onDone }: OnboardingIntake
     return (
       <div className="onboarding-intake">
         <div className="onboarding-transcript">
-          <div className="td-msg td-msg-daddy">
-            <div className="td-msg-bubble">
+          <div className="judy-msg judy-msg-judy">
+            <div className="judy-msg-bubble">
               Here&apos;s what I&apos;ve got — anything to change before I save it?
             </div>
           </div>
@@ -202,11 +202,11 @@ export default function OnboardingIntake({ userEmail, onDone }: OnboardingIntake
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
                       onKeyDown={handleKeyDown}
-                      className="td-chat-input"
+                      className="judy-chat-input"
                       placeholder={FIELD_LABELS[key]}
                     />
                     <button
-                      className="td-send-btn"
+                      className="judy-send-btn"
                       title="Save this answer"
                       aria-label={`Save answer for ${FIELD_LABELS[key]}`}
                       onClick={submitAnswer}
@@ -263,19 +263,19 @@ export default function OnboardingIntake({ userEmail, onDone }: OnboardingIntake
       <div className="onboarding-transcript">
         {ONBOARDING_STEPS.slice(0, state.stepIndex).map(({ key, prompt }) => (
           <div key={key}>
-            <div className="td-msg td-msg-daddy">
-              <div className="td-msg-bubble">{prompt}</div>
+            <div className="judy-msg judy-msg-judy">
+              <div className="judy-msg-bubble">{prompt}</div>
             </div>
-            <div className="td-msg td-msg-user">
-              <div className="td-msg-bubble">
+            <div className="judy-msg judy-msg-user">
+              <div className="judy-msg-bubble">
                 {state.skipped[key] || !state.answers[key] ? "(skipped)" : state.answers[key]}
               </div>
             </div>
           </div>
         ))}
         {step && (
-          <div className="td-msg td-msg-daddy">
-            <div className="td-msg-bubble">{step.prompt}</div>
+          <div className="judy-msg judy-msg-judy">
+            <div className="judy-msg-bubble">{step.prompt}</div>
           </div>
         )}
       </div>
@@ -298,7 +298,7 @@ export default function OnboardingIntake({ userEmail, onDone }: OnboardingIntake
         </button>
       </div>
 
-      <div className="td-chat-input-bar">
+      <div className="judy-chat-input-bar">
         <input
           ref={inputRef}
           type="text"
@@ -306,11 +306,11 @@ export default function OnboardingIntake({ userEmail, onDone }: OnboardingIntake
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Type your answer…"
-          className="td-chat-input"
+          className="judy-chat-input"
           aria-label={step?.prompt ?? "Your answer"}
         />
         <button
-          className="td-send-btn"
+          className="judy-send-btn"
           onClick={submitAnswer}
           disabled={!input.trim()}
           title="Send answer"
