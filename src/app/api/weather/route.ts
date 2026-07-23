@@ -44,15 +44,12 @@ export async function GET(request: NextRequest) {
     }
 
     // Google Weather API - Current Conditions
-    const currentUrl = `https://weather.googleapis.com/v1/currentConditions:lookup?key=${apiKey}`;
-    const currentRes = await fetch(currentUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        location: { latitude, longitude },
-        unitsSystem: 'IMPERIAL',
-      }),
-    });
+    const currentUrl = new URL('https://weather.googleapis.com/v1/currentConditions:lookup');
+    currentUrl.searchParams.set('key', apiKey);
+    currentUrl.searchParams.set('location.latitude', String(latitude));
+    currentUrl.searchParams.set('location.longitude', String(longitude));
+    currentUrl.searchParams.set('unitsSystem', 'IMPERIAL');
+    const currentRes = await fetch(currentUrl, { method: 'GET' });
 
     let currentWeather = null;
     if (currentRes.ok) {
@@ -62,16 +59,13 @@ export async function GET(request: NextRequest) {
     // Google Weather API - Forecast (up to 10 days)
     let forecast = null;
     if (daysUntilDeparture <= 20) {
-      const forecastUrl = `https://weather.googleapis.com/v1/forecast/days:lookup?key=${apiKey}`;
-      const forecastRes = await fetch(forecastUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          location: { latitude, longitude },
-          days: 10,
-          unitsSystem: 'IMPERIAL',
-        }),
-      });
+      const forecastUrl = new URL('https://weather.googleapis.com/v1/forecast/days:lookup');
+      forecastUrl.searchParams.set('key', apiKey);
+      forecastUrl.searchParams.set('location.latitude', String(latitude));
+      forecastUrl.searchParams.set('location.longitude', String(longitude));
+      forecastUrl.searchParams.set('days', '10');
+      forecastUrl.searchParams.set('unitsSystem', 'IMPERIAL');
+      const forecastRes = await fetch(forecastUrl, { method: 'GET' });
       if (forecastRes.ok) {
         forecast = await forecastRes.json();
       }
